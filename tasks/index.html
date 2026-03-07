@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tasks">
+<title>Tasks — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/shared.css">
+<link rel="stylesheet" href="../assets/css/tasks.css">
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Tasks</h1>
+    <p id="sidebar-date-label"></p>
+  </div>
+
+  <div class="sidebar-section">Views</div>
+  <div class="sidebar-item active" id="nav-all" onclick="setView('all', this)">
+    <div class="sidebar-item-left"><span class="sidebar-icon">⊞</span> All Tasks</div>
+    <span class="sidebar-count" id="count-all">0</span>
+  </div>
+  <div class="sidebar-item" id="nav-today" onclick="setView('today', this)">
+    <div class="sidebar-item-left"><span class="sidebar-icon">◎</span> Today</div>
+    <span class="sidebar-count" id="count-today">0</span>
+  </div>
+  <div class="sidebar-item" id="nav-week" onclick="setView('week', this)">
+    <div class="sidebar-item-left"><span class="sidebar-icon">◫</span> This Week</div>
+    <span class="sidebar-count" id="count-week">0</span>
+  </div>
+  <div class="sidebar-item" id="nav-overdue" onclick="setView('overdue', this)">
+    <div class="sidebar-item-left"><span class="sidebar-icon">⚑</span> Overdue</div>
+    <span class="sidebar-count" id="count-overdue">0</span>
+  </div>
+  <div class="sidebar-item" id="nav-nodate" onclick="setView('nodate', this)">
+    <div class="sidebar-item-left"><span class="sidebar-icon">◌</span> No Due Date</div>
+    <span class="sidebar-count" id="count-nodate">0</span>
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <div class="sidebar-section">Lists</div>
+  <div id="list-nav"></div>
+  <div class="sidebar-add-list" onclick="openModal('add-list-modal')">
+    <span style="font-size:16px;">+</span> New List
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <div class="sidebar-section">Tags</div>
+  <a class="sidebar-add-list" href="../tags/index.html" style="text-decoration:none;">
+    <span style="font-size:16px;">⚙</span> Manage Tags
+  </a>
+
+  <div class="sidebar-footer">
+    <a href="../index.html">← All Apps</a>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="view-title">All Tasks</h2>
+      <p id="view-subtitle"></p>
+    </div>
+    <div class="topbar-right">
+      <button class="btn" onclick="openModal('add-task-modal')">+ New Task</button>
+    </div>
+  </div>
+
+  <!-- SORT BAR -->
+  <div class="sort-bar" id="sort-bar">
+    <span class="sort-label">Sort by</span>
+    <div class="sort-select-wrap">
+      <select id="sort-by" onchange="setSortBy(this.value)">
+        <option value="default">Default</option>
+        <option value="due">Due Date</option>
+        <option value="priority">Priority</option>
+      </select>
+      <span class="sort-select-arrow">▼</span>
+    </div>
+    <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle direction">↑</button>
+    <div class="filter-sep"></div>
+    <div class="tag-filter-wrap" id="tag-filter-wrap">
+      <div class="tag-filter-trigger" id="tag-filter-trigger" onclick="toggleTagFilterDropdown(event)">
+        <span id="tag-filter-label">Filter by tag</span>
+        <span class="tag-filter-arrow">▼</span>
+      </div>
+      <div class="tag-filter-menu" id="tag-filter-menu"></div>
+    </div>
+  </div>
+
+  <!-- TASK LIST -->
+  <div class="tasks-container" id="tasks-container"></div>
+
+  <!-- COMPLETED SECTION -->
+  <div id="completed-section"></div>
+</main>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- ADD/EDIT TASK -->
+<div class="modal-backdrop" id="add-task-modal">
+  <div class="modal">
+    <div class="modal-title" id="task-modal-title">New Task</div>
+    <input type="hidden" id="editing-task-id">
+    <div class="form-group">
+      <label>Task Name <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="task-name-input" placeholder="What needs to be done?">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>List <span style="color:var(--p-high);">*</span></label>
+        <select id="task-list-input"></select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="task-priority-input">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="task-due-input">
+      </div>
+      <div class="form-group">
+        <label>Tags</label>
+        <div class="tag-dropdown-wrap" id="tag-dropdown-wrap">
+          <div class="tag-dropdown-trigger" id="tag-dropdown-trigger" onclick="toggleTagDropdown(event)">
+            <div class="tag-dropdown-selected" id="tag-dropdown-selected">
+              <span class="tag-dropdown-placeholder" id="tag-dropdown-placeholder">Select tags...</span>
+            </div>
+            <span class="tag-dropdown-arrow">▼</span>
+          </div>
+          <div class="tag-dropdown-menu" id="tag-dropdown-menu">
+            <div id="tag-dropdown-options"></div>
+            <div class="tag-dropdown-divider"></div>
+            <div class="tag-dropdown-add" onclick="showInlineTagForm()">
+              <span style="font-size:16px;line-height:1;">+</span> Add new tag
+            </div>
+            <div class="tag-inline-form" id="tag-inline-form">
+              <span class="tag-inline-form-label">Tag Name</span>
+              <input type="text" id="inline-tag-name" placeholder="e.g. urgent, waiting...">
+              <span class="tag-inline-form-label">Color</span>
+              <div class="tag-inline-swatches" id="inline-tag-swatches"></div>
+              <div class="tag-inline-actions">
+                <button class="tag-inline-btn" onclick="hideInlineTagForm()">Cancel</button>
+                <button class="tag-inline-btn primary" onclick="saveInlineTag()">Create & Select</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="task-notes-input" placeholder="Any extra details..."></textarea>
+    </div>
+    <div class="modal-actions" id="task-modal-actions">
+      <button class="btn btn-danger" id="modal-delete-btn" style="display:none" onclick="modalDeleteTask()">Delete</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" onclick="closeModal('add-task-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD LIST -->
+<div class="modal-backdrop" id="add-list-modal">
+  <div class="modal">
+    <div class="modal-title">New List</div>
+    <div class="form-group">
+      <label>List Name</label>
+      <input type="text" id="new-list-name" placeholder="e.g. Work, Personal, Shopping">
+    </div>
+    <div class="form-group">
+      <label>Color</label>
+      <div class="list-color-picker" id="list-color-picker"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('add-list-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="addList()">Create List</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-backdrop" id="confirm-delete-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" style="font-size:20px;">Are you sure?</div>
+    <p id="confirm-delete-msg" style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;"></p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('confirm-delete-modal')">Cancel</button>
+      <button class="btn" id="confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/tasks.js"></script>
+</body>
+</html>

@@ -1,0 +1,50 @@
+/* ─────────────────────────────────────────
+   DESIGN TOKENS — single source of truth
+   All other CSS files import from here.
+───────────────────────────────────────── */
+:root {
+  /* ── Backgrounds & Surfaces ── */
+  --bg:       #0F0F0F;
+  --surface:  #181818;
+  --surface2: #222222;
+  --surface3: #2A2A2A;
+
+  /* ── Borders ── */
+  --border:  #2E2E2E;
+  --border2: #3A3A3A;
+
+  /* ── Text ── */
+  --text:       #F0EEE9;
+  --text-muted: #666666;
+  --text-dim:   #999999;
+
+  /* ── Accent ── */
+  --accent:     #E8D5B0;
+  --accent-dim: rgba(232, 213, 176, 0.12);
+
+  /* ── Priority ── */
+  --p-high:    #FF6B6B;
+  --p-high-bg: rgba(255, 107, 107, 0.12);
+  --p-medium:    #FFB347;
+  --p-medium-bg: rgba(255, 179, 71, 0.12);
+  --p-low:    #6BCB77;
+  --p-low-bg: rgba(107, 203, 119, 0.12);
+
+  /* ── Shape ── */
+  --radius:    14px;
+  --radius-sm: 8px;
+
+  /* ── Typography ── */
+  --font-serif: 'Fraunces', serif;
+  --font-sans:  'Geist', sans-serif;
+
+  /* ── Spacing scale ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+}

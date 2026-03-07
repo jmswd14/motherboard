@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Portal">
+<title>Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/shared.css">
+<style>
+/* ── PORTAL HOME ── */
+.portal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.portal-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px 24px;
+  text-decoration: none;
+  color: var(--text);
+  transition: all 0.18s;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.portal-card:hover {
+  border-color: var(--border2);
+  background: var(--surface2);
+  transform: translateY(-1px);
+}
+
+.portal-card.coming-soon {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+.portal-card-icon { font-size: 26px; line-height: 1; }
+
+.portal-card-name {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text);
+}
+
+.portal-card-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+.portal-card-status {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.portal-card-status.live { color: var(--p-low); }
+.portal-card-status.soon { color: var(--text-muted); }
+
+/* Portal sidebar nav */
+.portal-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 24px;
+  color: var(--text-dim);
+  font-size: 13.5px;
+  text-decoration: none;
+  transition: all 0.15s;
+  font-family: var(--font-sans);
+}
+.portal-nav-item:hover { background: var(--surface2); color: var(--text); }
+.portal-nav-item.active { color: var(--text); background: var(--accent-dim); }
+.portal-nav-item.disabled { opacity: 0.35; pointer-events: none; }
+
+@media (max-width: 740px) {
+  .portal-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 480px) {
+  .portal-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Portal</h1>
+    <p id="sidebar-date"></p>
+  </div>
+
+  <div class="sidebar-section">Apps</div>
+  <a class="portal-nav-item" href="tasks/index.html">
+    <span class="sidebar-icon">☑</span> Tasks
+  </a>
+  <a class="portal-nav-item" href="tags/index.html">
+    <span class="sidebar-icon">⚙</span> Tags
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">◉</span> Habits
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">✦</span> Journal
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">♡</span> Gratitude
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">◫</span> Calendar
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">◎</span> Goals
+  </a>
+  <a class="portal-nav-item disabled" href="#">
+    <span class="sidebar-icon">◈</span> Finance
+  </a>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2>Good to see you.</h2>
+      <p id="home-date"></p>
+    </div>
+  </div>
+
+  <div class="portal-grid">
+
+    <a class="portal-card" href="tasks/index.html">
+      <div class="portal-card-icon">☑</div>
+      <div class="portal-card-name">Tasks</div>
+      <div class="portal-card-desc">Manage your to-do lists with priorities, tags, and due dates.</div>
+      <div class="portal-card-status live">● Live</div>
+    </a>
+
+    <a class="portal-card" href="tags/index.html">
+      <div class="portal-card-icon">⚙</div>
+      <div class="portal-card-name">Tags</div>
+      <div class="portal-card-desc">Create and manage tags used across your tasks.</div>
+      <div class="portal-card-status live">● Live</div>
+    </a>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">◉</div>
+      <div class="portal-card-name">Habits</div>
+      <div class="portal-card-desc">Track daily habits and build consistent routines.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">✦</div>
+      <div class="portal-card-name">Journal</div>
+      <div class="portal-card-desc">A private space for daily reflections and notes.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">♡</div>
+      <div class="portal-card-name">Gratitude</div>
+      <div class="portal-card-desc">Log what you're grateful for, one entry at a time.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">◫</div>
+      <div class="portal-card-name">Calendar</div>
+      <div class="portal-card-desc">View and plan your schedule at a glance.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">◎</div>
+      <div class="portal-card-name">Goals</div>
+      <div class="portal-card-desc">Set long-term goals and track your progress.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+    <div class="portal-card coming-soon">
+      <div class="portal-card-icon">◈</div>
+      <div class="portal-card-name">Finance</div>
+      <div class="portal-card-desc">Log expenses and keep an eye on your spending.</div>
+      <div class="portal-card-status soon">Coming soon</div>
+    </div>
+
+  </div>
+</main>
+</div>
+
+<script>
+  const today = new Date();
+  const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+  document.getElementById('sidebar-date').textContent = dateStr;
+  document.getElementById('home-date').textContent = dateStr;
+
+  function toggleSidebar() {
+    document.getElementById('sidebar').classList.toggle('open');
+    document.getElementById('overlay').classList.toggle('show');
+  }
+  function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('overlay').classList.remove('show');
+  }
+</script>
+</body>
+</html>

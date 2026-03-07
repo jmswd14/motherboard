@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tags">
+<title>Tags — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/shared.css">
+<link rel="stylesheet" href="../assets/css/tasks.css">
+</head>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Tags</h1>
+    <p id="sidebar-date-label"></p>
+  </div>
+
+  <div class="sidebar-section">Navigation</div>
+  <div class="sidebar-item active">
+    <div class="sidebar-item-left"><span class="sidebar-icon">⚙</span> Manage Tags</div>
+    <span class="sidebar-count" id="count-tags">0</span>
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <a class="sidebar-add-list" href="../tasks/index.html" style="text-decoration:none;">
+    <span style="font-size:14px;">☑</span> Tasks
+  </a>
+
+  <div class="sidebar-footer">
+    <a href="../index.html">← All Apps</a>
+  </div>
+</nav>
+
+<!-- CONTENT -->
+<main class="content">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2>Tags</h2>
+      <p id="view-subtitle"></p>
+    </div>
+  </div>
+
+  <!-- TAG LIST -->
+  <div id="tag-list"></div>
+
+  <!-- NEW TAG -->
+  <div class="section-header" style="margin-top:40px;">
+    <div class="section-header-line"></div>
+    <div class="section-header-label">New Tag</div>
+    <div class="section-header-line"></div>
+  </div>
+
+  <div style="max-width:480px;">
+    <div class="form-group">
+      <label>Tag Name</label>
+      <input type="text" id="new-tag-name" placeholder="e.g. urgent, waiting for..." onkeydown="if(event.key==='Enter')addTag()">
+    </div>
+    <div class="form-group">
+      <label>Color</label>
+      <div class="color-swatches" id="tag-color-swatches"></div>
+    </div>
+    <button class="btn btn-primary" onclick="addTag()">+ Create Tag</button>
+  </div>
+</main>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-backdrop" id="confirm-delete-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" style="font-size:20px;">Are you sure?</div>
+    <p id="confirm-delete-msg" style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;"></p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('confirm-delete-modal')">Cancel</button>
+      <button class="btn" id="confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const TAG_COLORS = [
+  '#7B9EC4', '#B87A8A', '#C09A50', '#5A9B80', '#8C7EC0', '#B87856',
+  '#4E9BAC', '#A87860', '#A89060', '#628E92', '#9A5872', '#6A9660'
+];
+
+function load(k, fb) { try { return JSON.parse(localStorage.getItem(k)) || fb; } catch { return fb; } }
+function save(k, v) { localStorage.setItem(k, JSON.stringify(v)); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+let tags = load('tags_v2', []);
+let tasks = load('tasks_v2', []);
+let selectedTagColor = TAG_COLORS[0];
+let activeMenuId = null;
+
+// ── RENDER ──
+
+function renderTagList() {
+  document.getElementById('count-tags').textContent = tags.length;
+  document.getElementById('view-subtitle').textContent = `${tags.length} tag${tags.length !== 1 ? 's' : ''}`;
+
+  const el = document.getElementById('tag-list');
+  if (!tags.length) {
+    el.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">◌</div>
+      <h3>No tags yet</h3>
+      <p>Create your first tag below</p>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = tags.map(t => {
+    const usageCount = tasks.filter(task => task.tags && task.tags.includes(t.id)).length;
+    const menuId = `tag-menu-${t.id}`;
+    const safeName = t.name.replace(/'/g, "\\'");
+    return `<div class="manage-tag-row">
+      <span class="manage-tag-dot" style="background:${t.color};"></span>
+      <span class="tag-chip" style="background:${t.color}28;color:${t.color};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;">${t.name}</span>
+      <span class="manage-tag-name" style="color:var(--text-muted);font-size:12px;">${usageCount} task${usageCount !== 1 ? 's' : ''}</span>
+      <div class="task-menu-wrap">
+        <span class="task-menu-btn" onclick="openContextMenu(event,'${menuId}')">⋯</span>
+        <div class="task-menu-dropdown" id="${menuId}">
+          <div class="task-menu-option danger" onclick="confirmTagDelete('${t.id}','${safeName}')">Delete</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderColorSwatches() {
+  document.getElementById('tag-color-swatches').innerHTML = TAG_COLORS.map((c, i) =>
+    `<div class="color-swatch ${i === 0 ? 'selected' : ''}" style="background:${c}" onclick="selectTagColor('${c}',this)"></div>`
+  ).join('');
+}
+
+function selectTagColor(c, el) {
+  selectedTagColor = c;
+  document.querySelectorAll('#tag-color-swatches .color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ── CONTEXT MENU ──
+
+function openContextMenu(e, dropdownId) {
+  e.stopPropagation();
+  if (activeMenuId === dropdownId) { closeContextMenu(); return; }
+  closeContextMenu();
+  activeMenuId = dropdownId;
+  document.getElementById(dropdownId)?.classList.add('open');
+}
+
+function closeContextMenu() {
+  if (activeMenuId) {
+    document.getElementById(activeMenuId)?.classList.remove('open');
+    activeMenuId = null;
+  }
+}
+
+// ── ACTIONS ──
+
+function addTag() {
+  const nameEl = document.getElementById('new-tag-name');
+  const name = nameEl.value.trim();
+  if (!name) { nameEl.style.borderColor = 'var(--p-high)'; nameEl.focus(); return; }
+  nameEl.style.borderColor = '';
+  tags.push({ id: uid(), name: name.toLowerCase(), color: selectedTagColor });
+  save('tags_v2', tags);
+  nameEl.value = '';
+  selectedTagColor = TAG_COLORS[0];
+  renderColorSwatches();
+  renderTagList();
+}
+
+function confirmTagDelete(tid, name) {
+  closeContextMenu();
+  document.getElementById('confirm-delete-msg').textContent =
+    `The tag "${name}" will be removed from all tasks and deleted permanently.`;
+  const btn = document.getElementById('confirm-delete-btn');
+  btn.onclick = () => { closeModal('confirm-delete-modal'); deleteTag(tid); };
+  openModal('confirm-delete-modal');
+}
+
+function deleteTag(tid) {
+  tags = tags.filter(t => t.id !== tid);
+  tasks = tasks.map(t => ({ ...t, tags: (t.tags || []).filter(x => x !== tid) }));
+  save('tags_v2', tags);
+  save('tasks_v2', tasks);
+  renderTagList();
+}
+
+// ── MODAL ──
+
+function openModal(mid) { document.getElementById(mid).classList.add('show'); }
+function closeModal(mid) { document.getElementById(mid).classList.remove('show'); }
+
+// ── MOBILE ──
+
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── GLOBAL ──
+
+document.addEventListener('click', () => closeContextMenu());
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+    closeContextMenu();
+  }
+});
+
+// ── INIT ──
+
+const today = new Date();
+document.getElementById('sidebar-date-label').textContent =
+  today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+renderColorSwatches();
+renderTagList();
+</script>
+</body>
+</html>
