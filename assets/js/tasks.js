@@ -124,6 +124,11 @@ function taskMenuDelete(tid, name) {
   confirmDelete('task', tid, name);
 }
 
+function tagMenuDelete(tid, name) {
+  closeContextMenu();
+  confirmDelete('tag', tid, name);
+}
+
 // ────────── SIDEBAR ──────────
 function renderSidebar() {
   const d = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -398,6 +403,7 @@ function confirmDelete(type, itemId, itemName) {
   const messages = {
     task: `"${itemName}" will be permanently deleted.`,
     list: `The list "${itemName}" will be deleted. Tasks in this list won't be deleted but will lose their list assignment.`,
+    tag:  `The tag "${itemName}" will be removed from all tasks and deleted permanently.`,
   };
   document.getElementById('confirm-delete-msg').textContent = messages[type] || 'This will be permanently deleted.';
   const btn = document.getElementById('confirm-delete-btn');
@@ -405,6 +411,7 @@ function confirmDelete(type, itemId, itemName) {
     closeModal('confirm-delete-modal');
     if (type === 'task') deleteTask(itemId);
     if (type === 'list') deleteList(itemId);
+    if (type === 'tag')  deleteTag(itemId);
   };
   openModal('confirm-delete-modal');
 }
@@ -524,6 +531,53 @@ async function deleteList(lid) {
 }
 
 // ────────── TAGS ──────────
+async function addTag() {
+  const name = document.getElementById('new-tag-name').value.trim();
+  if (!name) { document.getElementById('new-tag-name').style.borderColor = 'var(--p-high)'; return; }
+  document.getElementById('new-tag-name').style.borderColor = '';
+  const newTag = { id: uid(), name: name.toLowerCase(), color: selectedTagColor };
+  tags.push(newTag);
+  await _sb.from('tags').insert({ ...newTag, user_id: _uid });
+  document.getElementById('new-tag-name').value = '';
+  selectedTagColor = TAG_COLORS[0];
+  document.querySelectorAll('#tag-color-swatches .color-swatch').forEach((s, i) => s.classList.toggle('selected', i === 0));
+  renderManageTags();
+  renderSidebar();
+}
+
+async function deleteTag(tid) {
+  tags = tags.filter(t => t.id !== tid);
+  activeTagFilters = activeTagFilters.filter(x => x !== tid);
+  renderManageTags();
+  renderSidebar();
+  renderTasks();
+  await _sb.from('tags').delete().eq('id', tid).eq('user_id', _uid);
+  await _sb.rpc('remove_tag_from_tasks', { p_tag_id: tid, p_user_id: _uid });
+}
+
+function renderManageTags() {
+  const el = document.getElementById('manage-tags-list');
+  if (!tags.length) {
+    el.innerHTML = '<div style="color:var(--text-muted);font-size:13px;padding:8px 0;">No tags yet — create one below.</div>';
+    return;
+  }
+  el.innerHTML = tags.map(t => {
+    const usageCount = tasks.filter(task => task.tags && task.tags.includes(t.id)).length;
+    const menuId   = `tag-menu-${t.id}`;
+    const safeName = t.name.replace(/'/g, "\\'");
+    return `<div class="manage-tag-row">
+      <span class="manage-tag-dot" style="background:${t.color};"></span>
+      <span class="tag-chip" style="background:${t.color}28;color:${t.color};padding:3px 10px;border-radius:20px;font-size:12px;font-weight:500;">${t.name}</span>
+      <span class="manage-tag-name" style="color:var(--text-muted);font-size:12px;">${usageCount} task${usageCount !== 1 ? 's' : ''}</span>
+      <div class="task-menu-wrap">
+        <span class="task-menu-btn" onclick="openContextMenu(event,'${menuId}')">⋯</span>
+        <div class="task-menu-dropdown" id="${menuId}">
+          <div class="task-menu-option danger" onclick="tagMenuDelete('${t.id}','${safeName}')">Delete</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
 
 // ────────── MODAL SETUP ──────────
 function populateTaskModal(selectedList) {
@@ -645,6 +699,14 @@ function openModal(mid) {
     const sw = document.getElementById('list-color-picker');
     sw.innerHTML = LIST_COLORS.map((c, i) => `<div class="list-color-swatch ${i === 0 ? 'selected' : ''}" style="background:${c}" onclick="selectListColor('${c}', this)"></div>`).join('');
   }
+  if (mid === 'manage-tags-modal') {
+    selectedTagColor = TAG_COLORS[0];
+    document.getElementById('new-tag-name').value = '';
+    document.getElementById('new-tag-name').style.borderColor = '';
+    const sw = document.getElementById('tag-color-swatches');
+    sw.innerHTML = TAG_COLORS.map((c, i) => `<div class="color-swatch ${i === 0 ? 'selected' : ''}" style="background:${c}" onclick="selectTagColor('${c}', this)"></div>`).join('');
+    renderManageTags();
+  }
   document.getElementById(mid).classList.add('show');
   setTimeout(() => { const fi = document.querySelector('#' + mid + ' input[type="text"]'); if (fi) fi.focus(); }, 80);
 }
@@ -654,6 +716,12 @@ function closeModal(mid) { document.getElementById(mid).classList.remove('show')
 function selectListColor(c, el) {
   selectedListColor = c;
   document.querySelectorAll('#list-color-picker .list-color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function selectTagColor(c, el) {
+  selectedTagColor = c;
+  document.querySelectorAll('#tag-color-swatches .color-swatch').forEach(s => s.classList.remove('selected'));
   el.classList.add('selected');
 }
 

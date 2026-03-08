@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Calendar">
+<link rel="apple-touch-icon" href="/vanguard/apple-touch-icon.png">
+<link rel="manifest" href="/vanguard/manifest.json">
+<title>Calendar — Portal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/shared.css">
+<link rel="stylesheet" href="../assets/css/calendar.css">
+</head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/supabase-client.js"></script>
+<body>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<button class="hamburger" onclick="toggleSidebar()">☰</button>
+
+<div class="app">
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <h1>Calendar</h1>
+    <p id="sidebar-date-label"></p>
+  </div>
+
+  <div class="sidebar-section">Navigation</div>
+  <div class="sidebar-item active">
+    <div class="sidebar-item-left"><span class="sidebar-icon">◫</span> Calendar</div>
+  </div>
+
+  <hr class="sidebar-divider">
+
+  <div class="sidebar-section">Apps</div>
+  <a class="sidebar-add-list" href="../tasks/index.html" style="text-decoration:none;color:inherit;">
+    <span style="font-size:14px;">☑</span> Tasks
+  </a>
+
+  <div class="sidebar-footer">
+    <a href="../index.html">← All Apps</a>
+    <span class="sidebar-signout" onclick="signOut()">Sign out</span>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="content">
+  <div class="cal-topbar">
+    <h2 class="cal-month-label" id="cal-month-label"></h2>
+    <div class="cal-nav-right">
+      <button class="cal-nav-btn" onclick="prevMonth()" title="Previous month">‹</button>
+      <button class="cal-nav-btn cal-today-btn" onclick="goToToday()">Today</button>
+      <button class="cal-nav-btn" onclick="nextMonth()" title="Next month">›</button>
+    </div>
+  </div>
+  <div class="cal-grid" id="cal-grid"></div>
+</main>
+</div>
+
+<!-- DAY PANEL -->
+<div class="day-panel-overlay" id="day-panel-overlay" onclick="closeDayPanel()"></div>
+<div class="day-panel" id="day-panel">
+  <div class="day-panel-header">
+    <div>
+      <div class="day-panel-date" id="day-panel-date"></div>
+      <div class="day-panel-weekday" id="day-panel-weekday"></div>
+    </div>
+    <button class="day-panel-close" onclick="closeDayPanel()">✕</button>
+  </div>
+  <div class="day-panel-body" id="day-panel-body"></div>
+  <div class="day-panel-footer">
+    <button class="btn btn-primary" onclick="openNewEventFromPanel()" style="width:100%;justify-content:center;">+ Add Event</button>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- EDIT TASK -->
+<div class="modal-backdrop" id="task-modal">
+  <div class="modal">
+    <div class="modal-title">Edit Task</div>
+    <input type="hidden" id="editing-task-id">
+    <div class="form-group">
+      <label>Task Name <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="task-name-input" placeholder="What needs to be done?">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>List</label>
+        <select id="task-list-input"></select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="task-priority-input">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Due Date</label>
+        <input type="date" id="task-due-input">
+      </div>
+      <div class="form-group">
+        <label>Tags</label>
+        <div class="tag-dropdown-wrap" id="tag-dropdown-wrap">
+          <div class="tag-dropdown-trigger" id="tag-dropdown-trigger" onclick="toggleTagDropdown(event)">
+            <div class="tag-dropdown-selected" id="tag-dropdown-selected">
+              <span class="tag-dropdown-placeholder" id="tag-dropdown-placeholder">Select tags...</span>
+            </div>
+            <span class="tag-dropdown-arrow">▼</span>
+          </div>
+          <div class="tag-dropdown-menu" id="tag-dropdown-menu">
+            <div id="tag-dropdown-options"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="task-notes-input" placeholder="Any extra details..."></textarea>
+    </div>
+    <div class="modal-actions" id="task-modal-actions" style="justify-content:space-between;">
+      <button class="btn btn-danger" id="task-delete-btn" onclick="confirmDeleteTask()">Delete</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" onclick="closeModal('task-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD / EDIT EVENT -->
+<div class="modal-backdrop" id="event-modal">
+  <div class="modal">
+    <div class="modal-title" id="event-modal-title">New Event</div>
+    <input type="hidden" id="editing-event-id">
+    <div class="form-group">
+      <label>Title <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="event-title-input" placeholder="Event title...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date <span style="color:var(--p-high);">*</span></label>
+        <input type="date" id="event-date-input">
+      </div>
+      <div class="form-group">
+        <label>Time</label>
+        <input type="time" id="event-time-input">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Repeat</label>
+      <select id="event-repeat-input">
+        <option value="never">Never</option>
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="yearly">Yearly</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="event-notes-input" placeholder="Any extra details..."></textarea>
+    </div>
+    <div class="modal-actions" id="event-modal-actions">
+      <button class="btn btn-danger" id="event-delete-btn" style="display:none" onclick="confirmDeleteEvent()">Delete</button>
+      <div style="display:flex;gap:10px;">
+        <button class="btn" onclick="closeModal('event-modal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEvent()">Save Event</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-backdrop" id="confirm-delete-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" style="font-size:20px;">Are you sure?</div>
+    <p id="confirm-delete-msg" style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;"></p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('confirm-delete-modal')">Cancel</button>
+      <button class="btn" id="confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE ──
+const _sb = window.supabaseClient;
+let _uid = null;
+
+// ── COLORS ──
+const TAG_COLORS = [
+  '#7B9EC4','#B87A8A','#C09A50','#5A9B80','#8C7EC0','#B87856',
+  '#4E9BAC','#A87860','#A89060','#628E92','#9A5872','#6A9660',
+];
+
+// ── DATA ──
+let tasks  = [];
+let events = [];
+let lists  = [];
+let tags   = [];
+
+// ── STATE ──
+let currentMonth, currentYear;
+let activeDayStr    = null;
+let selectedTaskTags = [];
+let tagDropdownOpen  = false;
+let activeMenuId     = null;
+
+const today    = new Date();
+const todayStr = today.toISOString().split('T')[0];
+
+// ── UTILS ──
+function uid()       { return crypto.randomUUID(); }
+function getList(id) { return lists.find(l => l.id === id); }
+function getTag(id)  { return tags.find(t => t.id === id); }
+
+function formatTime(timeStr) {
+  if (!timeStr) return '';
+  const [h, m] = timeStr.split(':');
+  const hour   = parseInt(h);
+  const ampm   = hour >= 12 ? 'PM' : 'AM';
+  const h12    = hour % 12 || 12;
+  return `${h12}:${m} ${ampm}`;
+}
+
+function capitalize(s) { return s ? s[0].toUpperCase() + s.slice(1) : ''; }
+
+function daysBetween(d1str, d2str) {
+  const d1 = new Date(d1str + 'T00:00:00');
+  const d2 = new Date(d2str + 'T00:00:00');
+  return Math.round((d2 - d1) / (1000 * 60 * 60 * 24));
+}
+
+// ── RECURRENCE ──
+function eventOccursOn(ev, dateStr) {
+  if (ev.date > dateStr) return false;
+  if (ev.repeat === 'never')   return ev.date === dateStr;
+  if (ev.repeat === 'daily')   return true;
+  if (ev.repeat === 'weekly')  return daysBetween(ev.date, dateStr) % 7 === 0;
+  if (ev.repeat === 'monthly') return ev.date.slice(8, 10) === dateStr.slice(8, 10);
+  if (ev.repeat === 'yearly')  return ev.date.slice(5) === dateStr.slice(5);
+  return false;
+}
+
+function getEventsForDay(dateStr) { return events.filter(e => eventOccursOn(e, dateStr)); }
+function getTasksForDay(dateStr)  { return tasks.filter(t => !t.done && t.due === dateStr); }
+
+// ── CALENDAR RENDER ──
+function renderCalendar() {
+  const label = new Date(currentYear, currentMonth, 1)
+    .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  document.getElementById('cal-month-label').textContent = label;
+
+  const firstWeekday  = new Date(currentYear, currentMonth, 1).getDay();
+  const daysInMonth   = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysInPrevMo  = new Date(currentYear, currentMonth, 0).getDate();
+
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  let html = DAY_NAMES.map(d => `<div class="cal-header-cell">${d}</div>`).join('');
+
+  // Trailing days from previous month
+  for (let i = firstWeekday - 1; i >= 0; i--) {
+    html += renderDayCell(fmtDate(currentYear, currentMonth - 1, daysInPrevMo - i), daysInPrevMo - i, true);
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    html += renderDayCell(fmtDate(currentYear, currentMonth, d), d, false);
+  }
+
+  // Leading days from next month
+  const totalCells  = firstWeekday + daysInMonth;
+  const trailingCnt = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+  for (let d = 1; d <= trailingCnt; d++) {
+    html += renderDayCell(fmtDate(currentYear, currentMonth + 1, d), d, true);
+  }
+
+  document.getElementById('cal-grid').innerHTML = html;
+}
+
+function fmtDate(year, month, day) {
+  return new Date(year, month, day).toISOString().split('T')[0];
+}
+
+function renderDayCell(dateStr, dayNum, otherMonth) {
+  const isToday  = dateStr === todayStr;
+  const isActive = dateStr === activeDayStr;
+
+  const dayTasks  = getTasksForDay(dateStr);
+  const dayEvents = getEventsForDay(dateStr);
+
+  const allItems = [
+    ...dayTasks.map(t  => ({ type: 'task',  item: t })),
+    ...dayEvents.map(e => ({ type: 'event', item: e })),
+  ];
+  const maxBars  = 3;
+  const visible  = allItems.slice(0, maxBars);
+  const overflow = allItems.length - maxBars;
+
+  let barsHtml = visible.map(({ type, item }) => {
+    if (type === 'task') {
+      const list  = getList(item.list);
+      const color = list ? list.color : '#666666';
+      const safe  = item.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div class="cal-bar task-bar"
+                   style="background:${color}22;border-left:3px solid ${color};"
+                   onclick="event.stopPropagation();editTask('${item.id}')"
+                   title="${safe}">
+        <span class="cal-bar-dot" style="background:${color};"></span>
+        <span class="cal-bar-text">${item.name}</span>
+      </div>`;
+    } else {
+      const safe = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div class="cal-bar event-bar"
+                   onclick="event.stopPropagation();openEditEvent('${item.id}')"
+                   title="${safe}">
+        <span class="cal-bar-dot" style="background:var(--accent);"></span>
+        <span class="cal-bar-text">${item.title}</span>
+      </div>`;
+    }
+  }).join('');
+
+  if (overflow > 0) barsHtml += `<div class="cal-overflow">+${overflow} more</div>`;
+
+  return `<div class="cal-day${otherMonth ? ' other-month' : ''}${isToday ? ' today' : ''}${isActive ? ' active' : ''}"
+              onclick="openDayPanel('${dateStr}')">
+    <div class="cal-day-number">${dayNum}</div>
+    <div class="cal-day-bars">${barsHtml}</div>
+  </div>`;
+}
+
+// ── NAVIGATION ──
+function prevMonth() {
+  currentMonth--;
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+
+function nextMonth() {
+  currentMonth++;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  renderCalendar();
+}
+
+function goToToday() {
+  currentMonth = today.getMonth();
+  currentYear  = today.getFullYear();
+  renderCalendar();
+}
+
+// ── DAY PANEL ──
+function openDayPanel(dateStr) {
+  activeDayStr = dateStr;
+  const d = new Date(dateStr + 'T00:00:00');
+  document.getElementById('day-panel-date').textContent =
+    d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+  document.getElementById('day-panel-weekday').textContent =
+    d.toLocaleDateString('en-US', { weekday: 'long' });
+
+  renderDayPanel();
+  document.getElementById('day-panel').classList.add('open');
+  document.getElementById('day-panel-overlay').classList.add('show');
+  renderCalendar();
+}
+
+function closeDayPanel() {
+  activeDayStr = null;
+  document.getElementById('day-panel').classList.remove('open');
+  document.getElementById('day-panel-overlay').classList.remove('show');
+  renderCalendar();
+}
+
+function renderDayPanel() {
+  if (!activeDayStr) return;
+  const dayTasks  = getTasksForDay(activeDayStr);
+  const dayEvents = getEventsForDay(activeDayStr);
+  const body      = document.getElementById('day-panel-body');
+  let html = '';
+
+  if (!dayTasks.length && !dayEvents.length) {
+    html = `<div class="day-panel-empty">
+      <div class="day-panel-empty-icon">◌</div>
+      <p>Nothing scheduled</p>
+    </div>`;
+  } else {
+    if (dayTasks.length) {
+      html += `<div class="day-panel-section-label">Tasks</div>`;
+      html += dayTasks.map(t => {
+        const list  = getList(t.list);
+        const color = list ? list.color : '#666666';
+        return `<div class="day-panel-item" onclick="editTask('${t.id}')">
+          <span class="day-panel-dot" style="background:${color};"></span>
+          <div class="day-panel-item-body">
+            <div class="day-panel-item-name">${t.name}</div>
+            ${list ? `<div class="day-panel-item-meta">${list.name}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    if (dayEvents.length) {
+      html += `<div class="day-panel-section-label"${dayTasks.length ? ' style="margin-top:20px;"' : ''}>Events</div>`;
+      html += dayEvents.map(e => {
+        const meta = [e.time ? formatTime(e.time) : '', e.repeat !== 'never' ? capitalize(e.repeat) : ''].filter(Boolean).join(' · ');
+        return `<div class="day-panel-item" onclick="openEditEvent('${e.id}')">
+          <span class="day-panel-dot" style="background:var(--accent);"></span>
+          <div class="day-panel-item-body">
+            <div class="day-panel-item-name">${e.title}</div>
+            ${meta ? `<div class="day-panel-item-meta">${meta}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  body.innerHTML = html;
+}
+
+function openNewEventFromPanel() {
+  openEventModal(null, activeDayStr || todayStr);
+}
+
+// ── TASK EDITING ──
+function editTask(tid) {
+  const t = tasks.find(x => x.id === tid);
+  if (!t) return;
+
+  document.getElementById('editing-task-id').value = tid;
+  document.getElementById('task-name-input').value = t.name;
+  document.getElementById('task-name-input').style.borderColor = '';
+  document.getElementById('task-priority-input').value = t.priority;
+  document.getElementById('task-due-input').value = t.due || '';
+  document.getElementById('task-notes-input').value = t.notes || '';
+  selectedTaskTags = [...(t.tags || [])];
+  tagDropdownOpen  = false;
+
+  // Populate list dropdown
+  document.getElementById('task-list-input').innerHTML =
+    lists.map(l => `<option value="${l.id}"${t.list === l.id ? ' selected' : ''}>${l.name}</option>`).join('');
+
+  renderTagDropdown();
+  document.getElementById('task-modal').classList.add('show');
+  setTimeout(() => document.getElementById('task-name-input')?.focus(), 80);
+}
+
+async function saveTask() {
+  const name     = document.getElementById('task-name-input').value.trim();
+  const list     = document.getElementById('task-list-input').value;
+  const priority = document.getElementById('task-priority-input').value;
+  const due      = document.getElementById('task-due-input').value;
+  const notes    = document.getElementById('task-notes-input').value.trim();
+  const tagsCopy = [...selectedTaskTags];
+  const tid      = document.getElementById('editing-task-id').value;
+
+  if (!name) { document.getElementById('task-name-input').style.borderColor = 'var(--p-high)'; return; }
+
+  closeModal('task-modal');
+
+  const t = tasks.find(x => x.id === tid);
+  if (t) {
+    t.name = name; t.list = list; t.priority = priority;
+    t.due = due; t.tags = tagsCopy; t.notes = notes;
+  }
+
+  renderCalendar();
+  if (activeDayStr) renderDayPanel();
+
+  await _sb.from('tasks').update({
+    name,
+    list_id:  list || null,
+    priority,
+    due:      due || null,
+    tags:     tagsCopy,
+    notes:    notes || null,
+  }).eq('id', tid).eq('user_id', _uid);
+}
+
+function confirmDeleteTask() {
+  const tid  = document.getElementById('editing-task-id').value;
+  const name = document.getElementById('task-name-input').value.trim();
+  closeModal('task-modal');
+  document.getElementById('confirm-delete-msg').textContent = `"${name}" will be permanently deleted.`;
+  document.getElementById('confirm-delete-btn').onclick = () => { closeModal('confirm-delete-modal'); deleteTask(tid); };
+  openModal('confirm-delete-modal');
+}
+
+async function deleteTask(tid) {
+  tasks = tasks.filter(t => t.id !== tid);
+  renderCalendar();
+  if (activeDayStr) renderDayPanel();
+  await _sb.from('tasks').delete().eq('id', tid).eq('user_id', _uid);
+}
+
+// ── TAG DROPDOWN ──
+function toggleTagDropdown(e) {
+  e.stopPropagation();
+  tagDropdownOpen = !tagDropdownOpen;
+  document.getElementById('tag-dropdown-trigger').classList.toggle('open', tagDropdownOpen);
+  document.getElementById('tag-dropdown-menu').classList.toggle('open', tagDropdownOpen);
+}
+
+function renderTagDropdown() {
+  const opts = document.getElementById('tag-dropdown-options');
+  opts.innerHTML = tags.map(t => `
+    <div class="tag-dropdown-option${selectedTaskTags.includes(t.id) ? ' selected' : ''}"
+         onclick="toggleTaskTag('${t.id}')">
+      <span class="option-dot" style="background:${t.color};"></span>
+      <span style="color:${t.color};font-weight:500;">${t.name}</span>
+      <span class="option-check">${selectedTaskTags.includes(t.id) ? '✓' : ''}</span>
+    </div>`).join('');
+
+  const sel = document.getElementById('tag-dropdown-selected');
+  if (selectedTaskTags.length) {
+    sel.innerHTML = '<span class="tag-dropdown-placeholder" style="display:none"></span>' +
+      selectedTaskTags.map(tid => {
+        const t = getTag(tid);
+        return t ? `<span class="tag-chip" style="background:${t.color}28;color:${t.color};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;">${t.name}</span>` : '';
+      }).join('');
+  } else {
+    sel.innerHTML = '<span class="tag-dropdown-placeholder" id="tag-dropdown-placeholder">Select tags...</span>';
+  }
+}
+
+function toggleTaskTag(tid) {
+  if (selectedTaskTags.includes(tid)) {
+    selectedTaskTags = selectedTaskTags.filter(x => x !== tid);
+  } else {
+    selectedTaskTags.push(tid);
+  }
+  renderTagDropdown();
+}
+
+// ── EVENT CRUD ──
+function openEventModal(eid, dateStr) {
+  if (eid) {
+    const ev = events.find(x => x.id === eid);
+    if (!ev) return;
+    document.getElementById('event-modal-title').textContent = 'Edit Event';
+    document.getElementById('editing-event-id').value = eid;
+    document.getElementById('event-title-input').value  = ev.title;
+    document.getElementById('event-date-input').value   = ev.date;
+    document.getElementById('event-time-input').value   = ev.time || '';
+    document.getElementById('event-repeat-input').value = ev.repeat || 'never';
+    document.getElementById('event-notes-input').value  = ev.notes || '';
+    document.getElementById('event-title-input').style.borderColor = '';
+    document.getElementById('event-date-input').style.borderColor  = '';
+    document.getElementById('event-delete-btn').style.display = 'inline-flex';
+    document.getElementById('event-modal-actions').style.justifyContent = 'space-between';
+  } else {
+    document.getElementById('event-modal-title').textContent = 'New Event';
+    document.getElementById('editing-event-id').value = '';
+    document.getElementById('event-title-input').value  = '';
+    document.getElementById('event-date-input').value   = dateStr || todayStr;
+    document.getElementById('event-time-input').value   = '';
+    document.getElementById('event-repeat-input').value = 'never';
+    document.getElementById('event-notes-input').value  = '';
+    document.getElementById('event-title-input').style.borderColor = '';
+    document.getElementById('event-date-input').style.borderColor  = '';
+    document.getElementById('event-delete-btn').style.display = 'none';
+    document.getElementById('event-modal-actions').style.justifyContent = 'flex-end';
+  }
+  document.getElementById('event-modal').classList.add('show');
+  setTimeout(() => document.getElementById('event-title-input')?.focus(), 80);
+}
+
+function openEditEvent(eid) { openEventModal(eid, null); }
+
+async function saveEvent() {
+  const title  = document.getElementById('event-title-input').value.trim();
+  const date   = document.getElementById('event-date-input').value;
+  const time   = document.getElementById('event-time-input').value;
+  const repeat = document.getElementById('event-repeat-input').value;
+  const notes  = document.getElementById('event-notes-input').value.trim();
+  const eid    = document.getElementById('editing-event-id').value;
+
+  if (!title) { document.getElementById('event-title-input').style.borderColor = 'var(--p-high)'; return; }
+  if (!date)  { document.getElementById('event-date-input').style.borderColor  = 'var(--p-high)'; return; }
+
+  const data = { title, date, time: time || null, repeat, notes: notes || null };
+  closeModal('event-modal');
+
+  if (eid) {
+    const ev = events.find(x => x.id === eid);
+    if (ev) Object.assign(ev, data);
+    renderCalendar();
+    if (activeDayStr) renderDayPanel();
+    await _sb.from('events').update(data).eq('id', eid).eq('user_id', _uid);
+  } else {
+    const newId  = uid();
+    const newEv  = { id: newId, ...data };
+    events.push(newEv);
+    renderCalendar();
+    if (activeDayStr) renderDayPanel();
+    await _sb.from('events').insert({ id: newId, user_id: _uid, ...data });
+  }
+}
+
+function confirmDeleteEvent() {
+  const eid   = document.getElementById('editing-event-id').value;
+  const title = document.getElementById('event-title-input').value.trim();
+  closeModal('event-modal');
+  document.getElementById('confirm-delete-msg').textContent = `The event "${title}" will be permanently deleted.`;
+  document.getElementById('confirm-delete-btn').onclick = () => { closeModal('confirm-delete-modal'); deleteEvent(eid); };
+  openModal('confirm-delete-modal');
+}
+
+async function deleteEvent(eid) {
+  events = events.filter(e => e.id !== eid);
+  renderCalendar();
+  if (activeDayStr) renderDayPanel();
+  await _sb.from('events').delete().eq('id', eid).eq('user_id', _uid);
+}
+
+// ── MODALS ──
+function openModal(mid)  { document.getElementById(mid).classList.add('show'); }
+function closeModal(mid) { document.getElementById(mid).classList.remove('show'); }
+
+// ── MOBILE ──
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+function closeSidebar() {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ── SIGN OUT ──
+async function signOut() {
+  await _sb.auth.signOut();
+  window.location.href = '../login.html';
+}
+
+// ── GLOBAL EVENTS ──
+document.addEventListener('click', e => {
+  if (tagDropdownOpen && !document.getElementById('tag-dropdown-wrap')?.contains(e.target)) {
+    tagDropdownOpen = false;
+    document.getElementById('tag-dropdown-trigger')?.classList.remove('open');
+    document.getElementById('tag-dropdown-menu')?.classList.remove('open');
+  }
+});
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+    closeDayPanel();
+  }
+});
+
+// ── INIT ──
+async function init() {
+  const { data: { session } } = await _sb.auth.getSession();
+  if (!session) { window.location.href = '../login.html'; return; }
+  _uid = session.user.id;
+
+  currentMonth = today.getMonth();
+  currentYear  = today.getFullYear();
+
+  document.getElementById('sidebar-date-label').textContent =
+    today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+  const [tr, lr, gr, er] = await Promise.all([
+    _sb.from('tasks').select('id, name, list_id, priority, due, tags, notes, done').eq('user_id', _uid),
+    _sb.from('lists').select('*').eq('user_id', _uid),
+    _sb.from('tags').select('*').eq('user_id', _uid),
+    _sb.from('events').select('*').eq('user_id', _uid),
+  ]);
+
+  tasks  = (tr.data || []).map(t => ({
+    id: t.id, name: t.name, list: t.list_id || '',
+    priority: t.priority || 'medium', due: t.due || '',
+    tags: t.tags || [], notes: t.notes || '', done: t.done || false,
+  }));
+  lists  = lr.data || [];
+  tags   = gr.data || [];
+  events = er.data || [];
+
+  renderCalendar();
+}
+
+init();
+</script>
+</body>
+</html>

@@ -61,9 +61,9 @@
   <hr class="sidebar-divider">
 
   <div class="sidebar-section">Tags</div>
-  <a class="sidebar-add-list" href="../tags/index.html" style="text-decoration:none;">
+  <div class="sidebar-add-list" onclick="openModal('manage-tags-modal')">
     <span style="font-size:16px;">⚙</span> Manage Tags
-  </a>
+  </div>
 
   <div class="sidebar-footer">
     <a href="../index.html">← All Apps</a>
@@ -213,6 +213,30 @@
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('confirm-delete-modal')">Cancel</button>
       <button class="btn" id="confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- MANAGE TAGS -->
+<div class="modal-backdrop" id="manage-tags-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">Manage Tags</div>
+    <div id="manage-tags-list" style="margin-bottom:16px;"></div>
+    <hr style="border:none;border-top:1px solid var(--border);margin-bottom:16px;">
+    <div style="font-size:12px;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.07em;margin-bottom:10px;">New Tag</div>
+    <div class="form-group">
+      <label>Tag Name</label>
+      <input type="text" id="new-tag-name" placeholder="e.g. urgent, waiting...">
+    </div>
+    <div class="form-group">
+      <label>Color</label>
+      <div class="color-swatches" id="tag-color-swatches"></div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;margin-top:4px;">
+      <button class="btn btn-primary" onclick="addTag()" style="padding:6px 14px;font-size:13px;">+ Create Tag</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeModal('manage-tags-modal')">Done</button>
     </div>
   </div>
 </div>
