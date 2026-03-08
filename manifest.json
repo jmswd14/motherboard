@@ -1,0 +1,15 @@
+{
+  "name": "Vanguard",
+  "short_name": "Vanguard",
+  "background_color": "#0F0F0F",
+  "theme_color": "#0F0F0F",
+  "display": "standalone",
+  "start_url": "/vanguard/",
+  "icons": [
+    {
+      "src": "/vanguard/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
