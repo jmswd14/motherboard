@@ -1081,8 +1081,10 @@ async function handleGcalCallback(code) {
   try {
     console.log('Calling google-oauth-exchange with code:', code.slice(0, 20) + '...');
     console.log('redirect_uri:', GCAL_REDIRECT);
+    const { data: { session: currentSession } } = await _sb.auth.getSession();
     const { data, error } = await _sb.functions.invoke('google-oauth-exchange', {
       body: { code, redirect_uri: GCAL_REDIRECT },
+      headers: currentSession ? { Authorization: `Bearer ${currentSession.access_token}` } : {},
     });
     console.log('Edge function response data:', JSON.stringify(data));
     console.log('Edge function response error:', JSON.stringify(error));
