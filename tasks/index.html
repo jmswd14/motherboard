@@ -138,9 +138,10 @@
       <hr class="sidebar-divider">
 
       <div class="sidebar-section">Tags</div>
-      <div class="sidebar-add-list" onclick="openModal('manage-tags-modal')">
-        <span style="font-size:16px;line-height:1;">⚙</span>
-        <span class="rs-add-label">Manage Tags</span>
+      <div class="sidebar-item" onclick="openModal('manage-tags-modal')">
+        <div class="sidebar-item-left">
+          <span class="rs-nav-label">Manage Tags</span>
+        </div>
       </div>
     </div>
   </nav>
@@ -281,7 +282,7 @@
 </div>
 
 <!-- CONFIRM DELETE -->
-<div class="modal-backdrop" id="confirm-delete-modal">
+<div class="modal-backdrop" id="confirm-delete-modal" style="z-index:4000;">
   <div class="modal" style="max-width:380px;">
     <div class="modal-title" style="font-size:20px;">Are you sure?</div>
     <p id="confirm-delete-msg" style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;"></p>
@@ -293,7 +294,7 @@
 </div>
 
 <!-- MANAGE TAGS -->
-<div class="modal-backdrop" id="manage-tags-modal">
+<div class="modal-backdrop" id="manage-tags-modal" style="z-index:3000;">
   <div class="modal" style="max-width:440px;">
     <div class="modal-title">Manage Tags</div>
     <div id="manage-tags-list" style="margin-bottom:16px;"></div>

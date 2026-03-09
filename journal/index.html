@@ -109,7 +109,6 @@
 
       <div class="sidebar-item" onclick="openTagManager()">
         <div class="sidebar-item-left">
-          <span class="sidebar-icon">⬡</span>
           <span class="rs-nav-label">Manage Tags</span>
         </div>
       </div>
@@ -143,7 +142,7 @@
         <button class="entry-type-card" onclick="openEntryPopup('gratitude')">
           <div class="etc-icon">◈</div>
           <div class="etc-name">Gratitude</div>
-          <div class="etc-desc">Three things you're grateful for</div>
+          <div class="etc-desc">Add what you're grateful for</div>
         </button>
       </div>
 
@@ -160,9 +159,34 @@
         </div>
       </div>
 
-      <div class="history-search-wrap">
-        <input type="text" id="history-search" class="history-search"
-               placeholder="Search entries and tags..." oninput="onSearchInput(this.value)">
+      <div class="history-filters">
+        <div class="hf-controls">
+          <div class="hf-group">
+            <label class="hf-label">Date</label>
+            <select class="hf-select" id="history-date-range" onchange="setDateRangeFilter(this.value)">
+              <option value="all">All time</option>
+              <option value="week">This week</option>
+              <option value="month">This month</option>
+              <option value="last_month">Last month</option>
+              <option value="year">This year</option>
+              <option value="last_year">Last year</option>
+            </select>
+          </div>
+          <div class="hf-group">
+            <label class="hf-label">Tag</label>
+            <select class="hf-select" id="history-tag-filter" onchange="setTagFilter(this.value)">
+              <option value="">All tags</option>
+            </select>
+          </div>
+          <div class="hf-active-wrap" id="hf-active-wrap" style="display:none;">
+            <span class="hf-active-label" id="hf-active-label"></span>
+            <button class="hf-clear-btn" onclick="clearHistoryFilters()">Clear all</button>
+          </div>
+        </div>
+        <div class="history-search-wrap">
+          <input type="text" id="history-search" class="history-search"
+                 placeholder="Search entries..." oninput="onSearchInput(this.value)">
+        </div>
       </div>
 
       <div id="history-entries"></div>
@@ -223,7 +247,7 @@
 </div>
 
 <!-- CONFIRM DELETE -->
-<div class="modal-backdrop" id="confirm-delete-modal">
+<div class="modal-backdrop" id="confirm-delete-modal" style="z-index:4000;">
   <div class="modal" style="max-width:380px;">
     <div class="modal-title" style="font-size:20px;">Delete entry?</div>
     <p style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;">This entry will be permanently deleted and cannot be recovered.</p>
@@ -235,7 +259,7 @@
 </div>
 
 <!-- TAG MANAGER -->
-<div class="modal-backdrop" id="tag-manager-modal">
+<div class="modal-backdrop" id="tag-manager-modal" style="z-index:3000;">
   <div class="modal" style="max-width:500px;">
     <div class="modal-title">Journal Tags</div>
 
@@ -315,8 +339,11 @@ let editingType     = null;
 let selectedTagIds  = [];
 let autoSaveTimer   = null;
 let contentChanged  = false;
-let searchQuery     = '';
-let newTagColor     = JOURNAL_TAG_COLORS[0];
+let searchQuery       = '';
+let historyDateRange  = 'all';
+let historyTagFilter  = '';
+let gratitudeItems    = [''];
+let newTagColor       = JOURNAL_TAG_COLORS[0];
 
 const today    = new Date();
 const todayStr = today.toISOString().split('T')[0];
@@ -345,7 +372,7 @@ function stripHtml(html) {
 function getEntryPreview(entry, maxLen = 100) {
   let text = '';
   if (entry.type === 'gratitude') {
-    text = [entry.gratitude_1, entry.gratitude_2, entry.gratitude_3]
+    text = [entry.gratitude_1, entry.gratitude_2, entry.gratitude_3, ...(entry.gratitude_extra || [])]
       .filter(Boolean).join(' · ');
   } else {
     text = stripHtml(entry.content);
@@ -392,7 +419,7 @@ function setView(view, el) {
   document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
   if (el) el.classList.add('active');
   if (view === 'today')   renderToday();
-  if (view === 'history') renderHistory();
+  if (view === 'history') { renderTagFilterOptions(); renderHistory(); }
   closeMobileMenus();
 }
 
@@ -434,15 +461,27 @@ function renderToday() {
 
 function renderHistory() {
   const q = searchQuery.toLowerCase().trim();
+  const [rangeStart, rangeEnd] = getDateRangeFilter();
 
-  let filtered = q
-    ? entries.filter(e => {
-        const raw = (e.content || '') + ' ' + (e.gratitude_1 || '') + ' ' + (e.gratitude_2 || '') + ' ' + (e.gratitude_3 || '');
-        const text = stripHtml(raw).toLowerCase();
-        const tagNames = getTagsForEntry(e).map(t => t.name.toLowerCase()).join(' ');
-        return text.includes(q) || tagNames.includes(q);
-      })
-    : entries.slice();
+  let filtered = entries.filter(e => {
+    // Text search — content + all gratitude fields + tag names
+    if (q) {
+      const gratExtra = Array.isArray(e.gratitude_extra) ? e.gratitude_extra.join(' ') : '';
+      const raw = [e.content, e.gratitude_1, e.gratitude_2, e.gratitude_3, gratExtra].join(' ');
+      const text = stripHtml(raw).toLowerCase();
+      const tagNames = getTagsForEntry(e).map(t => t.name.toLowerCase()).join(' ');
+      if (!text.includes(q) && !tagNames.includes(q)) return false;
+    }
+    // Date range filter
+    if (rangeStart || rangeEnd) {
+      const d = (e.created_at || '').slice(0, 10);
+      if (rangeStart && d < rangeStart) return false;
+      if (rangeEnd   && d > rangeEnd)   return false;
+    }
+    // Tag filter
+    if (historyTagFilter && (!e.tags || !e.tags.includes(historyTagFilter))) return false;
+    return true;
+  });
 
   filtered.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
@@ -481,7 +520,83 @@ function renderHistory() {
 
 function onSearchInput(val) {
   searchQuery = val;
+  updateActiveFilterIndicator();
   renderHistory();
+}
+
+function getDateRangeFilter() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  switch (historyDateRange) {
+    case 'week': {
+      const start = new Date(now);
+      start.setDate(now.getDate() - now.getDay());
+      return [start.toISOString().slice(0, 10), null];
+    }
+    case 'month':
+      return [`${y}-${String(m + 1).padStart(2, '0')}-01`, null];
+    case 'last_month': {
+      const firstDay = new Date(y, m - 1, 1);
+      const lastDay  = new Date(y, m, 0);
+      return [firstDay.toISOString().slice(0, 10), lastDay.toISOString().slice(0, 10)];
+    }
+    case 'year':
+      return [`${y}-01-01`, null];
+    case 'last_year':
+      return [`${y - 1}-01-01`, `${y - 1}-12-31`];
+    default:
+      return [null, null];
+  }
+}
+
+function setDateRangeFilter(val) {
+  historyDateRange = val;
+  updateActiveFilterIndicator();
+  renderHistory();
+}
+
+function setTagFilter(val) {
+  historyTagFilter = val;
+  updateActiveFilterIndicator();
+  renderHistory();
+}
+
+function clearHistoryFilters() {
+  searchQuery      = '';
+  historyDateRange = 'all';
+  historyTagFilter = '';
+  const searchEl = document.getElementById('history-search');
+  if (searchEl) searchEl.value = '';
+  const dateEl = document.getElementById('history-date-range');
+  if (dateEl) dateEl.value = 'all';
+  const tagEl = document.getElementById('history-tag-filter');
+  if (tagEl) tagEl.value = '';
+  updateActiveFilterIndicator();
+  renderHistory();
+}
+
+function updateActiveFilterIndicator() {
+  const count = (searchQuery.trim() ? 1 : 0)
+    + (historyDateRange !== 'all' ? 1 : 0)
+    + (historyTagFilter ? 1 : 0);
+  const wrap  = document.getElementById('hf-active-wrap');
+  const label = document.getElementById('hf-active-label');
+  if (!wrap) return;
+  if (count > 0) {
+    wrap.style.display  = 'flex';
+    label.textContent   = `${count} active filter${count > 1 ? 's' : ''}`;
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+
+function renderTagFilterOptions() {
+  const sel = document.getElementById('history-tag-filter');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">All tags</option>' +
+    jTags.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+  sel.value = historyTagFilter || '';
 }
 
 // ── ENTRY CARD ─────────────────────────────────────────────────────────────────
@@ -502,6 +617,55 @@ function renderEntryCard(entry, previewLen) {
       <div class="entry-card-preview">${esc(preview)}</div>
       ${tagsHtml ? `<div class="entry-card-tags">${tagsHtml}</div>` : ''}
     </div>`;
+}
+
+// ── GRATITUDE HELPERS ──────────────────────────────────────────────────────────
+
+function getGratitudeItems(entry) {
+  const items = [];
+  if (entry.gratitude_1) items.push(entry.gratitude_1);
+  if (entry.gratitude_2) items.push(entry.gratitude_2);
+  if (entry.gratitude_3) items.push(entry.gratitude_3);
+  if (Array.isArray(entry.gratitude_extra)) items.push(...entry.gratitude_extra);
+  return items.length ? items : [''];
+}
+
+function syncGratitudeFromDOM() {
+  gratitudeItems.forEach((_, idx) => {
+    const el = document.getElementById(`grat-${idx}`);
+    if (el) gratitudeItems[idx] = el.value;
+  });
+}
+
+function renderGratitudeList() {
+  const container = document.getElementById('gratitude-list');
+  if (!container) return;
+  container.innerHTML = gratitudeItems.map((val, idx) => `
+    <div class="gratitude-row">
+      <span class="gratitude-num">${idx + 1}</span>
+      <input class="gratitude-input" type="text" id="grat-${idx}"
+             value="${esc(val)}" placeholder="I am grateful for..."
+             oninput="markChanged()">
+      ${gratitudeItems.length > 1
+        ? `<button class="gratitude-remove" onclick="removeGratitudeItem(${idx})" title="Remove">×</button>`
+        : ''}
+    </div>`).join('');
+}
+
+function addGratitudeItem() {
+  syncGratitudeFromDOM();
+  gratitudeItems.push('');
+  renderGratitudeList();
+  markChanged();
+  setTimeout(() => document.getElementById(`grat-${gratitudeItems.length - 1}`)?.focus(), 50);
+}
+
+function removeGratitudeItem(idx) {
+  if (gratitudeItems.length <= 1) return;
+  syncGratitudeFromDOM();
+  gratitudeItems.splice(idx, 1);
+  renderGratitudeList();
+  markChanged();
 }
 
 // ── ENTRY POPUP ────────────────────────────────────────────────────────────────
@@ -552,28 +716,14 @@ function openEntryPopup(type, entryId) {
     document.getElementById('rt-editor').addEventListener('input', markChanged);
 
   } else if (type === 'gratitude') {
+    gratitudeItems = entry ? getGratitudeItems(entry) : [''];
     body.innerHTML = `
       <div class="gratitude-intro">What are you grateful for today?</div>
-      <div class="gratitude-inputs">
-        <div class="gratitude-row">
-          <span class="gratitude-num">1</span>
-          <input class="gratitude-input" type="text" id="grat-1"
-                 value="${esc(entry ? entry.gratitude_1 || '' : '')}"
-                 placeholder="I am grateful for..." oninput="markChanged()">
-        </div>
-        <div class="gratitude-row">
-          <span class="gratitude-num">2</span>
-          <input class="gratitude-input" type="text" id="grat-2"
-                 value="${esc(entry ? entry.gratitude_2 || '' : '')}"
-                 placeholder="I am grateful for..." oninput="markChanged()">
-        </div>
-        <div class="gratitude-row">
-          <span class="gratitude-num">3</span>
-          <input class="gratitude-input" type="text" id="grat-3"
-                 value="${esc(entry ? entry.gratitude_3 || '' : '')}"
-                 placeholder="I am grateful for..." oninput="markChanged()">
-        </div>
+      <div class="gratitude-list" id="gratitude-list"></div>
+      <div class="gratitude-add-row">
+        <button class="gratitude-add-btn" onclick="addGratitudeItem()">+ Add another</button>
       </div>`;
+    renderGratitudeList();
   }
 
   // Tags
@@ -596,7 +746,7 @@ function openEntryPopup(type, entryId) {
       sel.removeAllRanges();
       sel.addRange(range);
     } else {
-      document.getElementById('grat-1')?.focus();
+      document.getElementById('grat-0')?.focus();
     }
   }, 80);
 }
@@ -645,10 +795,13 @@ function getCurrentContent() {
     };
   }
   if (editingType === 'gratitude') {
+    syncGratitudeFromDOM();
+    const nonEmpty = gratitudeItems.map(v => v.trim()).filter(Boolean);
     return {
-      gratitude_1: document.getElementById('grat-1')?.value.trim() || null,
-      gratitude_2: document.getElementById('grat-2')?.value.trim() || null,
-      gratitude_3: document.getElementById('grat-3')?.value.trim() || null,
+      gratitude_1:     nonEmpty[0] || null,
+      gratitude_2:     nonEmpty[1] || null,
+      gratitude_3:     nonEmpty[2] || null,
+      gratitude_extra: nonEmpty.length > 3 ? nonEmpty.slice(3) : null,
     };
   }
   return {};
@@ -656,7 +809,7 @@ function getCurrentContent() {
 
 function hasAnyContent() {
   const c = getCurrentContent();
-  if (editingType === 'gratitude') return !!(c.gratitude_1 || c.gratitude_2 || c.gratitude_3);
+  if (editingType === 'gratitude') { syncGratitudeFromDOM(); return gratitudeItems.some(v => v.trim()); }
   return !!stripHtml(c.content || '').trim();
 }
 
@@ -802,6 +955,7 @@ async function saveNewTag() {
   document.getElementById('new-tag-name').value = '';
   renderTagList();
   renderTagChips();
+  renderTagFilterOptions();
 }
 
 async function deleteJournalTag(id) {
@@ -810,6 +964,7 @@ async function deleteJournalTag(id) {
   await _sb.from('journal_tags').delete().eq('id', id).eq('user_id', _uid);
   renderTagList();
   renderTagChips();
+  renderTagFilterOptions();
 }
 
 // ── MODALS ─────────────────────────────────────────────────────────────────────
