@@ -497,7 +497,7 @@ function renderMonthDayCell(dateStr, dayNum, otherMonth) {
         <span class="cal-bar-dot" style="background:${color};"></span>
         <span class="cal-bar-text">${item.name}</span>
       </div>`;
-    } else {
+    } else if (type === 'event') {
       const cat   = getCategory(item.category_id);
       const color = cat ? cat.color : 'var(--accent)';
       const safe  = item.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
