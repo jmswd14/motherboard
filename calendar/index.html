@@ -1101,22 +1101,48 @@ function connectGoogle() {
   window.location.href = url;
 }
 
-async function handleGcalCallback(code, session) {
+async function handleGcalCallback(code) {
   try {
-    const currentSession = session;
+    // Exchange code via Edge Function (no auth header needed — it's now a public endpoint)
     const { data, error } = await _sb.functions.invoke('google-oauth-exchange', {
       body: { code, redirect_uri: GCAL_REDIRECT },
-      headers: currentSession ? { Authorization: `Bearer ${currentSession.access_token}` } : {},
     });
     if (error) throw error;
-    if (data?.access_token) {
-      googleAccessToken = data.access_token;
-      googleTokenExpiry = Date.now() + (data.expires_in * 1000);
-      googleConnected   = true;
-      renderGcalSidebar();
+    if (!data?.access_token) throw new Error('No access_token in response');
+
+    console.log('[GCal] handleGcalCallback: got access_token, refresh_token present:', !!data.refresh_token);
+
+    const expiresAt = new Date(Date.now() + data.expires_in * 1000).toISOString();
+    googleAccessToken = data.access_token;
+    googleTokenExpiry = new Date(expiresAt).getTime();
+
+    // If Google didn't return a refresh_token (subsequent auths), preserve the existing one
+    let refreshToken = data.refresh_token || null;
+    if (!refreshToken) {
+      const { data: existing } = await _sb.from('google_tokens')
+        .select('refresh_token')
+        .eq('user_id', _uid)
+        .maybeSingle();
+      refreshToken = existing?.refresh_token || null;
+      console.log('[GCal] No new refresh_token — preserved from DB:', !!refreshToken);
     }
+
+    // Save tokens directly to Supabase using the authenticated client
+    const upsertPayload = { user_id: _uid, access_token: data.access_token, expires_at: expiresAt };
+    if (refreshToken) upsertPayload.refresh_token = refreshToken;
+
+    const { error: upsertError } = await _sb.from('google_tokens')
+      .upsert(upsertPayload, { onConflict: 'user_id' });
+    if (upsertError) {
+      console.error('[GCal] Failed to save tokens to DB:', upsertError);
+    } else {
+      console.log('[GCal] Tokens saved to google_tokens successfully');
+    }
+
+    googleConnected = true;
+    renderGcalSidebar();
   } catch (err) {
-    console.error('Google auth failed:', err);
+    console.error('[GCal] Google auth failed:', err);
   }
 }
 
@@ -1337,7 +1363,7 @@ async function init() {
     const gcalState = urlParams.get('state');
     if (gcalCode && gcalState === 'gcal_auth') {
       window.history.replaceState({}, '', window.location.pathname);
-      await handleGcalCallback(gcalCode, session);
+      await handleGcalCallback(gcalCode);
     }
   } catch (err) {
     console.error('Google OAuth callback error:', err);
