@@ -397,7 +397,55 @@
 .manage-tag-name { flex: 1; font-size: 13.5px; }
 .manage-tag-count { font-size: 11px; color: var(--text-muted); }
 
+/* ── RIGHT SIDEBAR — collapsed state overrides ── */
+/* These handle .sidebar-item elements rendered by tasks.js inside the collapsed right sidebar */
+
+.right-sidebar.rs-collapsed .sidebar-section {
+  height: 0;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition: none;
+}
+.right-sidebar.rs-collapsed .sidebar-divider { display: none; }
+
+.right-sidebar.rs-collapsed .sidebar-item {
+  padding: 9px 0;
+  justify-content: center;
+}
+.right-sidebar.rs-collapsed .sidebar-item-left {
+  justify-content: center;
+  width: 100%;
+}
+/* Hide the label text (second span) — works for both view items and category items */
+.right-sidebar.rs-collapsed .sidebar-item-left > span:nth-child(2) { display: none; }
+.right-sidebar.rs-collapsed .sidebar-item-left > .rs-nav-label { display: none; }
+.right-sidebar.rs-collapsed .sidebar-count { display: none; }
+
+/* Category color dots: enlarge slightly when collapsed to be more visible */
+.right-sidebar.rs-collapsed .list-color-dot {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* Add-item rows (New Category, Manage Tags) */
+.right-sidebar.rs-collapsed .sidebar-add-list {
+  padding: 9px 0;
+  justify-content: center;
+}
+.right-sidebar.rs-collapsed .rs-add-label { display: none; }
+
 /* ── MOBILE OVERRIDES ── */
 @media (max-width: 740px) {
   .task-menu-btn { opacity: 1; }
+  /* Right sidebar: show full width on mobile, no collapse classes apply */
+  .right-sidebar.mobile-open .sidebar-section { height: auto; padding: 20px 24px 8px; opacity: 1; overflow: visible; }
+  .right-sidebar.mobile-open .sidebar-item { padding: 10px 24px; justify-content: space-between; }
+  .right-sidebar.mobile-open .sidebar-item-left { justify-content: flex-start; }
+  .right-sidebar.mobile-open .sidebar-item-left > span:nth-child(2) { display: inline; }
+  .right-sidebar.mobile-open .sidebar-count { display: inline; }
+  .right-sidebar.mobile-open .sidebar-add-list { padding: 9px 24px; justify-content: flex-start; }
+  .right-sidebar.mobile-open .rs-add-label { display: inline; }
+  .right-sidebar.mobile-open .sidebar-divider { display: block; }
 }

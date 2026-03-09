@@ -16,102 +16,183 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="../assets/js/supabase-client.js"></script>
 <body>
-<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
-<button class="hamburger" onclick="toggleSidebar()">☰</button>
 
-<div class="app">
+<!-- Overlay (mobile: covers content behind open sidebar) -->
+<div class="overlay" id="overlay" onclick="closeMobileMenus()"></div>
 
-<!-- SIDEBAR -->
-<nav class="sidebar" id="sidebar">
-  <div class="sidebar-logo">
-    <h1>Tasks</h1>
-    <p id="sidebar-date-label"></p>
-  </div>
+<!-- Mobile toggles -->
+<button class="hamburger" onclick="openLeftMobile()" title="Menu">☰</button>
+<button class="rs-mobile-btn" onclick="openRightMobile()" title="Views &amp; Categories">⊞</button>
 
-  <div class="sidebar-section">Views</div>
-  <div class="sidebar-item active" id="nav-all" onclick="setView('all', this)">
-    <div class="sidebar-item-left"><span class="sidebar-icon">⊞</span> All Tasks</div>
-    <span class="sidebar-count" id="count-all">0</span>
-  </div>
-  <div class="sidebar-item" id="nav-today" onclick="setView('today', this)">
-    <div class="sidebar-item-left"><span class="sidebar-icon">◎</span> Today</div>
-    <span class="sidebar-count" id="count-today">0</span>
-  </div>
-  <div class="sidebar-item" id="nav-week" onclick="setView('week', this)">
-    <div class="sidebar-item-left"><span class="sidebar-icon">◫</span> This Week</div>
-    <span class="sidebar-count" id="count-week">0</span>
-  </div>
-  <div class="sidebar-item" id="nav-overdue" onclick="setView('overdue', this)">
-    <div class="sidebar-item-left"><span class="sidebar-icon">⚑</span> Overdue</div>
-    <span class="sidebar-count" id="count-overdue">0</span>
-  </div>
-  <div class="sidebar-item" id="nav-nodate" onclick="setView('nodate', this)">
-    <div class="sidebar-item-left"><span class="sidebar-icon">◌</span> No Due Date</div>
-    <span class="sidebar-count" id="count-nodate">0</span>
-  </div>
+<div class="app dual-sidebar" id="app">
 
-  <hr class="sidebar-divider">
-
-  <div class="sidebar-section">Categories</div>
-  <div id="category-nav"></div>
-  <div class="sidebar-add-list" onclick="openModal('add-category-modal')">
-    <span style="font-size:16px;">+</span> New Category
-  </div>
-
-  <hr class="sidebar-divider">
-
-  <div class="sidebar-section">Tags</div>
-  <div class="sidebar-add-list" onclick="openModal('manage-tags-modal')">
-    <span style="font-size:16px;">⚙</span> Manage Tags
-  </div>
-
-  <div class="sidebar-footer">
-    <a href="../index.html">← All Apps</a>
-    <span class="sidebar-signout" onclick="signOut()">Sign out</span>
-  </div>
-</nav>
-
-<!-- CONTENT -->
-<main class="content">
-  <div class="topbar">
-    <div class="topbar-left">
-      <h2 id="view-title">All Tasks</h2>
-      <p id="view-subtitle"></p>
+  <!-- ── LEFT SIDEBAR — global nav ── -->
+  <nav class="left-sidebar" id="left-sidebar">
+    <div class="left-sidebar-brand">
+      <h1 class="ls-wordmark">
+        <span class="ls-brand-full">Vanguard</span>
+        <span class="ls-brand-short">V</span>
+      </h1>
+      <button class="ls-collapse-btn" id="ls-collapse-btn" onclick="toggleLeftCollapse()" title="Collapse sidebar">‹</button>
     </div>
-    <div class="topbar-right">
-      <button class="btn" onclick="openModal('add-task-modal')">+ New Task</button>
-    </div>
-  </div>
 
-  <!-- SORT BAR -->
-  <div class="sort-bar" id="sort-bar">
-    <span class="sort-label">Sort by</span>
-    <div class="sort-select-wrap">
-      <select id="sort-by" onchange="setSortBy(this.value)">
-        <option value="default">Default</option>
-        <option value="due">Due Date</option>
-        <option value="priority">Priority</option>
-      </select>
-      <span class="sort-select-arrow">▼</span>
+    <div class="left-nav">
+      <a class="left-nav-item" href="../index.html">
+        <span class="left-nav-icon">⊞</span>
+        <span class="left-nav-label">Dashboard</span>
+      </a>
+      <a class="left-nav-item active" href="index.html">
+        <span class="left-nav-icon">☑</span>
+        <span class="left-nav-label">Tasks</span>
+      </a>
+      <a class="left-nav-item" href="../calendar/index.html">
+        <span class="left-nav-icon">◫</span>
+        <span class="left-nav-label">Calendar</span>
+      </a>
+      <a class="left-nav-item" href="../habits/index.html">
+        <span class="left-nav-icon">◉</span>
+        <span class="left-nav-label">Habits</span>
+      </a>
+      <a class="left-nav-item disabled">
+        <span class="left-nav-icon">✦</span>
+        <span class="left-nav-label">Journal</span>
+      </a>
+      <a class="left-nav-item disabled">
+        <span class="left-nav-icon">◎</span>
+        <span class="left-nav-label">Goals</span>
+      </a>
+      <a class="left-nav-item disabled">
+        <span class="left-nav-icon">◈</span>
+        <span class="left-nav-label">Finance</span>
+      </a>
     </div>
-    <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle direction">↑</button>
-    <div class="filter-sep"></div>
-    <div class="tag-filter-wrap" id="tag-filter-wrap">
-      <div class="tag-filter-trigger" id="tag-filter-trigger" onclick="toggleTagFilterDropdown(event)">
-        <span id="tag-filter-label">Filter by tag</span>
-        <span class="tag-filter-arrow">▼</span>
+
+    <div class="left-sidebar-footer">
+      <span class="ls-signout" onclick="signOut()">Sign out</span>
+    </div>
+  </nav>
+
+  <!-- Expand tab — visible when left sidebar is collapsed (desktop) -->
+  <button class="ls-expand-tab" id="ls-expand-tab" onclick="toggleLeftCollapse()" title="Expand sidebar">›</button>
+
+  <!-- ── RIGHT SIDEBAR — app nav ── -->
+  <nav class="right-sidebar" id="right-sidebar">
+    <div class="right-sidebar-header">
+      <button class="rs-collapse-btn" id="rs-collapse-btn" onclick="toggleRightCollapse()" title="Collapse sidebar">›</button>
+      <div class="rs-header-text">
+        <h2>Tasks</h2>
+        <p class="rs-header-date" id="sidebar-date-label"></p>
       </div>
-      <div class="tag-filter-menu" id="tag-filter-menu"></div>
+      <span class="rs-header-icon">☑</span>
     </div>
-  </div>
 
-  <!-- TASK LIST -->
-  <div class="tasks-container" id="tasks-container"></div>
+    <div class="right-sidebar-body">
+      <div class="sidebar-section">Views</div>
 
-  <!-- COMPLETED SECTION -->
-  <div id="completed-section"></div>
-</main>
-</div>
+      <div class="sidebar-item active" id="nav-all" onclick="setView('all', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">⊞</span>
+          <span class="rs-nav-label">All Tasks</span>
+        </div>
+        <span class="sidebar-count" id="count-all">0</span>
+      </div>
+
+      <div class="sidebar-item" id="nav-today" onclick="setView('today', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">◎</span>
+          <span class="rs-nav-label">Today</span>
+        </div>
+        <span class="sidebar-count" id="count-today">0</span>
+      </div>
+
+      <div class="sidebar-item" id="nav-week" onclick="setView('week', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">◫</span>
+          <span class="rs-nav-label">This Week</span>
+        </div>
+        <span class="sidebar-count" id="count-week">0</span>
+      </div>
+
+      <div class="sidebar-item" id="nav-overdue" onclick="setView('overdue', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">⚑</span>
+          <span class="rs-nav-label">Overdue</span>
+        </div>
+        <span class="sidebar-count" id="count-overdue">0</span>
+      </div>
+
+      <div class="sidebar-item" id="nav-nodate" onclick="setView('nodate', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">◌</span>
+          <span class="rs-nav-label">No Due Date</span>
+        </div>
+        <span class="sidebar-count" id="count-nodate">0</span>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <div class="sidebar-section">Categories</div>
+      <div id="category-nav"></div>
+      <div class="sidebar-add-list" onclick="openModal('add-category-modal')">
+        <span style="font-size:16px;line-height:1;">+</span>
+        <span class="rs-add-label">New Category</span>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <div class="sidebar-section">Tags</div>
+      <div class="sidebar-add-list" onclick="openModal('manage-tags-modal')">
+        <span style="font-size:16px;line-height:1;">⚙</span>
+        <span class="rs-add-label">Manage Tags</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Expand tab — visible when right sidebar is collapsed (desktop) -->
+  <button class="rs-expand-tab" id="rs-expand-tab" onclick="toggleRightCollapse()" title="Expand sidebar">‹</button>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="view-title">All Tasks</h2>
+        <p id="view-subtitle"></p>
+      </div>
+      <div class="topbar-right">
+        <button class="btn" onclick="openModal('add-task-modal')">+ New Task</button>
+      </div>
+    </div>
+
+    <!-- SORT BAR -->
+    <div class="sort-bar" id="sort-bar">
+      <span class="sort-label">Sort by</span>
+      <div class="sort-select-wrap">
+        <select id="sort-by" onchange="setSortBy(this.value)">
+          <option value="default">Default</option>
+          <option value="due">Due Date</option>
+          <option value="priority">Priority</option>
+        </select>
+        <span class="sort-select-arrow">▼</span>
+      </div>
+      <button class="sort-dir-btn" id="sort-dir-btn" onclick="toggleSortDir()" title="Toggle direction">↑</button>
+      <div class="filter-sep"></div>
+      <div class="tag-filter-wrap" id="tag-filter-wrap">
+        <div class="tag-filter-trigger" id="tag-filter-trigger" onclick="toggleTagFilterDropdown(event)">
+          <span id="tag-filter-label">Filter by tag</span>
+          <span class="tag-filter-arrow">▼</span>
+        </div>
+        <div class="tag-filter-menu" id="tag-filter-menu"></div>
+      </div>
+    </div>
+
+    <!-- TASK LIST -->
+    <div class="tasks-container" id="tasks-container"></div>
+
+    <!-- COMPLETED SECTION -->
+    <div id="completed-section"></div>
+  </main>
+
+</div><!-- /.app -->
 
 <!-- ── MODALS ── -->
 
@@ -165,7 +246,7 @@
               <div class="tag-inline-swatches" id="inline-tag-swatches"></div>
               <div class="tag-inline-actions">
                 <button class="tag-inline-btn" onclick="hideInlineTagForm()">Cancel</button>
-                <button class="tag-inline-btn primary" onclick="saveInlineTag()">Create & Select</button>
+                <button class="tag-inline-btn primary" onclick="saveInlineTag()">Create &amp; Select</button>
               </div>
             </div>
           </div>
@@ -242,5 +323,73 @@
 </div>
 
 <script src="../assets/js/tasks.js"></script>
+<script>
+// ── SIDEBAR STATE ─────────────────────────────────────────────────────────────
+// This runs after tasks.js and overrides its toggleSidebar/closeSidebar.
+
+const _app          = document.getElementById('app');
+const _leftSidebar  = document.getElementById('left-sidebar');
+const _rightSidebar = document.getElementById('right-sidebar');
+const _overlay      = document.getElementById('overlay');
+
+// Restore persisted collapse states on load
+(function restoreState() {
+  if (localStorage.getItem('vg-ls-collapsed') === 'true') {
+    _leftSidebar.classList.add('ls-collapsed');
+    _app.classList.add('left-collapsed');
+  }
+  // Right sidebar: start collapsed if viewport ≤ 900 or last state was collapsed
+  const rsWasCollapsed = localStorage.getItem('vg-rs-collapsed') === 'true';
+  const narrowViewport = window.innerWidth <= 900;
+  if (rsWasCollapsed || narrowViewport) {
+    _rightSidebar.classList.add('rs-collapsed');
+    _app.classList.add('right-collapsed');
+  } else {
+    _app.classList.add('right-expanded'); // signal that user explicitly expanded it
+  }
+})();
+
+function toggleLeftCollapse() {
+  const collapsed = _leftSidebar.classList.toggle('ls-collapsed');
+  _app.classList.toggle('left-collapsed', collapsed);
+  localStorage.setItem('vg-ls-collapsed', collapsed);
+}
+
+function toggleRightCollapse() {
+  const collapsed = _rightSidebar.classList.toggle('rs-collapsed');
+  _app.classList.toggle('right-collapsed', collapsed);
+  // Track whether user explicitly expanded right sidebar
+  if (collapsed) {
+    _app.classList.remove('right-expanded');
+  } else {
+    _app.classList.add('right-expanded');
+  }
+  localStorage.setItem('vg-rs-collapsed', collapsed);
+}
+
+// ── MOBILE ────────────────────────────────────────────────────────────────────
+
+function openLeftMobile() {
+  _leftSidebar.classList.add('mobile-open');
+  _overlay.classList.add('show');
+}
+
+function openRightMobile() {
+  _rightSidebar.classList.add('mobile-open');
+  _overlay.classList.add('show');
+}
+
+function closeMobileMenus() {
+  _leftSidebar.classList.remove('mobile-open');
+  _rightSidebar.classList.remove('mobile-open');
+  _overlay.classList.remove('show');
+}
+
+// Override tasks.js functions — these are called internally by tasks.js
+// closeSidebar() is called by setView() on mobile to close the right sidebar
+function closeSidebar()  { closeMobileMenus(); }
+function toggleSidebar() { openRightMobile(); }
+</script>
+
 </body>
 </html>
