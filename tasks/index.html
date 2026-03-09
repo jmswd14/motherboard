@@ -72,9 +72,6 @@
     </div>
   </nav>
 
-  <!-- Expand tab — visible when left sidebar is collapsed (desktop) -->
-  <button class="ls-expand-tab" id="ls-expand-tab" onclick="toggleLeftCollapse()" title="Expand sidebar">›</button>
-
   <!-- ── RIGHT SIDEBAR — app nav ── -->
   <nav class="right-sidebar" id="right-sidebar">
     <div class="right-sidebar-header">
@@ -147,9 +144,6 @@
       </div>
     </div>
   </nav>
-
-  <!-- Expand tab — visible when right sidebar is collapsed (desktop) -->
-  <button class="rs-expand-tab" id="rs-expand-tab" onclick="toggleRightCollapse()" title="Expand sidebar">‹</button>
 
   <!-- ── MAIN CONTENT ── -->
   <main class="content">
@@ -336,34 +330,27 @@ const _overlay      = document.getElementById('overlay');
 (function restoreState() {
   if (localStorage.getItem('vg-ls-collapsed') === 'true') {
     _leftSidebar.classList.add('ls-collapsed');
-    _app.classList.add('left-collapsed');
+    _app.classList.add('ls-collapsed');
+    document.getElementById('ls-collapse-btn').textContent = '›';
   }
-  // Right sidebar: start collapsed if viewport ≤ 900 or last state was collapsed
-  const rsWasCollapsed = localStorage.getItem('vg-rs-collapsed') === 'true';
-  const narrowViewport = window.innerWidth <= 900;
-  if (rsWasCollapsed || narrowViewport) {
+  if (localStorage.getItem('vg-rs-collapsed') === 'true') {
     _rightSidebar.classList.add('rs-collapsed');
-    _app.classList.add('right-collapsed');
-  } else {
-    _app.classList.add('right-expanded'); // signal that user explicitly expanded it
+    _app.classList.add('rs-collapsed');
+    document.getElementById('rs-collapse-btn').textContent = '‹';
   }
 })();
 
 function toggleLeftCollapse() {
   const collapsed = _leftSidebar.classList.toggle('ls-collapsed');
-  _app.classList.toggle('left-collapsed', collapsed);
+  _app.classList.toggle('ls-collapsed', collapsed);
+  document.getElementById('ls-collapse-btn').textContent = collapsed ? '›' : '‹';
   localStorage.setItem('vg-ls-collapsed', collapsed);
 }
 
 function toggleRightCollapse() {
   const collapsed = _rightSidebar.classList.toggle('rs-collapsed');
-  _app.classList.toggle('right-collapsed', collapsed);
-  // Track whether user explicitly expanded right sidebar
-  if (collapsed) {
-    _app.classList.remove('right-expanded');
-  } else {
-    _app.classList.add('right-expanded');
-  }
+  _app.classList.toggle('rs-collapsed', collapsed);
+  document.getElementById('rs-collapse-btn').textContent = collapsed ? '‹' : '›';
   localStorage.setItem('vg-rs-collapsed', collapsed);
 }
 
