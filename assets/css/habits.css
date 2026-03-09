@@ -630,3 +630,60 @@
   .emoji-dropdown-panel.open { width: 280px; }
   .emoji-btn { font-size: 17px; }
 }
+
+/* ─────────────────────────────────────────
+   YES / NO BUTTONS
+───────────────────────────────────────── */
+.habit-yn-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.habit-yn-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 15px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: var(--font-sans);
+}
+.habit-yn-btn:hover { border-color: var(--border2); color: var(--text); }
+
+/* ─────────────────────────────────────────
+   ALL-HABITS LINE CHART LEGEND
+───────────────────────────────────────── */
+.line-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 6px 0 2px;
+  margin-top: 6px;
+}
+
+.line-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s;
+}
+.line-legend-item:hover { color: var(--text); }
+
+.line-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: opacity 0.2s;
+}

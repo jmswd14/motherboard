@@ -338,8 +338,10 @@ function fmtDateShort(dateStr) {
 
 // ── STREAK ──
 function currentStreak(habit) {
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
   let streak = 0, d = todayStr;
   for (let i = 0; i < 365; i++) {
+    if (createdDate && d < createdDate) break;
     const log = getLog(habit.id, d);
     if (isSuccess(habit, log)) { streak++; d = addDays(d, -1); }
     else break;
@@ -348,9 +350,11 @@ function currentStreak(habit) {
 }
 
 function longestStreak(habit) {
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
   let best = 0, cur = 0;
   for (let i = 364; i >= 0; i--) {
     const d = addDays(todayStr, -i);
+    if (createdDate && d < createdDate) { cur = 0; continue; }
     if (isSuccess(habit, getLog(habit.id, d))) { cur++; if (cur > best) best = cur; }
     else cur = 0;
   }
@@ -358,11 +362,16 @@ function longestStreak(habit) {
 }
 
 function completionRate(habit, days = 30) {
-  let n = 0;
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
+  let n = 0, counted = 0;
   for (let i = 0; i < days; i++) {
-    if (isSuccess(habit, getLog(habit.id, addDays(todayStr, -i)))) n++;
+    const d = addDays(todayStr, -i);
+    if (createdDate && d < createdDate) break;
+    if (isSuccess(habit, getLog(habit.id, d))) n++;
+    counted++;
   }
-  return Math.round((n / days) * 100);
+  if (!counted) return 0;
+  return Math.round((n / counted) * 100);
 }
 
 // ── VIEW SWITCHER ──
@@ -410,7 +419,8 @@ function renderToday() {
     return;
   }
 
-  const active = habits.filter(h => h.active !== false);
+  const active = habits.filter(h => h.active !== false &&
+    (!h.created_at || h.created_at.split('T')[0] <= selectedDate));
   if (!active.length) {
     container.innerHTML = `<div class="empty-state"><div class="empty-icon">◎</div><h3>No active habits</h3></div>`;
     return;
@@ -428,14 +438,17 @@ function renderHabitRow(habit) {
 
   let inputHtml = '';
   if (habit.type === 'yes_no') {
-    const checked = log && log.completed ? 'checked' : '';
-    inputHtml = `<label class="habit-check-wrap">
-      <input type="checkbox" ${checked} onchange="logYesNo('${habit.id}', this.checked)">
-      <span class="habit-check-custom ${sClass}" style="${sClass === 'success' ? `border-color:${SUCCESS_COLOR};background:${SUCCESS_COLOR}22;` : sClass === 'fail' ? `border-color:${FAIL_COLOR};` : ''}">
-        ${sClass === 'success' ? `<span class="check-tick" style="color:${SUCCESS_COLOR};">✓</span>` : ''}
-        ${sClass === 'fail' ? `<span class="check-tick" style="color:${FAIL_COLOR};">✗</span>` : ''}
-      </span>
-    </label>`;
+    const isYes = log !== undefined && log !== null && log.completed === true;
+    const isNo  = log !== undefined && log !== null && log.completed === false;
+    const hColor = habit.color || SUCCESS_COLOR;
+    const yStyle = isYes ? `color:${hColor};border-color:${hColor};background:${hColor}22;` : '';
+    const nStyle = isNo  ? `color:${FAIL_COLOR};border-color:${FAIL_COLOR};background:${FAIL_COLOR}22;` : '';
+    inputHtml = `<div class="habit-yn-btns">
+      <button class="habit-yn-btn yn-yes${isYes ? ' active' : ''}" style="${yStyle}"
+              onclick="logYesNo('${habit.id}', true, ${isYes})">✓</button>
+      <button class="habit-yn-btn yn-no${isNo ? ' active' : ''}" style="${nStyle}"
+              onclick="logYesNo('${habit.id}', false, ${isNo})">✗</button>
+    </div>`;
   } else {
     const val = log ? (log.value ?? '') : '';
     const target = habit.target_value || 0;
@@ -475,8 +488,21 @@ function renderHabitRow(habit) {
 }
 
 // ── LOGGING ──
-async function logYesNo(habitId, completed) {
+async function logYesNo(habitId, completed, wasActive) {
+  const habit = habits.find(h => h.id === habitId);
+  if (habit && habit.created_at && selectedDate < habit.created_at.split('T')[0]) return;
+
   const existing = getLog(habitId, selectedDate);
+
+  if (wasActive) {
+    if (existing) {
+      logs = logs.filter(l => l.id !== existing.id);
+      await _sb.from('habit_logs').delete().eq('id', existing.id).eq('user_id', _uid);
+    }
+    renderToday();
+    return;
+  }
+
   const data = {
     habit_id: habitId, date: selectedDate,
     completed, value: null, note: null,
@@ -495,6 +521,8 @@ async function logYesNo(habitId, completed) {
 }
 
 async function logNumeric(habitId, rawVal) {
+  const habit = habits.find(h => h.id === habitId);
+  if (habit && habit.created_at && selectedDate < habit.created_at.split('T')[0]) return;
   const value = rawVal === '' ? null : parseFloat(rawVal);
   const existing = getLog(habitId, selectedDate);
   const data = { habit_id: habitId, date: selectedDate, completed: value !== null, value, note: null };
@@ -558,7 +586,8 @@ function renderProgress() {
     habits.forEach(h => {
       const rate  = completionRate(h);
       const streak = currentStreak(h);
-      const rateColor = rate >= 70 ? SUCCESS_COLOR : rate >= 40 ? 'var(--p-medium)' : FAIL_COLOR;
+      const hColor = h.color || SUCCESS_COLOR;
+      const rateColor = rate >= 70 ? hColor : rate >= 40 ? 'var(--p-medium)' : FAIL_COLOR;
       const cat = getCategory(h.category_id);
       html += `<div class="all-habit-card" onclick="selectProgressHabit('${h.id}')">
         <div class="all-habit-card-top">
@@ -582,9 +611,97 @@ function renderProgress() {
       </div>`;
     });
     html += `</div>`;
+    const lineHabits = habits.slice(0, 6);
+    if (lineHabits.length > 0) {
+      html += renderAllHabitsLineGraph(lineHabits);
+    }
   }
 
   body.innerHTML = html;
+}
+
+// ── ALL-HABITS LINE GRAPH ──
+function renderAllHabitsLineGraph(displayHabits) {
+  const days = 30;
+  const W = 700, H = 200;
+  const pad = { top: 20, right: 12, bottom: 32, left: 36 };
+  const cW = W - pad.left - pad.right;
+  const cH = H - pad.top - pad.bottom;
+
+  const habitData = displayHabits.map(habit => {
+    const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
+    const points = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = addDays(todayStr, -i);
+      let sum = 0, count = 0;
+      for (let j = 6; j >= 0; j--) {
+        const rd = addDays(d, -j);
+        if (createdDate && rd < createdDate) continue;
+        sum += isSuccess(habit, getLog(habit.id, rd)) ? 1 : 0;
+        count++;
+      }
+      points.push({ d, avg: count > 0 ? sum / count : null });
+    }
+    return { habit, points };
+  });
+
+  let paths = '';
+  habitData.forEach(({ habit, points }) => {
+    const color = habit.color || SUCCESS_COLOR;
+    const segs = [];
+    let seg = [];
+    points.forEach((pt, i) => {
+      if (pt.avg === null) {
+        if (seg.length > 1) segs.push(seg);
+        seg = [];
+      } else {
+        const x = pad.left + (i / (days - 1)) * cW;
+        const y = pad.top + cH - pt.avg * cH;
+        seg.push(`${seg.length === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`);
+      }
+    });
+    if (seg.length > 1) segs.push(seg);
+    segs.forEach(s => {
+      paths += `<path data-ll="${habit.id}" d="${s.join(' ')}" stroke="${color}" stroke-width="2" fill="none" opacity="0.85" style="transition:opacity 0.2s;"/>`;
+    });
+  });
+
+  let grid = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * cH;
+    const label = (100 - i * 25) + '%';
+    grid += `<text x="${pad.left - 4}" y="${(y + 4).toFixed(1)}" font-size="9" fill="var(--text-muted)" font-family="var(--font-sans)" text-anchor="end">${label}</text>`;
+    grid += `<line x1="${pad.left}" y1="${y.toFixed(1)}" x2="${pad.left + cW}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1" opacity="0.5"/>`;
+  }
+
+  let xLabels = '';
+  for (let i = 0; i < days; i += 7) {
+    const x = pad.left + (i / (days - 1)) * cW;
+    xLabels += `<text x="${x.toFixed(1)}" y="${H - 4}" font-size="9" fill="var(--text-muted)" font-family="var(--font-sans)">${fmtDateShort(addDays(todayStr, -(days - 1 - i)))}</text>`;
+  }
+
+  const legendHtml = displayHabits.map(h =>
+    `<span class="line-legend-item" onclick="toggleLineHabit('${h.id}')">
+      <span class="line-legend-dot" id="ll-dot-${h.id}" style="background:${h.color || SUCCESS_COLOR};"></span>${h.emoji ? h.emoji + ' ' : ''}${h.name}
+    </span>`
+  ).join('');
+
+  return `<div class="progress-section-label" style="margin-top:32px;">30-day trend (7-day rolling average)</div>
+  <div class="chart-wrap">
+    <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:${H}px;display:block;overflow:visible;">
+      ${grid}${paths}${xLabels}
+    </svg>
+    <div class="line-chart-legend">${legendHtml}</div>
+  </div>`;
+}
+
+function toggleLineHabit(id) {
+  const pathEls = document.querySelectorAll(`[data-ll="${id}"]`);
+  const dot     = document.getElementById('ll-dot-' + id);
+  if (!pathEls.length) return;
+  const hidden = pathEls[0].style.opacity === '0';
+  pathEls.forEach(p => p.style.opacity = hidden ? '0.85' : '0');
+  if (dot) dot.style.opacity = hidden ? '1' : '0.3';
 }
 
 function selectProgressHabit(id) {
@@ -596,11 +713,12 @@ function renderStatCards(habit) {
   const curStr  = currentStreak(habit);
   const longStr = longestStreak(habit);
   const rate    = completionRate(habit);
-  const rateColor = rate >= 70 ? SUCCESS_COLOR : rate >= 40 ? 'var(--p-medium)' : FAIL_COLOR;
+  const hColor  = habit.color || SUCCESS_COLOR;
+  const rateColor = rate >= 70 ? hColor : rate >= 40 ? 'var(--p-medium)' : FAIL_COLOR;
 
   return `<div class="stat-cards">
     <div class="stat-card">
-      <div class="stat-card-value" style="color:${SUCCESS_COLOR};">${curStr}</div>
+      <div class="stat-card-value" style="color:${hColor};">${curStr}</div>
       <div class="stat-card-label">Current streak</div>
       <div class="stat-card-sub">days</div>
     </div>
@@ -619,13 +737,16 @@ function renderStatCards(habit) {
 
 // ── HEATMAP ──
 function renderHeatmap(habit) {
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
+  const hColor = habit.color || SUCCESS_COLOR;
   const cells = [];
   for (let i = 364; i >= 0; i--) {
     const d   = addDays(todayStr, -i);
-    const log = getLog(habit.id, d);
-    const suc = isSuccess(habit, log);
-    const hasLog = !!log;
-    cells.push({ d, suc, hasLog });
+    const beforeCreation = !!(createdDate && d < createdDate);
+    const log = beforeCreation ? null : getLog(habit.id, d);
+    const suc = beforeCreation ? false : isSuccess(habit, log);
+    const hasLog = !beforeCreation && !!log;
+    cells.push({ d, suc, hasLog, beforeCreation });
   }
 
   const firstDay = new Date(cells[0].d + 'T00:00:00').getDay();
@@ -654,14 +775,20 @@ function renderHeatmap(habit) {
   let weeksHtml = weeks.map(week => {
     const cellsHtml = week.map(cell => {
       if (!cell) return `<div class="hm-cell hm-empty"></div>`;
-      let bg;
-      if (!cell.hasLog && habit.habit_direction !== 'breaking') {
+      let bg, opacity, title;
+      if (cell.beforeCreation) {
+        bg = 'var(--surface2)';
+        opacity = '0.25';
+        title = `${cell.d}: Before tracking started`;
+      } else if (!cell.hasLog && habit.habit_direction !== 'breaking') {
         bg = 'var(--surface3)';
+        opacity = '0.18';
+        title = `${cell.d}: Not logged`;
       } else {
-        bg = cell.suc ? SUCCESS_COLOR : FAIL_COLOR;
+        bg = cell.suc ? hColor : FAIL_COLOR;
+        opacity = '1';
+        title = `${cell.d}: ${cell.suc ? 'On track' : 'Missed'}`;
       }
-      const opacity = cell.hasLog || habit.habit_direction === 'breaking' ? '1' : '0.18';
-      const title = `${cell.d}: ${cell.suc ? 'On track' : 'Missed'}`;
       return `<div class="hm-cell" style="background:${bg};opacity:${opacity};" title="${title}"></div>`;
     }).join('');
     return `<div class="hm-week">${cellsHtml}</div>`;
@@ -685,21 +812,24 @@ function renderHeatmap(habit) {
     <div class="heatmap-legend">
       <span style="color:var(--text-muted);font-size:11px;">Less</span>
       <div class="hm-cell" style="background:var(--surface3);"></div>
-      <div class="hm-cell" style="background:${SUCCESS_COLOR};opacity:0.35;"></div>
-      <div class="hm-cell" style="background:${SUCCESS_COLOR};opacity:0.65;"></div>
-      <div class="hm-cell" style="background:${SUCCESS_COLOR};"></div>
+      <div class="hm-cell" style="background:${hColor};opacity:0.35;"></div>
+      <div class="hm-cell" style="background:${hColor};opacity:0.65;"></div>
+      <div class="hm-cell" style="background:${hColor};"></div>
       <span style="color:var(--text-muted);font-size:11px;">More</span>
     </div>
   </div>`;
 }
 
 function renderMiniHeatmap(habit) {
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
+  const hColor = habit.color || SUCCESS_COLOR;
   const cells = [];
   for (let i = 83; i >= 0; i--) {
-    const d   = addDays(todayStr, -i);
+    const d = addDays(todayStr, -i);
+    if (createdDate && d < createdDate) { cells.push('var(--surface2)'); continue; }
     const log = getLog(habit.id, d);
     const suc = isSuccess(habit, log);
-    cells.push(suc ? SUCCESS_COLOR : (habit.habit_direction === 'breaking' ? FAIL_COLOR : 'var(--surface3)'));
+    cells.push(suc ? hColor : (habit.habit_direction === 'breaking' ? FAIL_COLOR : 'var(--surface3)'));
   }
   return cells.map(c => `<div class="mini-hm-cell" style="background:${c};"></div>`).join('');
 }
@@ -707,11 +837,14 @@ function renderMiniHeatmap(habit) {
 // ── CHART ──
 function renderChart(habit) {
   const days = 30;
+  const createdDate = habit.created_at ? habit.created_at.split('T')[0] : null;
+  const hColor = habit.color || SUCCESS_COLOR;
   const data = [];
   for (let i = days - 1; i >= 0; i--) {
     const d   = addDays(todayStr, -i);
-    const log = getLog(habit.id, d);
-    data.push({ d, log, suc: isSuccess(habit, log) });
+    const beforeCreation = !!(createdDate && d < createdDate);
+    const log = beforeCreation ? null : getLog(habit.id, d);
+    data.push({ d, log, suc: beforeCreation ? false : isSuccess(habit, log), beforeCreation });
   }
 
   const W = 700, H = 180;
@@ -743,8 +876,8 @@ function renderChart(habit) {
       h = Math.max(2, (val / maxVal) * cH);
     }
     y = pad.top + cH - h;
-    const fill = row.suc ? SUCCESS_COLOR : FAIL_COLOR;
-    const op   = !row.log && habit.type === 'yes_no' && habit.habit_direction === 'building' ? '0.15' : '0.85';
+    const fill = row.beforeCreation ? 'var(--surface3)' : (row.suc ? hColor : FAIL_COLOR);
+    const op   = row.beforeCreation ? '0.3' : (!row.log && habit.type === 'yes_no' && habit.habit_direction === 'building' ? '0.15' : '0.85');
     bars += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bW}" height="${Math.max(2,h).toFixed(1)}" fill="${fill}" opacity="${op}" rx="2"/>`;
   });
 
