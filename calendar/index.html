@@ -1066,16 +1066,15 @@ document.addEventListener('keydown', e => {
 
 // ── GOOGLE CALENDAR FUNCTIONS ──
 function connectGoogle() {
-  const params = new URLSearchParams({
-    client_id:     GCAL_CLIENT_ID,
-    redirect_uri:  GCAL_REDIRECT,
-    response_type: 'code',
-    scope:         GCAL_SCOPE,
-    access_type:   'offline',
-    prompt:        'consent',
-    state:         'gcal_auth',
-  });
-  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+  const url = 'https://accounts.google.com/o/oauth2/v2/auth'
+    + '?client_id='     + encodeURIComponent(GCAL_CLIENT_ID)
+    + '&redirect_uri='  + encodeURIComponent(GCAL_REDIRECT)
+    + '&response_type=code'
+    + '&scope='         + encodeURIComponent(GCAL_SCOPE)
+    + '&access_type=offline'
+    + '&prompt=consent'
+    + '&state=gcal_auth';
+  window.location.href = url;
 }
 
 async function handleGcalCallback(code) {
@@ -1253,12 +1252,16 @@ async function init() {
     today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   // Handle Google OAuth callback
-  const urlParams = new URLSearchParams(window.location.search);
-  const gcalCode  = urlParams.get('code');
-  const gcalState = urlParams.get('state');
-  if (gcalCode && gcalState === 'gcal_auth') {
-    window.history.replaceState({}, '', window.location.pathname);
-    await handleGcalCallback(gcalCode);
+  try {
+    const urlParams = new URLSearchParams(window.location.search);
+    const gcalCode  = urlParams.get('code');
+    const gcalState = urlParams.get('state');
+    if (gcalCode && gcalState === 'gcal_auth') {
+      window.history.replaceState({}, '', window.location.pathname);
+      await handleGcalCallback(gcalCode);
+    }
+  } catch (err) {
+    console.error('Google OAuth callback error:', err);
   }
 
   const [tr, lr, gr, er] = await Promise.all([
@@ -1283,8 +1286,13 @@ async function init() {
   }));
 
   // Load Google tokens (skip if just connected via OAuth callback)
-  if (!googleConnected) await loadGoogleTokens();
-  if (googleConnected) await fetchGoogleEvents();
+  try {
+    if (!googleConnected) await loadGoogleTokens();
+    if (googleConnected) await fetchGoogleEvents();
+  } catch (err) {
+    console.error('Google Calendar load error:', err);
+    googleConnected = false;
+  }
 
   renderCalendar();
 }
