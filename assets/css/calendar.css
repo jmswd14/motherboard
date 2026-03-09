@@ -764,6 +764,14 @@
   letter-spacing: 0;
 }
 
+.gcal-ext {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-left: 3px;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+
 /* Smaller G badge for month view bars */
 .gcal-badge-inline {
   display: inline-flex;

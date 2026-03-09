@@ -785,11 +785,13 @@ function renderDayPanel() {
       const hasOther = dayTasks.length || dayEvents.length;
       html += `<div class="day-panel-section-label"${hasOther ? ' style="margin-top:20px;"' : ''}>Google Calendar</div>`;
       html += dayGoogleEvents.map(e => {
-        const meta = e.all_day ? 'All day' : formatTime(e.time);
-        return `<div class="day-panel-item">
+        const meta       = e.all_day ? 'All day' : formatTime(e.time);
+        const clickAttr  = e.htmlLink ? `onclick="window.open('${e.htmlLink}', '_blank')" style="cursor:pointer;"` : '';
+        const extIcon    = e.htmlLink ? ' <span class="gcal-ext">↗</span>' : '';
+        return `<div class="day-panel-item" ${clickAttr}>
           <span class="day-panel-dot" style="background:#4285F4;"></span>
           <div class="day-panel-item-body">
-            <div class="day-panel-item-name">${e.title} <span class="gcal-badge">G</span></div>
+            <div class="day-panel-item-name">${e.title} <span class="gcal-badge">G</span>${extIcon}</div>
             <div class="day-panel-item-meta">${meta}</div>
           </div>
         </div>`;
@@ -1233,12 +1235,13 @@ function parseGoogleEvent(item) {
   const dateStr  = isAllDay ? item.start.date : item.start.dateTime?.split('T')[0];
   const timeStr  = isAllDay ? null : item.start.dateTime?.split('T')[1]?.slice(0, 5);
   return {
-    id:      item.id,
-    title:   item.summary || '(No title)',
-    date:    dateStr,
-    all_day: isAllDay,
-    time:    timeStr,
-    google:  true,
+    id:       item.id,
+    title:    item.summary || '(No title)',
+    date:     dateStr,
+    all_day:  isAllDay,
+    time:     timeStr,
+    google:   true,
+    htmlLink: item.htmlLink || null,
   };
 }
 
