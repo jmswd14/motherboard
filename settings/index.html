@@ -124,9 +124,9 @@
         </div>
         <div class="settings-row-controls">
           <div class="time-picker" id="time-task_due_today" style="display:none">
-            <select class="time-hour" id="hour-task_due_today" onchange="saveNotifSetting('task_due_today')"></select>
-            <select class="time-min" id="min-task_due_today" onchange="saveNotifSetting('task_due_today')"></select>
-            <select class="time-ampm" id="ampm-task_due_today" onchange="saveNotifSetting('task_due_today')">
+            <select class="time-hour" id="hour-task_due_today"></select>
+            <select class="time-min" id="min-task_due_today"></select>
+            <select class="time-ampm" id="ampm-task_due_today">
               <option>AM</option><option>PM</option>
             </select>
           </div>
@@ -144,9 +144,9 @@
         </div>
         <div class="settings-row-controls">
           <div class="time-picker" id="time-task_overdue" style="display:none">
-            <select class="time-hour" id="hour-task_overdue" onchange="saveNotifSetting('task_overdue')"></select>
-            <select class="time-min" id="min-task_overdue" onchange="saveNotifSetting('task_overdue')"></select>
-            <select class="time-ampm" id="ampm-task_overdue" onchange="saveNotifSetting('task_overdue')">
+            <select class="time-hour" id="hour-task_overdue"></select>
+            <select class="time-min" id="min-task_overdue"></select>
+            <select class="time-ampm" id="ampm-task_overdue">
               <option>AM</option><option>PM</option>
             </select>
           </div>
@@ -168,9 +168,9 @@
         </div>
         <div class="settings-row-controls">
           <div class="time-picker" id="time-habit_checkin" style="display:none">
-            <select class="time-hour" id="hour-habit_checkin" onchange="saveNotifSetting('habit_checkin')"></select>
-            <select class="time-min" id="min-habit_checkin" onchange="saveNotifSetting('habit_checkin')"></select>
-            <select class="time-ampm" id="ampm-habit_checkin" onchange="saveNotifSetting('habit_checkin')">
+            <select class="time-hour" id="hour-habit_checkin"></select>
+            <select class="time-min" id="min-habit_checkin"></select>
+            <select class="time-ampm" id="ampm-habit_checkin">
               <option>AM</option><option>PM</option>
             </select>
           </div>
@@ -190,9 +190,9 @@
         </div>
         <div class="settings-row-controls">
           <div class="time-picker" id="time-journal_prompt" style="display:none">
-            <select class="time-hour" id="hour-journal_prompt" onchange="saveNotifSetting('journal_prompt')"></select>
-            <select class="time-min" id="min-journal_prompt" onchange="saveNotifSetting('journal_prompt')"></select>
-            <select class="time-ampm" id="ampm-journal_prompt" onchange="saveNotifSetting('journal_prompt')">
+            <select class="time-hour" id="hour-journal_prompt"></select>
+            <select class="time-min" id="min-journal_prompt"></select>
+            <select class="time-ampm" id="ampm-journal_prompt">
               <option>AM</option><option>PM</option>
             </select>
           </div>
@@ -212,9 +212,9 @@
         </div>
         <div class="settings-row-controls">
           <div class="time-picker" id="time-finance_asset_due" style="display:none">
-            <select class="time-hour" id="hour-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')"></select>
-            <select class="time-min" id="min-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')"></select>
-            <select class="time-ampm" id="ampm-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')">
+            <select class="time-hour" id="hour-finance_asset_due"></select>
+            <select class="time-min" id="min-finance_asset_due"></select>
+            <select class="time-ampm" id="ampm-finance_asset_due">
               <option>AM</option><option>PM</option>
             </select>
           </div>
@@ -223,6 +223,10 @@
             <span class="toggle-slider"></span>
           </label>
         </div>
+      </div>
+
+      <div class="settings-btn-row">
+        <button class="btn btn-primary" onclick="saveAllNotifSettings()">Save</button>
       </div>
 
     </div><!-- /panel-notifications -->
@@ -444,7 +448,15 @@ function onNotifToggle(type) {
   const enabled = document.getElementById(`toggle-${type}`).checked;
   const timePicker = document.getElementById(`time-${type}`);
   if (timePicker) timePicker.style.display = enabled ? 'flex' : 'none';
-  saveNotifSetting(type);
+}
+
+async function saveAllNotifSettings() {
+  try {
+    await Promise.all(NOTIF_TYPES.map(type => saveNotifSetting(type)));
+    showToast('Notification settings saved');
+  } catch (err) {
+    showToast('Error: ' + err.message);
+  }
 }
 
 async function saveNotifSetting(type) {
