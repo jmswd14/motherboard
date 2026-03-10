@@ -383,21 +383,39 @@
 /* ── CONFIRM DELETE ── */
 #fin-confirm-delete-modal { z-index: 4000; }
 
-/* ── INPUT WITH INLINE PREFIX ── */
+/* ── NUMBER INPUTS — match shared.css text input styling ── */
+input[type="number"] {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text);
+  background: var(--surface2);
+  outline: none;
+  transition: border-color 0.15s;
+}
+input[type="number"]:focus { border-color: var(--border2); }
+
+/* ── INPUT WITH INLINE $ PREFIX ── */
 .input-prefix-wrap {
   position: relative;
-  display: flex;
-  align-items: center;
+  display: block;
 }
 .input-prefix {
   position: absolute;
   left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-muted);
-  font-size: 14px;
+  font-size: 13.5px;
+  line-height: 1;
   pointer-events: none;
   user-select: none;
 }
 .input-with-prefix {
+  width: 100%;
   padding-left: 26px !important;
 }
 
