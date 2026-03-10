@@ -512,25 +512,30 @@ async function loadHabitCheckin(widget) {
       return;
     }
 
+    const MUTED_RED = '#E07070';
     const logMap = {};
     (logs || []).forEach(l => { logMap[l.habit_id] = l.completed; });
 
     el.innerHTML = `
       <div style="flex:1;overflow:hidden;">
         ${habits.map(h => {
-          const checked = logMap[h.id] === true;
-          const hColor  = h.color || '#6BCB77';
-          const yStyle  = checked ? `background:${hColor};border-color:${hColor};color:#0f0f0f;` : '';
+          const hColor = h.color || '#6BCB77';
+          const isYes  = logMap[h.id] === true;
+          const isNo   = logMap[h.id] === false;
+          const yStyle = isYes ? `background:${hColor};border-color:${hColor};color:#0f0f0f;` : '';
+          const nStyle = isNo  ? `background:${MUTED_RED};border-color:${MUTED_RED};color:#0f0f0f;` : '';
           return `
-            <div class="habit-row${checked ? ' habit-done' : ''}">
+            <div class="habit-row${isYes ? ' habit-done' : ''}">
               <div class="habit-row-left">
                 <span class="habit-emoji">${h.emoji || '◎'}</span>
                 <span class="habit-name">${esc(h.name)}</span>
               </div>
               <div class="habit-row-right">
                 <div class="habit-yn-btns">
-                  <button class="habit-yn-btn yn-yes" style="${yStyle}"
-                          onclick="toggleHabit('${h.id}','${hColor}',this)">✓</button>
+                  <button class="habit-yn-btn yn-yes" data-color="${hColor}" style="${yStyle}"
+                          onclick="toggleHabit('${h.id}',true,${isYes},this)">✓</button>
+                  <button class="habit-yn-btn yn-no" style="${nStyle}"
+                          onclick="toggleHabit('${h.id}',false,${isNo},this)">✗</button>
                 </div>
               </div>
             </div>
@@ -544,19 +549,28 @@ async function loadHabitCheckin(widget) {
   }
 }
 
-async function toggleHabit(habitId, color, btnEl) {
-  const wasChecked = !!btnEl.style.background;
-  const row = btnEl.closest('.habit-row');
+async function toggleHabit(habitId, completed, wasActive, btnEl) {
+  const MUTED_RED  = '#E07070';
+  const btns       = btnEl.closest('.habit-yn-btns');
+  const yesBtn     = btns.querySelector('.yn-yes');
+  const noBtn      = btns.querySelector('.yn-no');
+  const hColor     = yesBtn.dataset.color;
+  const row        = btnEl.closest('.habit-row');
 
-  // Optimistic UI update
-  if (wasChecked) {
-    btnEl.style.cssText = '';
-    row.classList.remove('habit-done');
+  function applyVisual(yesOn, noOn) {
+    yesBtn.style.cssText = yesOn ? `background:${hColor};border-color:${hColor};color:#0f0f0f;` : '';
+    noBtn.style.cssText  = noOn  ? `background:${MUTED_RED};border-color:${MUTED_RED};color:#0f0f0f;` : '';
+    row.classList.toggle('habit-done', yesOn);
+  }
+
+  const prevYes = !!yesBtn.style.background;
+  const prevNo  = !!noBtn.style.background;
+
+  // Optimistic update
+  if (wasActive) {
+    applyVisual(false, false);
   } else {
-    btnEl.style.background   = color;
-    btnEl.style.borderColor  = color;
-    btnEl.style.color        = '#0f0f0f';
-    row.classList.add('habit-done');
+    applyVisual(completed === true, completed === false);
   }
 
   try {
@@ -567,30 +581,22 @@ async function toggleHabit(habitId, color, btnEl) {
       .eq('date', todayStr)
       .maybeSingle();
 
-    if (wasChecked) {
+    if (wasActive) {
       if (existing) await DB.from('habit_logs').delete().eq('id', existing.id);
     } else if (existing) {
-      await DB.from('habit_logs').update({ completed: true }).eq('id', existing.id);
+      await DB.from('habit_logs').update({ completed, value: null }).eq('id', existing.id);
     } else {
       await DB.from('habit_logs').insert({
         id: crypto.randomUUID(),
         user_id: currentUser.id,
         habit_id: habitId,
         date: todayStr,
-        completed: true,
+        completed,
+        value: null,
       });
     }
   } catch (e) {
-    // Revert on error
-    if (wasChecked) {
-      btnEl.style.background  = color;
-      btnEl.style.borderColor = color;
-      btnEl.style.color       = '#0f0f0f';
-      row.classList.add('habit-done');
-    } else {
-      btnEl.style.cssText = '';
-      row.classList.remove('habit-done');
-    }
+    applyVisual(prevYes, prevNo);
     console.error('Toggle habit error:', e);
   }
 }
