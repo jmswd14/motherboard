@@ -577,22 +577,6 @@
 }
 .ft-date-input:focus { border-color: var(--border2); }
 
-.ft-priority-row { display: flex; gap: 5px; flex-wrap: wrap; }
-.ft-priority-pill {
-  padding: 4px 11px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
-  background: none;
-  color: var(--text-dim);
-  font-size: 11px;
-  font-family: var(--font-sans);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.ft-priority-pill:hover { border-color: var(--border2); color: var(--text); }
-.ft-priority-pill[data-p="high"].active   { background: var(--p-high-bg); border-color: var(--p-high); color: var(--p-high); }
-.ft-priority-pill[data-p="medium"].active { background: var(--p-medium-bg); border-color: var(--p-medium); color: var(--p-medium); }
-.ft-priority-pill[data-p="low"].active    { background: var(--p-low-bg); border-color: var(--p-low); color: var(--p-low); }
 
 
 .ft-notes {

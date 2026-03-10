@@ -194,7 +194,6 @@ let todayStr = '';
 let clockInterval = null;
 let dashLists = [];
 let dashTags = [];
-const ftPriority = {};
 const dashTagOpen      = {};   // { widgetId: boolean }
 const dashSelectedTags = {};   // { widgetId: string[] }
 const dashInlineTagColor = {}; // { widgetId: string }
@@ -713,7 +712,6 @@ async function loadDashTags() {
 
 function loadQuickTask(widget) {
   const wid = widget.id;
-  if (ftPriority[wid] === undefined) ftPriority[wid] = 'medium';
   if (!dashSelectedTags[wid])   dashSelectedTags[wid]   = [];
   if (!dashTagOpen[wid])        dashTagOpen[wid]         = false;
   if (!dashInlineTagColor[wid]) dashInlineTagColor[wid]  = TAG_COLORS[0];
@@ -735,11 +733,11 @@ function loadQuickTask(widget) {
         </select>
         <input class="ft-date-input" type="date" id="ft-due-${wid}">
       </div>
-      <div class="ft-priority-row" id="ft-priority-${wid}">
-        <button type="button" class="ft-priority-pill${ftPriority[wid]==='high'?' active':''}" data-p="high" onclick="toggleDashPriority('${wid}','high',this)">High</button>
-        <button type="button" class="ft-priority-pill${ftPriority[wid]==='medium'?' active':''}" data-p="medium" onclick="toggleDashPriority('${wid}','medium',this)">Med</button>
-        <button type="button" class="ft-priority-pill${ftPriority[wid]==='low'?' active':''}" data-p="low" onclick="toggleDashPriority('${wid}','low',this)">Low</button>
-      </div>
+      <select class="quick-add-select" id="ft-priority-${wid}">
+        <option value="high">🔴 High</option>
+        <option value="medium" selected>🟡 Medium</option>
+        <option value="low">🟢 Low</option>
+      </select>
       <div class="tag-dropdown-wrap" id="tag-dropdown-wrap-${wid}">
         <div class="tag-dropdown-trigger" id="tag-dropdown-trigger-${wid}" onclick="toggleDashTagDropdown(event,'${wid}')">
           <div class="tag-dropdown-selected" id="tag-dropdown-selected-${wid}">
@@ -774,14 +772,6 @@ function loadQuickTask(widget) {
   `;
 
   renderDashTagDropdown(wid);
-}
-
-function toggleDashPriority(wid, priority, btn) {
-  const prev = ftPriority[wid];
-  ftPriority[wid] = (prev === priority) ? null : priority;
-  const container = document.getElementById(`ft-priority-${wid}`);
-  if (container) container.querySelectorAll('.ft-priority-pill').forEach(b => b.classList.remove('active'));
-  if (ftPriority[wid]) btn.classList.add('active');
 }
 
 // ── TAG DROPDOWN (mirrors tasks.js pattern, scoped per widget) ────────────────
@@ -874,7 +864,7 @@ async function fullAddTask(e, wid) {
   const listId = document.getElementById(`ft-list-${wid}`)?.value || null;
   const dueDate = document.getElementById(`ft-due-${wid}`)?.value || null;
   const notes = document.getElementById(`ft-notes-${wid}`)?.value.trim() || null;
-  const priority = ftPriority[wid] || null;
+  const priority = document.getElementById(`ft-priority-${wid}`)?.value || 'medium';
   const tagIds = dashSelectedTags[wid] ? [...dashSelectedTags[wid]] : [];
 
   const task = {
@@ -904,12 +894,8 @@ async function fullAddTask(e, wid) {
     if (notesEl) notesEl.value = '';
 
     // Reset priority to medium (same default as the task modal)
-    ftPriority[wid] = 'medium';
-    const prioContainer = document.getElementById(`ft-priority-${wid}`);
-    if (prioContainer) {
-      prioContainer.querySelectorAll('.ft-priority-pill').forEach(b => b.classList.remove('active'));
-      prioContainer.querySelector('[data-p="medium"]')?.classList.add('active');
-    }
+    const prioEl = document.getElementById(`ft-priority-${wid}`);
+    if (prioEl) prioEl.value = 'medium';
 
     // Reset tags
     dashSelectedTags[wid] = [];
