@@ -99,6 +99,21 @@
 
 </div>
 
+<!-- Widget Options Modal -->
+<div id="widget-options-modal">
+  <div class="widget-options-box">
+    <div class="widget-options-header">
+      <span class="widget-options-title" id="widget-options-title"></span>
+      <button class="widget-options-close" onclick="closeWidgetOptions()">✕</button>
+    </div>
+    <div class="widget-options-body" id="widget-options-body"></div>
+    <div class="widget-options-footer">
+      <button class="widget-options-cancel" onclick="closeWidgetOptions()">Cancel</button>
+      <button class="widget-options-save" onclick="saveWidgetOptions()">Save</button>
+    </div>
+  </div>
+</div>
+
 <!-- Add Widget Panel -->
 <div class="add-widget-panel" id="add-panel">
   <div class="add-panel-header">
@@ -288,6 +303,7 @@ function createWidgetEl(widget, idx) {
     <div class="widget-header">
       <span class="widget-drag-handle" title="Drag to reorder">⠿</span>
       <span class="widget-label">${esc(WIDGET_LABELS[widget.widget_type] || widget.widget_type)}</span>
+      <button class="widget-options-btn" onclick="openWidgetOptions('${widget.id}')" title="Widget options">⚙</button>
       <button class="widget-remove" onclick="removeWidget('${widget.id}')" title="Remove">✕</button>
     </div>
     <div class="widget-body" id="wb-${widget.id}">
@@ -425,6 +441,9 @@ function loadAllWidgetData() {
 function loadGreeting(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const showTime = config.show_time !== false;
+  const showDate = config.show_date !== false;
   const now = new Date();
   const h = now.getHours();
   const name = currentUser?.user_metadata?.display_name;
@@ -433,9 +452,9 @@ function loadGreeting(widget) {
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   el.innerHTML = `
-    <div class="greeting-time" data-clock="true">${timeStr}</div>
+    ${showTime ? `<div class="greeting-time" data-clock="true">${timeStr}</div>` : ''}
     <div class="greeting-msg">${msg}</div>
-    <div class="greeting-date">${dateStr}</div>
+    ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
   `;
 }
 
@@ -451,15 +470,18 @@ function updateGreetingClocks() {
 async function loadTasksToday(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const limit = config.limit || 8;
+  const listId = config.list_id || null;
+  const priorityFilter = config.priority_filter || 'all';
 
   try {
-    const { data: tasks, error } = await DB
-      .from('tasks')
-      .select('id, name, priority, done')
-      .eq('due', todayStr)
-      .eq('done', false)
-      .order('position')
-      .limit(8);
+    let q = DB.from('tasks').select('id, name, priority, done')
+      .eq('due', todayStr).eq('done', false).order('position').limit(limit);
+    if (listId) q = q.eq('category_id', listId);
+    if (priorityFilter === 'high_medium') q = q.in('priority', ['high', 'medium']);
+    else if (priorityFilter === 'high') q = q.eq('priority', 'high');
+    const { data: tasks, error } = await q;
 
     if (error) throw error;
 
@@ -495,10 +517,16 @@ async function loadTasksToday(widget) {
 async function loadHabitCheckin(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const limit = config.limit != null ? config.limit : 6;
+  const habitIds = config.habit_ids || [];
 
   try {
+    let hq = DB.from('habits').select('id, name, emoji, color').or('active.is.null,active.eq.true').order('created_at');
+    if (habitIds.length) hq = hq.in('id', habitIds);
+    if (limit > 0) hq = hq.limit(limit);
     const [{ data: habits, error: he }, { data: logs }] = await Promise.all([
-      DB.from('habits').select('id, name, emoji, color').or('active.is.null,active.eq.true').order('created_at').limit(6),
+      hq,
       DB.from('habit_logs').select('habit_id, completed').eq('date', todayStr),
     ]);
 
@@ -613,33 +641,36 @@ async function toggleHabit(habitId, completed, wasActive, btnEl) {
 async function loadUpcomingEvents(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const days       = config.days       || 7;
+  const evLimit    = config.limit      || 8;
+  const showTasks  = config.show_tasks !== false;
+  const showGcal   = config.show_gcal  !== false;
 
   try {
     const now = new Date();
     const end = new Date();
-    end.setDate(end.getDate() + 7);
+    end.setDate(end.getDate() + days);
     const todayStr = now.toISOString().slice(0, 10);
     const endStr   = end.toISOString().slice(0, 10);
 
-    // Fetch Vanguard events and tasks in parallel
-    const [{ data: vEvents }, { data: tasksDue }] = await Promise.all([
+    // Fetch Vanguard events and (optionally) tasks in parallel
+    const fetches = [
       DB.from('events')
         .select('id, title, date, time, all_day')
         .gte('date', todayStr)
         .lte('date', endStr)
         .order('date')
         .order('time', { nullsFirst: true }),
-      DB.from('tasks')
-        .select('id, name, due')
-        .eq('done', false)
-        .gte('due', todayStr)
-        .lte('due', endStr)
-        .order('due'),
-    ]);
+      showTasks
+        ? DB.from('tasks').select('id, name, due').eq('done', false).gte('due', todayStr).lte('due', endStr).order('due')
+        : Promise.resolve({ data: [] }),
+    ];
+    const [{ data: vEvents }, { data: tasksDue }] = await Promise.all(fetches);
 
-    // Fetch Google Calendar events if connected
+    // Fetch Google Calendar events if connected and enabled
     let gcalItems = [];
-    try {
+    if (showGcal) try {
       const { data: tokenRow } = await DB
         .from('google_tokens')
         .select('access_token, expires_at')
@@ -686,7 +717,7 @@ async function loadUpcomingEvents(widget) {
       if (!a.time) return 1;
       if (!b.time) return -1;
       return a.time < b.time ? -1 : 1;
-    }).slice(0, 8);
+    }).slice(0, evLimit);
 
     if (!allItems.length) {
       el.innerHTML = `
@@ -741,10 +772,15 @@ async function loadUpcomingEvents(widget) {
 async function loadHabitStreaks(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const limit = config.limit || 5;
+  const habitIds = config.habit_ids || [];
 
   try {
+    let hq = DB.from('habits').select('id, name, emoji').or('active.is.null,active.eq.true');
+    if (habitIds.length) hq = hq.in('id', habitIds);
     const [{ data: habits, error: he }, { data: logs }] = await Promise.all([
-      DB.from('habits').select('id, name, emoji').eq('active', true),
+      hq,
       DB.from('habit_logs')
         .select('habit_id, date, completed')
         .eq('completed', true)
@@ -792,7 +828,7 @@ async function loadHabitStreaks(widget) {
       return;
     }
 
-    el.innerHTML = habitsWithStreaks.slice(0, 5).map(h => `
+    el.innerHTML = habitsWithStreaks.slice(0, limit).map(h => `
       <div class="streak-row">
         <span class="streak-emoji">${h.emoji || '◉'}</span>
         <span class="streak-name">${esc(h.name)}</span>
@@ -824,6 +860,7 @@ async function loadDashTags() {
 
 function loadQuickTask(widget) {
   const wid = widget.id;
+  const config = widget.config || {};
   if (!dashSelectedTags[wid])   dashSelectedTags[wid]   = [];
   if (!dashTagOpen[wid])        dashTagOpen[wid]         = false;
   if (!dashInlineTagColor[wid]) dashInlineTagColor[wid]  = TAG_COLORS[0];
@@ -831,8 +868,10 @@ function loadQuickTask(widget) {
   const el = document.getElementById(`wb-${wid}`);
   if (!el) return;
 
+  const defList = config.default_list_id || null;
+  const defPriority = config.default_priority || 'medium';
   const listOptions = dashLists.map(l =>
-    `<option value="${l.id}">${esc(l.name)}</option>`
+    `<option value="${l.id}" ${defList === l.id ? 'selected' : ''}>${esc(l.name)}</option>`
   ).join('');
 
   el.innerHTML = `
@@ -840,15 +879,15 @@ function loadQuickTask(widget) {
       <input class="quick-add-input" type="text" placeholder="Task name" id="ft-name-${wid}" autocomplete="off" required>
       <div class="ft-two-col">
         <select class="quick-add-select" id="ft-list-${wid}">
-          <option value="">No list</option>
+          <option value="" ${!defList ? 'selected' : ''}>No list</option>
           ${listOptions}
         </select>
         <input class="ft-date-input" type="date" id="ft-due-${wid}">
       </div>
       <select class="quick-add-select" id="ft-priority-${wid}">
-        <option value="high">🔴 High</option>
-        <option value="medium" selected>🟡 Medium</option>
-        <option value="low">🟢 Low</option>
+        <option value="high"   ${defPriority === 'high'   ? 'selected' : ''}>🔴 High</option>
+        <option value="medium" ${defPriority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
+        <option value="low"    ${defPriority === 'low'    ? 'selected' : ''}>🟢 Low</option>
       </select>
       <div class="tag-dropdown-wrap" id="tag-dropdown-wrap-${wid}">
         <div class="tag-dropdown-trigger" id="tag-dropdown-trigger-${wid}" onclick="toggleDashTagDropdown(event,'${wid}')">
@@ -1025,12 +1064,18 @@ async function fullAddTask(e, wid) {
 function loadJournalPrompt(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const rotation = config.rotation || 'daily';
 
-  const now = new Date();
-  const dayOfYear = Math.floor(
-    (now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24)
-  );
-  const prompt = JOURNAL_PROMPTS[Math.floor(dayOfYear) % 30];
+  let promptIdx;
+  if (rotation === 'random') {
+    promptIdx = Math.floor(Math.random() * JOURNAL_PROMPTS.length);
+  } else {
+    const now = new Date();
+    const dayOfYear = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / (1000 * 60 * 60 * 24));
+    promptIdx = Math.floor(dayOfYear) % JOURNAL_PROMPTS.length;
+  }
+  const prompt = JOURNAL_PROMPTS[promptIdx];
 
   el.innerHTML = `
     <div class="journal-prompt-text">&ldquo;${esc(prompt)}&rdquo;</div>
@@ -1042,8 +1087,12 @@ function loadJournalPrompt(widget) {
 async function loadGoalsProgress(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
+  const config = widget.config || {};
+  const displayCurrency = config.currency || 'USD';
 
   const FX = { USD:1, GBP:1.27, EUR:1.08, CAD:0.74, AUD:0.65, CHF:1.13, JPY:0.0067, CNY:0.14, HKD:0.13, SGD:0.75, BTC:85000, ETH:2000 };
+  const CURRENCY_SYMBOLS = { USD:'$', GBP:'£', EUR:'€', AUD:'A$', CAD:'C$', CHF:'Fr', JPY:'¥', SGD:'S$' };
+  const sym = CURRENCY_SYMBOLS[displayCurrency] || displayCurrency + ' ';
 
   try {
     const { data: assets } = await DB.from('assets').select('id,currency').eq('user_id', currentUser.id);
@@ -1060,17 +1109,18 @@ async function loadGoalsProgress(widget) {
 
     const { data: logs } = await DB.from('asset_logs').select('asset_id,value,logged_at').eq('user_id', currentUser.id).order('logged_at', { ascending: false });
 
-    // Latest log per asset
+    // Latest log per asset — convert to display currency via USD pivot
+    const fxDisplay = FX[displayCurrency] || 1;
     let total = 0;
     for (const asset of assets) {
       const log = (logs || []).find(l => l.asset_id === asset.id);
-      if (log) total += parseFloat(log.value) * (FX[asset.currency] || 1);
+      if (log) total += parseFloat(log.value) * (FX[asset.currency] || 1) / fxDisplay;
     }
 
     const fmt = v => {
-      if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
-      if (Math.abs(v) >= 1e3) return '$' + Math.round(v).toLocaleString();
-      return '$' + v.toFixed(2);
+      if (Math.abs(v) >= 1e6) return sym + (v / 1e6).toFixed(2) + 'M';
+      if (Math.abs(v) >= 1e3) return sym + Math.round(v).toLocaleString();
+      return sym + v.toFixed(2);
     };
 
     el.innerHTML = `
@@ -1088,6 +1138,261 @@ async function loadGoalsProgress(widget) {
       <a href="finance/index.html" class="widget-footer-link">Open Finance →</a>
     `;
   }
+}
+
+// ── WIDGET OPTIONS ────────────────────────────────────────────────────────────
+
+let optionsWidgetId = null;
+
+async function openWidgetOptions(id) {
+  const widget = widgets.find(w => w.id === id);
+  if (!widget) return;
+  optionsWidgetId = id;
+
+  const config = widget.config || {};
+  document.getElementById('widget-options-title').textContent =
+    (WIDGET_LABELS[widget.widget_type] || widget.widget_type) + ' options';
+
+  const body = document.getElementById('widget-options-body');
+  body.innerHTML = '<div class="widget-empty"><div class="widget-empty-text">Loading…</div></div>';
+  document.getElementById('widget-options-modal').classList.add('open');
+
+  let habits = [];
+  if (widget.widget_type === 'habit-checkin' || widget.widget_type === 'habit-streaks') {
+    const { data } = await DB.from('habits').select('id, name, emoji').or('active.is.null,active.eq.true').order('created_at');
+    habits = data || [];
+  }
+
+  body.innerHTML = buildOptionsForm(widget, config, habits);
+}
+
+function woToggle(id, label, isOn) {
+  return `
+    <div class="widget-option-toggle-row">
+      <span class="widget-option-toggle-label">${esc(label)}</span>
+      <button type="button" class="widget-option-toggle${isOn ? ' on' : ''}" id="${id}"
+              onclick="this.classList.toggle('on')"></button>
+    </div>`;
+}
+
+function buildOptionsForm(widget, config, habits) {
+  const type = widget.widget_type;
+  const size = widget.size;
+
+  const sizeRow = `
+    <div class="widget-option-row">
+      <label class="widget-option-label">Size</label>
+      <select class="widget-option-select" id="wo-size">
+        <option value="small" ${size === 'small' ? 'selected' : ''}>Small (1 column)</option>
+        <option value="wide"  ${size === 'wide'  ? 'selected' : ''}>Wide (2 columns)</option>
+        <option value="large" ${size === 'large' ? 'selected' : ''}>Large (2 columns, tall)</option>
+      </select>
+    </div>`;
+
+  let rows = '';
+
+  if (type === 'greeting') {
+    rows = `
+      ${woToggle('wo-show-time', 'Show time', config.show_time !== false)}
+      ${woToggle('wo-show-date', 'Show date', config.show_date !== false)}`;
+
+  } else if (type === 'tasks-today') {
+    const listOpts = dashLists.map(l =>
+      `<option value="${l.id}" ${config.list_id === l.id ? 'selected' : ''}>${esc(l.name)}</option>`
+    ).join('');
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Task limit</label>
+        <select class="widget-option-select" id="wo-limit">
+          <option value="5"  ${config.limit === 5  ? 'selected' : ''}>5 tasks</option>
+          <option value="8"  ${!config.limit || config.limit === 8 ? 'selected' : ''}>8 tasks (default)</option>
+          <option value="15" ${config.limit === 15 ? 'selected' : ''}>15 tasks</option>
+        </select>
+      </div>
+      <div class="widget-option-row">
+        <label class="widget-option-label">Filter by list</label>
+        <select class="widget-option-select" id="wo-list">
+          <option value="">All lists</option>
+          ${listOpts}
+        </select>
+      </div>
+      <div class="widget-option-row">
+        <label class="widget-option-label">Minimum priority</label>
+        <select class="widget-option-select" id="wo-priority">
+          <option value="all"         ${!config.priority_filter || config.priority_filter === 'all'        ? 'selected' : ''}>All priorities</option>
+          <option value="high_medium" ${config.priority_filter === 'high_medium' ? 'selected' : ''}>High & Medium only</option>
+          <option value="high"        ${config.priority_filter === 'high'        ? 'selected' : ''}>High priority only</option>
+        </select>
+      </div>`;
+
+  } else if (type === 'habit-checkin') {
+    const selectedIds = config.habit_ids || [];
+    const habitItems = habits.map(h => `
+      <label class="widget-option-habit-item">
+        <input type="checkbox" value="${h.id}" ${selectedIds.includes(h.id) ? 'checked' : ''}>
+        <span>${esc(h.emoji || '◉')} ${esc(h.name)}</span>
+      </label>`).join('');
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Display limit</label>
+        <select class="widget-option-select" id="wo-limit">
+          <option value="3" ${config.limit === 3  ? 'selected' : ''}>3 habits</option>
+          <option value="6" ${config.limit == null || config.limit === 6 ? 'selected' : ''}>6 habits (default)</option>
+          <option value="0" ${config.limit === 0  ? 'selected' : ''}>All habits</option>
+        </select>
+      </div>
+      ${habits.length ? `<div class="widget-option-row">
+        <label class="widget-option-label">Filter to specific habits (none selected = all)</label>
+        <div class="widget-option-habits-list" id="wo-habits">${habitItems}</div>
+      </div>` : ''}`;
+
+  } else if (type === 'upcoming-events') {
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Lookahead period</label>
+        <select class="widget-option-select" id="wo-days">
+          <option value="3"  ${config.days === 3  ? 'selected' : ''}>3 days</option>
+          <option value="7"  ${!config.days || config.days === 7  ? 'selected' : ''}>7 days (default)</option>
+          <option value="14" ${config.days === 14 ? 'selected' : ''}>14 days</option>
+          <option value="30" ${config.days === 30 ? 'selected' : ''}>30 days</option>
+        </select>
+      </div>
+      <div class="widget-option-row">
+        <label class="widget-option-label">Event limit</label>
+        <select class="widget-option-select" id="wo-limit">
+          <option value="5"  ${config.limit === 5  ? 'selected' : ''}>5 items</option>
+          <option value="8"  ${!config.limit || config.limit === 8  ? 'selected' : ''}>8 items (default)</option>
+          <option value="15" ${config.limit === 15 ? 'selected' : ''}>15 items</option>
+        </select>
+      </div>
+      ${woToggle('wo-show-tasks', 'Include tasks with due dates', config.show_tasks !== false)}
+      ${woToggle('wo-show-gcal',  'Include Google Calendar events', config.show_gcal !== false)}`;
+
+  } else if (type === 'habit-streaks') {
+    const selectedIds = config.habit_ids || [];
+    const habitItems = habits.map(h => `
+      <label class="widget-option-habit-item">
+        <input type="checkbox" value="${h.id}" ${selectedIds.includes(h.id) ? 'checked' : ''}>
+        <span>${esc(h.emoji || '◉')} ${esc(h.name)}</span>
+      </label>`).join('');
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Top streaks to show</label>
+        <select class="widget-option-select" id="wo-limit">
+          <option value="3"  ${config.limit === 3  ? 'selected' : ''}>Top 3</option>
+          <option value="5"  ${!config.limit || config.limit === 5  ? 'selected' : ''}>Top 5 (default)</option>
+          <option value="10" ${config.limit === 10 ? 'selected' : ''}>Top 10</option>
+        </select>
+      </div>
+      ${habits.length ? `<div class="widget-option-row">
+        <label class="widget-option-label">Filter to specific habits (none selected = all)</label>
+        <div class="widget-option-habits-list" id="wo-habits">${habitItems}</div>
+      </div>` : ''}`;
+
+  } else if (type === 'quick-task') {
+    const listOpts = dashLists.map(l =>
+      `<option value="${l.id}" ${config.default_list_id === l.id ? 'selected' : ''}>${esc(l.name)}</option>`
+    ).join('');
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Default list</label>
+        <select class="widget-option-select" id="wo-default-list">
+          <option value="">No list (default)</option>
+          ${listOpts}
+        </select>
+      </div>
+      <div class="widget-option-row">
+        <label class="widget-option-label">Default priority</label>
+        <select class="widget-option-select" id="wo-default-priority">
+          <option value="high"   ${config.default_priority === 'high'   ? 'selected' : ''}>High</option>
+          <option value="medium" ${!config.default_priority || config.default_priority === 'medium' ? 'selected' : ''}>Medium (default)</option>
+          <option value="low"    ${config.default_priority === 'low'    ? 'selected' : ''}>Low</option>
+        </select>
+      </div>`;
+
+  } else if (type === 'journal-prompt') {
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Prompt rotation</label>
+        <select class="widget-option-select" id="wo-rotation">
+          <option value="daily"  ${!config.rotation || config.rotation === 'daily'  ? 'selected' : ''}>Daily (changes each day)</option>
+          <option value="random" ${config.rotation === 'random' ? 'selected' : ''}>Random (new each visit)</option>
+        </select>
+      </div>`;
+
+  } else if (type === 'goals-progress') {
+    const currencies = ['USD','GBP','EUR','AUD','CAD','CHF','JPY','SGD'];
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Display currency</label>
+        <select class="widget-option-select" id="wo-currency">
+          ${currencies.map(c =>
+            `<option value="${c}" ${(!config.currency && c === 'USD') || config.currency === c ? 'selected' : ''}>${c}</option>`
+          ).join('')}
+        </select>
+      </div>`;
+  }
+
+  return sizeRow + rows;
+}
+
+function closeWidgetOptions() {
+  optionsWidgetId = null;
+  document.getElementById('widget-options-modal').classList.remove('open');
+}
+
+function saveWidgetOptions() {
+  const id = optionsWidgetId;
+  if (!id) return;
+  const widget = widgets.find(w => w.id === id);
+  if (!widget) return;
+
+  const type = widget.widget_type;
+  const getVal  = elId => { const el = document.getElementById(elId); return el ? el.value : null; };
+  const getOn   = elId => { const el = document.getElementById(elId); return el ? el.classList.contains('on') : true; };
+  const getInt  = elId => { const v = getVal(elId); return v !== null ? parseInt(v, 10) : null; };
+  const getHabits = () => {
+    const el = document.getElementById('wo-habits');
+    if (!el) return [];
+    return Array.from(el.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+  };
+
+  const sizeEl = document.getElementById('wo-size');
+  if (sizeEl) widget.size = sizeEl.value;
+
+  const newConfig = {};
+  if (type === 'greeting') {
+    newConfig.show_time = getOn('wo-show-time');
+    newConfig.show_date = getOn('wo-show-date');
+  } else if (type === 'tasks-today') {
+    newConfig.limit = getInt('wo-limit') || 8;
+    newConfig.list_id = getVal('wo-list') || null;
+    newConfig.priority_filter = getVal('wo-priority') || 'all';
+  } else if (type === 'habit-checkin') {
+    newConfig.limit = getInt('wo-limit') ?? 6;
+    newConfig.habit_ids = getHabits();
+  } else if (type === 'upcoming-events') {
+    newConfig.days = getInt('wo-days') || 7;
+    newConfig.limit = getInt('wo-limit') || 8;
+    newConfig.show_tasks = getOn('wo-show-tasks');
+    newConfig.show_gcal  = getOn('wo-show-gcal');
+  } else if (type === 'habit-streaks') {
+    newConfig.limit = getInt('wo-limit') || 5;
+    newConfig.habit_ids = getHabits();
+  } else if (type === 'quick-task') {
+    newConfig.default_list_id = getVal('wo-default-list') || null;
+    newConfig.default_priority = getVal('wo-default-priority') || 'medium';
+  } else if (type === 'journal-prompt') {
+    newConfig.rotation = getVal('wo-rotation') || 'daily';
+  } else if (type === 'goals-progress') {
+    newConfig.currency = getVal('wo-currency') || 'USD';
+  }
+
+  widget.config = newConfig;
+  closeWidgetOptions();
+  saveLayout();
+  renderGrid();
+  loadAllWidgetData();
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
