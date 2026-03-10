@@ -1,0 +1,238 @@
+@import './variables.css';
+
+/* ─────────────────────────────────────────
+   SETTINGS — tabs, rows, toggles, time pickers
+───────────────────────────────────────── */
+
+/* ── TABS ── */
+.settings-tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 36px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.settings-tab-bar::-webkit-scrollbar { display: none; }
+
+.settings-tab {
+  padding: 10px 20px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+  margin-bottom: -1px;
+}
+.settings-tab:hover { color: var(--text-dim); }
+.settings-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+.settings-panel { display: none; }
+.settings-panel.active { display: block; }
+
+/* ── PANEL SECTION HEADERS ── */
+.settings-section {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin: 28px 0 14px;
+}
+.settings-section:first-child { margin-top: 0; }
+
+/* ── SETTING ROWS ── */
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 24px;
+}
+.settings-row:last-child { border-bottom: none; }
+
+.settings-row-info { flex: 1; min-width: 0; }
+.settings-row-name {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 3px;
+}
+.settings-row-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.settings-row-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* ── TOGGLE SWITCH ── */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: var(--surface3);
+  border-radius: 22px;
+  transition: background 0.2s;
+}
+.toggle-slider::before {
+  position: absolute;
+  content: '';
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background: var(--text-muted);
+  border-radius: 50%;
+  transition: transform 0.2s, background 0.2s;
+}
+.toggle-switch input:checked + .toggle-slider { background: var(--accent); }
+.toggle-switch input:checked + .toggle-slider::before {
+  transform: translateX(18px);
+  background: #0F0F0F;
+}
+
+/* ── TIME PICKER ── */
+.time-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.time-picker select {
+  width: auto;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-sans);
+  cursor: pointer;
+}
+.time-picker-sep {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ── PROFILE FORM ── */
+.settings-form-max { max-width: 420px; }
+
+.settings-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+  line-height: 1.5;
+}
+
+.settings-btn-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 24px;
+}
+
+/* ── NOTIF SETTINGS NOTE ── */
+.notif-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 10px 0 4px;
+  line-height: 1.6;
+}
+
+/* ── DANGER ZONE ── */
+.danger-zone {
+  border: 1px solid rgba(255,107,107,0.25);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+  margin-top: 20px;
+}
+.danger-zone-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--p-high);
+  margin-bottom: 6px;
+}
+.danger-zone-desc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+/* ── TOAST ── */
+.settings-toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 10px 20px;
+  font-size: 13px;
+  color: var(--text);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  z-index: 9999;
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+.settings-toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+/* ── DELETE ACCOUNT MODAL ── */
+#delete-account-modal { z-index: 4000; }
+.delete-confirm-word {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: var(--p-high);
+  letter-spacing: 0.05em;
+}
+
+/* ── READ-ONLY FIELD ── */
+.field-readonly {
+  width: 100%;
+  padding: 9px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--text-muted);
+  background: var(--surface);
+  cursor: default;
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 600px) {
+  .settings-tab { padding: 10px 14px; font-size: 12px; }
+  .settings-row { flex-direction: column; gap: 12px; }
+  .settings-row-controls { align-self: flex-start; }
+}

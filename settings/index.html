@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Settings">
+<link rel="apple-touch-icon" href="/vanguard/apple-touch-icon.png">
+<link rel="manifest" href="/vanguard/manifest.json">
+<title>Settings — Vanguard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/shared.css">
+<link rel="stylesheet" href="../assets/css/settings.css">
+</head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/supabase-client.js"></script>
+<body>
+
+<div class="overlay" id="overlay" onclick="closeMobileMenus()"></div>
+<button class="hamburger" onclick="openLeftMobile()" title="Menu">☰</button>
+
+<div class="app left-only" id="app">
+
+  <!-- ── LEFT SIDEBAR ── -->
+  <nav class="left-sidebar" id="left-sidebar">
+    <div class="left-sidebar-brand">
+      <h1 class="ls-wordmark">
+        <span class="ls-brand-full">Vanguard</span>
+        <span class="ls-brand-short">V</span>
+      </h1>
+      <button class="ls-collapse-btn" id="ls-collapse-btn" onclick="toggleLeftCollapse()" title="Collapse sidebar">‹</button>
+    </div>
+
+    <div class="left-nav">
+      <a class="left-nav-item" href="../index.html">
+        <span class="left-nav-icon">⊞</span>
+        <span class="left-nav-label">Dashboard</span>
+      </a>
+      <a class="left-nav-item" href="../tasks/index.html">
+        <span class="left-nav-icon">☑</span>
+        <span class="left-nav-label">Tasks</span>
+      </a>
+      <a class="left-nav-item" href="../calendar/index.html">
+        <span class="left-nav-icon">◫</span>
+        <span class="left-nav-label">Calendar</span>
+      </a>
+      <a class="left-nav-item" href="../habits/index.html">
+        <span class="left-nav-icon">◉</span>
+        <span class="left-nav-label">Habits</span>
+      </a>
+      <a class="left-nav-item" href="../journal/index.html">
+        <span class="left-nav-icon">✦</span>
+        <span class="left-nav-label">Journal</span>
+      </a>
+      <a class="left-nav-item disabled">
+        <span class="left-nav-icon">◎</span>
+        <span class="left-nav-label">Goals</span>
+      </a>
+      <a class="left-nav-item" href="../finance/index.html">
+        <span class="left-nav-icon">◈</span>
+        <span class="left-nav-label">Finance</span>
+      </a>
+      <a class="left-nav-item" onclick="toggleNotifPanel(); return false;" href="#">
+        <span class="left-nav-icon" style="position:relative;">🔔<span class="notif-badge" id="notif-badge" style="display:none">0</span></span>
+        <span class="left-nav-label">Notifications</span>
+      </a>
+      <a class="left-nav-item active" href="index.html">
+        <span class="left-nav-icon">⚙</span>
+        <span class="left-nav-label">Settings</span>
+      </a>
+    </div>
+
+    <div class="left-sidebar-footer">
+      <span class="ls-signout" onclick="signOut()">Sign out</span>
+    </div>
+  </nav>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2>Settings</h2>
+      </div>
+    </div>
+
+    <!-- TAB BAR -->
+    <div class="settings-tab-bar">
+      <button class="settings-tab active" onclick="switchTab('profile', this)">Profile</button>
+      <button class="settings-tab" onclick="switchTab('notifications', this)">Notifications</button>
+      <button class="settings-tab" onclick="switchTab('appearance', this)">Appearance</button>
+      <button class="settings-tab" onclick="switchTab('calendar', this)">Calendar</button>
+      <button class="settings-tab" onclick="switchTab('data', this)">Data &amp; Privacy</button>
+    </div>
+
+    <!-- ── PROFILE ── -->
+    <div class="settings-panel active" id="panel-profile">
+      <div class="settings-form-max">
+        <div class="form-group">
+          <label>Display Name</label>
+          <input type="text" id="profile-name" placeholder="Your name">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <div class="field-readonly" id="profile-email"></div>
+        </div>
+        <div class="settings-btn-row">
+          <button class="btn btn-primary" onclick="saveProfile()">Save</button>
+          <button class="btn" onclick="sendPasswordReset()">Change Password</button>
+        </div>
+        <div class="settings-note" id="profile-status"></div>
+      </div>
+    </div>
+
+    <!-- ── NOTIFICATIONS ── -->
+    <div class="settings-panel" id="panel-notifications">
+
+      <div class="settings-section">Tasks</div>
+
+      <div class="settings-row" id="row-task_due_today">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Due today reminder</div>
+          <div class="settings-row-desc">Reminds you of tasks due today</div>
+        </div>
+        <div class="settings-row-controls">
+          <div class="time-picker" id="time-task_due_today" style="display:none">
+            <select class="time-hour" id="hour-task_due_today" onchange="saveNotifSetting('task_due_today')"></select>
+            <select class="time-min" id="min-task_due_today" onchange="saveNotifSetting('task_due_today')"></select>
+            <select class="time-ampm" id="ampm-task_due_today" onchange="saveNotifSetting('task_due_today')">
+              <option>AM</option><option>PM</option>
+            </select>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-task_due_today" onchange="onNotifToggle('task_due_today')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row" id="row-task_overdue">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Overdue reminder</div>
+          <div class="settings-row-desc">Daily reminder about overdue tasks</div>
+        </div>
+        <div class="settings-row-controls">
+          <div class="time-picker" id="time-task_overdue" style="display:none">
+            <select class="time-hour" id="hour-task_overdue" onchange="saveNotifSetting('task_overdue')"></select>
+            <select class="time-min" id="min-task_overdue" onchange="saveNotifSetting('task_overdue')"></select>
+            <select class="time-ampm" id="ampm-task_overdue" onchange="saveNotifSetting('task_overdue')">
+              <option>AM</option><option>PM</option>
+            </select>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-task_overdue" onchange="onNotifToggle('task_overdue')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="notif-note">Individual task reminders can be set per task in the Tasks app.</div>
+
+      <div class="settings-section">Habits</div>
+
+      <div class="settings-row" id="row-habit_checkin">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Daily check-in reminder</div>
+          <div class="settings-row-desc">Nudge to complete your daily habits</div>
+        </div>
+        <div class="settings-row-controls">
+          <div class="time-picker" id="time-habit_checkin" style="display:none">
+            <select class="time-hour" id="hour-habit_checkin" onchange="saveNotifSetting('habit_checkin')"></select>
+            <select class="time-min" id="min-habit_checkin" onchange="saveNotifSetting('habit_checkin')"></select>
+            <select class="time-ampm" id="ampm-habit_checkin" onchange="saveNotifSetting('habit_checkin')">
+              <option>AM</option><option>PM</option>
+            </select>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-habit_checkin" onchange="onNotifToggle('habit_checkin')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">Journal</div>
+
+      <div class="settings-row" id="row-journal_prompt">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Daily prompt reminder</div>
+          <div class="settings-row-desc">Reminder to write today's reflection</div>
+        </div>
+        <div class="settings-row-controls">
+          <div class="time-picker" id="time-journal_prompt" style="display:none">
+            <select class="time-hour" id="hour-journal_prompt" onchange="saveNotifSetting('journal_prompt')"></select>
+            <select class="time-min" id="min-journal_prompt" onchange="saveNotifSetting('journal_prompt')"></select>
+            <select class="time-ampm" id="ampm-journal_prompt" onchange="saveNotifSetting('journal_prompt')">
+              <option>AM</option><option>PM</option>
+            </select>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-journal_prompt" onchange="onNotifToggle('journal_prompt')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-section">Finance</div>
+
+      <div class="settings-row" id="row-finance_asset_due">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Asset update due</div>
+          <div class="settings-row-desc">Reminder to log updated asset values</div>
+        </div>
+        <div class="settings-row-controls">
+          <div class="time-picker" id="time-finance_asset_due" style="display:none">
+            <select class="time-hour" id="hour-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')"></select>
+            <select class="time-min" id="min-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')"></select>
+            <select class="time-ampm" id="ampm-finance_asset_due" onchange="saveNotifSetting('finance_asset_due')">
+              <option>AM</option><option>PM</option>
+            </select>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-finance_asset_due" onchange="onNotifToggle('finance_asset_due')">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+    </div><!-- /panel-notifications -->
+
+    <!-- ── APPEARANCE ── -->
+    <div class="settings-panel" id="panel-appearance">
+      <div class="settings-form-max">
+        <div class="form-group">
+          <label>Theme</label>
+          <select id="pref-theme">
+            <option value="dark">Dark (default)</option>
+            <option value="light">Light (coming soon)</option>
+            <option value="system">System (coming soon)</option>
+          </select>
+          <div class="settings-note">Light and System themes are saved but not yet applied.</div>
+        </div>
+        <div class="form-group">
+          <label>Font Size</label>
+          <select id="pref-font-size">
+            <option value="default">Default</option>
+            <option value="large">Large</option>
+            <option value="larger">Larger</option>
+          </select>
+          <div class="settings-note">Font size preference is saved for future use.</div>
+        </div>
+        <div class="settings-btn-row">
+          <button class="btn btn-primary" onclick="saveAppearance()">Save</button>
+        </div>
+        <div class="settings-note" id="appearance-status"></div>
+      </div>
+    </div>
+
+    <!-- ── CALENDAR ── -->
+    <div class="settings-panel" id="panel-calendar">
+      <div class="settings-form-max">
+        <div class="form-group">
+          <label>Week Starts On</label>
+          <select id="pref-week-start">
+            <option value="sunday">Sunday</option>
+            <option value="monday">Monday</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Default View</label>
+          <select id="pref-default-view">
+            <option value="month">Month</option>
+            <option value="week">Week</option>
+            <option value="day">Day</option>
+          </select>
+        </div>
+        <div class="settings-btn-row">
+          <button class="btn btn-primary" onclick="saveCalendarPrefs()">Save</button>
+        </div>
+        <div class="settings-note" id="calendar-status"></div>
+      </div>
+    </div>
+
+    <!-- ── DATA & PRIVACY ── -->
+    <div class="settings-panel" id="panel-data">
+      <div class="settings-section">Export</div>
+      <div class="settings-row">
+        <div class="settings-row-info">
+          <div class="settings-row-name">Export my data</div>
+          <div class="settings-row-desc">Download a copy of all your Vanguard data</div>
+        </div>
+        <div class="settings-row-controls">
+          <button class="btn" onclick="exportData()">Export</button>
+        </div>
+      </div>
+
+      <div class="settings-section" style="margin-top:32px;">Danger Zone</div>
+      <div class="danger-zone">
+        <div class="danger-zone-title">Delete Account</div>
+        <div class="danger-zone-desc">Permanently delete your account and all associated data. This action cannot be undone.</div>
+        <button class="btn btn-danger" onclick="openDeleteModal()">Delete my account</button>
+      </div>
+    </div>
+
+  </main>
+</div><!-- /.app -->
+
+<!-- ── MODALS ── -->
+
+<!-- DELETE ACCOUNT -->
+<div class="modal-backdrop" id="delete-account-modal" style="z-index:4000;">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title" style="font-size:20px;">Delete Account</div>
+    <p style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:16px;">
+      This will permanently delete your account and all your data — tasks, habits, journal entries, assets, and everything else. This cannot be undone.
+    </p>
+    <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px;">
+      Type <span class="delete-confirm-word">DELETE</span> to confirm:
+    </p>
+    <input type="text" id="delete-confirm-input" placeholder="Type DELETE to confirm" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('delete-account-modal')">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAccount()">Delete Account</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="settings-toast" id="settings-toast"></div>
+
+<script>
+const DB = window.supabaseClient;
+let currentUser = null;
+
+const NOTIF_TYPES = [
+  'task_due_today', 'task_overdue', 'habit_checkin', 'journal_prompt', 'finance_asset_due'
+];
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+async function init() {
+  const { data: { session } } = await DB.auth.getSession();
+  if (!session) { window.location.href = '../login.html'; return; }
+  currentUser = session.user;
+
+  loadProfile();
+  buildTimePickers();
+  await Promise.all([
+    loadNotifSettings(),
+    loadPreferences(),
+  ]);
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+
+function switchTab(tab, el) {
+  document.querySelectorAll('.settings-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.settings-panel').forEach(p => p.classList.remove('active'));
+  if (el) el.classList.add('active');
+  document.getElementById('panel-' + tab)?.classList.add('active');
+}
+
+// ── PROFILE ──────────────────────────────────────────────────────────────────
+
+function loadProfile() {
+  document.getElementById('profile-email').textContent = currentUser.email || '';
+  document.getElementById('profile-name').value = currentUser.user_metadata?.display_name || '';
+}
+
+async function saveProfile() {
+  const name = document.getElementById('profile-name').value.trim();
+  const { error } = await DB.auth.updateUser({ data: { display_name: name } });
+  const el = document.getElementById('profile-status');
+  if (error) {
+    el.textContent = 'Error: ' + error.message;
+    el.style.color = 'var(--p-high)';
+  } else {
+    showToast('Profile saved');
+    el.textContent = '';
+  }
+}
+
+async function sendPasswordReset() {
+  const { error } = await DB.auth.resetPasswordForEmail(currentUser.email, {
+    redirectTo: window.location.origin + '/vanguard/settings/index.html',
+  });
+  if (error) showToast('Error: ' + error.message);
+  else showToast('Password reset email sent');
+}
+
+// ── NOTIFICATIONS ─────────────────────────────────────────────────────────────
+
+function buildTimePickers() {
+  NOTIF_TYPES.forEach(type => {
+    const hourSel = document.getElementById(`hour-${type}`);
+    const minSel  = document.getElementById(`min-${type}`);
+    if (!hourSel || !minSel) return;
+
+    for (let h = 1; h <= 12; h++) {
+      const o = document.createElement('option');
+      o.value = h; o.textContent = h;
+      hourSel.appendChild(o);
+    }
+    ['00','15','30','45'].forEach(m => {
+      const o = document.createElement('option');
+      o.value = m; o.textContent = m;
+      minSel.appendChild(o);
+    });
+  });
+}
+
+async function loadNotifSettings() {
+  if (!currentUser) return;
+  const { data } = await DB.from('user_notification_settings')
+    .select('*').eq('user_id', currentUser.id);
+
+  (data || []).forEach(row => {
+    const toggle = document.getElementById(`toggle-${row.type}`);
+    const timePicker = document.getElementById(`time-${row.type}`);
+    if (!toggle) return;
+
+    toggle.checked = row.enabled;
+    if (timePicker) timePicker.style.display = row.enabled ? 'flex' : 'none';
+
+    if (row.time) {
+      // row.time is "HH:MM:SS" in 24h
+      const [hh, mm] = row.time.split(':').map(Number);
+      const h12 = hh === 0 ? 12 : hh > 12 ? hh - 12 : hh;
+      const ampm = hh < 12 ? 'AM' : 'PM';
+      const minStr = String(mm).padStart(2,'0');
+      // Round down to nearest 15
+      const minRound = mm < 15 ? '00' : mm < 30 ? '15' : mm < 45 ? '30' : '45';
+
+      const hourSel = document.getElementById(`hour-${row.type}`);
+      const minSel  = document.getElementById(`min-${row.type}`);
+      const ampmSel = document.getElementById(`ampm-${row.type}`);
+      if (hourSel) hourSel.value = h12;
+      if (minSel)  minSel.value  = minRound;
+      if (ampmSel) ampmSel.value = ampm;
+    }
+  });
+}
+
+function onNotifToggle(type) {
+  const enabled = document.getElementById(`toggle-${type}`).checked;
+  const timePicker = document.getElementById(`time-${type}`);
+  if (timePicker) timePicker.style.display = enabled ? 'flex' : 'none';
+  saveNotifSetting(type);
+}
+
+async function saveNotifSetting(type) {
+  if (!currentUser) return;
+  const enabled = document.getElementById(`toggle-${type}`)?.checked ?? false;
+  const hour    = parseInt(document.getElementById(`hour-${type}`)?.value || '9');
+  const min     = document.getElementById(`min-${type}`)?.value || '00';
+  const ampm    = document.getElementById(`ampm-${type}`)?.value || 'AM';
+
+  let h24 = hour % 12;
+  if (ampm === 'PM') h24 += 12;
+  const timeStr = `${String(h24).padStart(2,'0')}:${min}:00`;
+
+  const row = {
+    user_id: currentUser.id,
+    type,
+    enabled,
+    time: timeStr,
+    updated_at: new Date().toISOString(),
+  };
+
+  await DB.from('user_notification_settings').upsert(row, { onConflict: 'user_id,type' });
+}
+
+// ── APPEARANCE ────────────────────────────────────────────────────────────────
+
+async function loadPreferences() {
+  if (!currentUser) return;
+  const { data } = await DB.from('user_preferences')
+    .select('key,value').eq('user_id', currentUser.id);
+
+  const prefs = {};
+  (data || []).forEach(r => { prefs[r.key] = r.value; });
+
+  if (prefs.theme)        document.getElementById('pref-theme').value        = prefs.theme;
+  if (prefs.font_size)    document.getElementById('pref-font-size').value    = prefs.font_size;
+  if (prefs.week_start)   document.getElementById('pref-week-start').value   = prefs.week_start;
+  if (prefs.default_view) document.getElementById('pref-default-view').value = prefs.default_view;
+}
+
+async function savePref(key, value) {
+  if (!currentUser) return;
+  await DB.from('user_preferences').upsert(
+    { user_id: currentUser.id, key, value, updated_at: new Date().toISOString() },
+    { onConflict: 'user_id,key' }
+  );
+}
+
+async function saveAppearance() {
+  const theme    = document.getElementById('pref-theme').value;
+  const fontSize = document.getElementById('pref-font-size').value;
+  await Promise.all([savePref('theme', theme), savePref('font_size', fontSize)]);
+  showToast('Appearance saved');
+}
+
+async function saveCalendarPrefs() {
+  const weekStart   = document.getElementById('pref-week-start').value;
+  const defaultView = document.getElementById('pref-default-view').value;
+  await Promise.all([savePref('week_start', weekStart), savePref('default_view', defaultView)]);
+  showToast('Calendar preferences saved');
+}
+
+// ── DATA & PRIVACY ────────────────────────────────────────────────────────────
+
+function exportData() {
+  showToast('Export coming soon');
+}
+
+function openDeleteModal() {
+  document.getElementById('delete-confirm-input').value = '';
+  document.getElementById('delete-account-modal').classList.add('show');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+
+async function confirmDeleteAccount() {
+  const val = document.getElementById('delete-confirm-input').value.trim();
+  if (val !== 'DELETE') {
+    document.getElementById('delete-confirm-input').style.borderColor = 'var(--p-high)';
+    return;
+  }
+  document.getElementById('delete-confirm-input').style.borderColor = '';
+
+  // Delete all user data then the account
+  try {
+    const uid = currentUser.id;
+    await Promise.all([
+      DB.from('tasks').delete().eq('user_id', uid),
+      DB.from('asset_logs').delete().eq('user_id', uid),
+      DB.from('assets').delete().eq('user_id', uid),
+      DB.from('notifications').delete().eq('user_id', uid),
+      DB.from('user_notification_settings').delete().eq('user_id', uid),
+      DB.from('user_preferences').delete().eq('user_id', uid),
+      DB.from('task_reminders').delete().eq('user_id', uid),
+    ]);
+    await DB.auth.signOut();
+    window.location.href = '../login.html';
+  } catch (err) {
+    showToast('Error deleting account: ' + err.message);
+  }
+}
+
+// ── TOAST ────────────────────────────────────────────────────────────────────
+
+let toastTimer;
+function showToast(msg) {
+  const el = document.getElementById('settings-toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ── AUTH ─────────────────────────────────────────────────────────────────────
+
+async function signOut() {
+  await DB.auth.signOut();
+  window.location.href = '../login.html';
+}
+
+// ── SIDEBAR ──────────────────────────────────────────────────────────────────
+
+const _app         = document.getElementById('app');
+const _leftSidebar = document.getElementById('left-sidebar');
+const _overlay     = document.getElementById('overlay');
+
+(function restoreState() {
+  if (localStorage.getItem('vg-ls-collapsed') === 'true') {
+    _leftSidebar.classList.add('ls-collapsed');
+    _app.classList.add('ls-collapsed');
+    document.getElementById('ls-collapse-btn').textContent = '›';
+  }
+})();
+
+function toggleLeftCollapse() {
+  const collapsed = _leftSidebar.classList.toggle('ls-collapsed');
+  _app.classList.toggle('ls-collapsed', collapsed);
+  document.getElementById('ls-collapse-btn').textContent = collapsed ? '›' : '‹';
+  localStorage.setItem('vg-ls-collapsed', collapsed);
+}
+
+function openLeftMobile() {
+  _leftSidebar.classList.add('mobile-open');
+  _overlay.classList.add('show');
+}
+
+function closeMobileMenus() {
+  _leftSidebar.classList.remove('mobile-open');
+  _overlay.classList.remove('show');
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-backdrop.show').forEach(m => m.classList.remove('show'));
+  }
+});
+
+init();
+</script>
+<script src="../assets/js/notifications.js"></script>
+</body>
+</html>

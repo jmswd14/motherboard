@@ -65,6 +65,14 @@
         <span class="left-nav-icon">◈</span>
         <span class="left-nav-label">Finance</span>
       </a>
+      <a class="left-nav-item" href="#" onclick="toggleNotifPanel(); return false;">
+        <span class="left-nav-icon" style="position:relative">🔔<span class="notif-badge" id="notif-badge" style="display:none"></span></span>
+        <span class="left-nav-label">Notifications</span>
+      </a>
+      <a class="left-nav-item" href="../settings/index.html">
+        <span class="left-nav-icon">⚙</span>
+        <span class="left-nav-label">Settings</span>
+      </a>
     </div>
 
     <div class="left-sidebar-footer">
@@ -1082,6 +1090,6 @@ document.addEventListener('keydown', e => {
 // ── KICK OFF ──────────────────────────────────────────────────────────────────
 init();
 </script>
-
+<script src="../assets/js/notifications.js"></script>
 </body>
 </html>

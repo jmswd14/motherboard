@@ -37,6 +37,7 @@ let dragSrcId         = null;
 let dragFromHandle    = false;
 let activeMenuId      = null;
 let tagFilterDropdownOpen = false;
+let taskReminders = []; // [{ id, amount, unit }]
 
 const today    = new Date();
 const todayStr = today.toISOString().split('T')[0];
@@ -421,7 +422,7 @@ async function deleteTask(tid) {
   await _sb.from('tasks').delete().eq('id', tid).eq('user_id', _uid);
 }
 
-function editTask(tid) {
+async function editTask(tid) {
   const t = tasks.find(x => x.id === tid);
   if (!t) return;
   document.getElementById('task-modal-title').textContent = 'Edit Task';
@@ -435,6 +436,21 @@ function editTask(tid) {
   selectedTaskTags = [...(t.tags || [])];
   tagDropdownOpen = false;
   populateTaskModal(t.category);
+
+  // Load existing reminders
+  taskReminders = [];
+  const section = document.getElementById('task-reminders-section');
+  if (t.due) {
+    const { data: remRows } = await _sb.from('task_reminders')
+      .select('id, amount, unit').eq('task_id', tid).eq('user_id', _uid).eq('sent', false);
+    taskReminders = (remRows || []).map(r => ({ id: r.id, amount: r.amount, unit: r.unit }));
+    section.style.display = '';
+    renderRemindersSection();
+  } else {
+    section.style.display = 'none';
+    document.getElementById('task-reminder-rows').innerHTML = '';
+  }
+
   document.getElementById('add-task-modal').classList.add('show');
   setTimeout(() => document.getElementById('task-name-input')?.focus(), 80);
   const deleteBtn = document.getElementById('modal-delete-btn');
@@ -471,6 +487,8 @@ async function saveTask() {
 
   closeModal('add-task-modal');
 
+  const snapshotReminders = [...taskReminders];
+
   if (tid) {
     const t = tasks.find(x => x.id === tid);
     if (t) Object.assign(t, data);
@@ -483,6 +501,7 @@ async function saveTask() {
       tags:        data.tags,
       notes:       data.notes || null,
     }).eq('id', tid).eq('user_id', _uid);
+    await saveReminders(tid, data.due, snapshotReminders);
   } else {
     const newId  = uid();
     const minPos = tasks.length ? Math.min(...tasks.map(t => t.order || 0)) : 0;
@@ -502,6 +521,31 @@ async function saveTask() {
       done:        false,
       position:    pos,
     });
+    await saveReminders(newId, data.due, snapshotReminders);
+  }
+}
+
+async function saveReminders(taskId, dueStr, reminders) {
+  // Delete unsent reminders for this task, then re-insert
+  await _sb.from('task_reminders').delete()
+    .eq('task_id', taskId).eq('user_id', _uid).eq('sent', false);
+
+  if (!dueStr || !reminders.length) return;
+
+  const rows = reminders
+    .filter(r => r.amount > 0)
+    .map(r => ({
+      id:        crypto.randomUUID(),
+      user_id:   _uid,
+      task_id:   taskId,
+      remind_at: calcRemindAt(dueStr, r.amount, r.unit),
+      amount:    r.amount,
+      unit:      r.unit,
+      sent:      false,
+    }));
+
+  if (rows.length) {
+    await _sb.from('task_reminders').insert(rows);
   }
 }
 
@@ -686,6 +730,9 @@ function openModal(mid) {
     document.getElementById('task-notes-input').value = '';
     selectedTaskTags = [];
     tagDropdownOpen  = false;
+    taskReminders = [];
+    document.getElementById('task-reminders-section').style.display = 'none';
+    document.getElementById('task-reminder-rows').innerHTML = '';
     const deleteBtn  = document.getElementById('modal-delete-btn');
     const actions    = document.getElementById('task-modal-actions');
     if (deleteBtn) deleteBtn.style.display = 'none';
@@ -711,6 +758,62 @@ function openModal(mid) {
 }
 
 function closeModal(mid) { document.getElementById(mid).classList.remove('show'); }
+
+// ────────── REMINDERS ──────────
+
+function onDueDateChange() {
+  const due = document.getElementById('task-due-input').value;
+  const section = document.getElementById('task-reminders-section');
+  if (due) {
+    section.style.display = '';
+  } else {
+    section.style.display = 'none';
+    taskReminders = [];
+    document.getElementById('task-reminder-rows').innerHTML = '';
+  }
+}
+
+function renderRemindersSection() {
+  const rows = document.getElementById('task-reminder-rows');
+  rows.innerHTML = taskReminders.map((r, i) => `
+    <div class="reminder-row" id="reminder-row-${i}">
+      <input class="reminder-amount" type="number" min="1" value="${r.amount}"
+             oninput="updateReminder(${i},'amount',this.value)">
+      <select class="reminder-unit" onchange="updateReminder(${i},'unit',this.value)">
+        <option value="minutes" ${r.unit==='minutes'?'selected':''}>minutes</option>
+        <option value="hours"   ${r.unit==='hours'  ?'selected':''}>hours</option>
+        <option value="days"    ${r.unit==='days'   ?'selected':''}>days</option>
+      </select>
+      <span class="reminder-before">before</span>
+      <button type="button" class="reminder-remove" onclick="removeReminderRow(${i})">×</button>
+    </div>`).join('');
+}
+
+function addReminderRow() {
+  taskReminders.push({ id: null, amount: 30, unit: 'minutes' });
+  renderRemindersSection();
+}
+
+function removeReminderRow(i) {
+  taskReminders.splice(i, 1);
+  renderRemindersSection();
+}
+
+function updateReminder(i, field, val) {
+  if (!taskReminders[i]) return;
+  taskReminders[i][field] = field === 'amount' ? parseInt(val, 10) || 1 : val;
+}
+
+function calcRemindAt(dueStr, amount, unit) {
+  // dueStr is YYYY-MM-DD; treat due as start-of-day in local time
+  const due = new Date(dueStr + 'T00:00:00');
+  const ms = {
+    minutes: amount * 60 * 1000,
+    hours:   amount * 3600 * 1000,
+    days:    amount * 86400 * 1000,
+  }[unit] || 0;
+  return new Date(due.getTime() - ms).toISOString();
+}
 
 function selectCategoryColor(c, el) {
   selectedCategoryColor = c;
