@@ -713,7 +713,7 @@ async function loadDashTags() {
 
 function loadQuickTask(widget) {
   const wid = widget.id;
-  if (!ftPriority[wid])         ftPriority[wid]         = null;
+  if (ftPriority[wid] === undefined) ftPriority[wid] = 'medium';
   if (!dashSelectedTags[wid])   dashSelectedTags[wid]   = [];
   if (!dashTagOpen[wid])        dashTagOpen[wid]         = false;
   if (!dashInlineTagColor[wid]) dashInlineTagColor[wid]  = TAG_COLORS[0];
@@ -736,9 +736,9 @@ function loadQuickTask(widget) {
         <input class="ft-date-input" type="date" id="ft-due-${wid}">
       </div>
       <div class="ft-priority-row" id="ft-priority-${wid}">
-        <button type="button" class="ft-priority-pill" data-p="high" onclick="toggleDashPriority('${wid}','high',this)">High</button>
-        <button type="button" class="ft-priority-pill" data-p="medium" onclick="toggleDashPriority('${wid}','medium',this)">Med</button>
-        <button type="button" class="ft-priority-pill" data-p="low" onclick="toggleDashPriority('${wid}','low',this)">Low</button>
+        <button type="button" class="ft-priority-pill${ftPriority[wid]==='high'?' active':''}" data-p="high" onclick="toggleDashPriority('${wid}','high',this)">High</button>
+        <button type="button" class="ft-priority-pill${ftPriority[wid]==='medium'?' active':''}" data-p="medium" onclick="toggleDashPriority('${wid}','medium',this)">Med</button>
+        <button type="button" class="ft-priority-pill${ftPriority[wid]==='low'?' active':''}" data-p="low" onclick="toggleDashPriority('${wid}','low',this)">Low</button>
       </div>
       <div class="tag-dropdown-wrap" id="tag-dropdown-wrap-${wid}">
         <div class="tag-dropdown-trigger" id="tag-dropdown-trigger-${wid}" onclick="toggleDashTagDropdown(event,'${wid}')">
@@ -903,9 +903,13 @@ async function fullAddTask(e, wid) {
     if (dueEl)   dueEl.value   = '';
     if (notesEl) notesEl.value = '';
 
-    // Reset priority
-    ftPriority[wid] = null;
-    document.getElementById(`ft-priority-${wid}`)?.querySelectorAll('.ft-priority-pill.active').forEach(b => b.classList.remove('active'));
+    // Reset priority to medium (same default as the task modal)
+    ftPriority[wid] = 'medium';
+    const prioContainer = document.getElementById(`ft-priority-${wid}`);
+    if (prioContainer) {
+      prioContainer.querySelectorAll('.ft-priority-pill').forEach(b => b.classList.remove('active'));
+      prioContainer.querySelector('[data-p="medium"]')?.classList.add('active');
+    }
 
     // Reset tags
     dashSelectedTags[wid] = [];
