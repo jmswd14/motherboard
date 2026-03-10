@@ -780,18 +780,18 @@ async function fullAddTask(e, wid) {
     id: crypto.randomUUID(),
     user_id: currentUser.id,
     name,
-    completed: false,
+    done: false,
     position: 0,
   };
-  if (listId)        task.list_id  = listId;
-  if (dueDate)       task.due_date = dueDate;
-  if (notes)         task.notes    = notes;
-  if (priority)      task.priority = priority;
-  if (tagIds.length) task.tags     = tagIds;
+  if (listId)        task.category_id = listId;
+  if (dueDate)       task.due         = dueDate;
+  if (notes)         task.notes       = notes;
+  if (priority)      task.priority    = priority;
+  if (tagIds.length) task.tags        = tagIds;
 
   try {
     const { error } = await DB.from('tasks').insert(task);
-    if (error) throw error;
+    if (error) { console.error('[fullAddTask] Supabase error:', error); throw error; }
 
     // Reset form fields
     nameEl.value = '';

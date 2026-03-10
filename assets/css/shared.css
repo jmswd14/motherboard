@@ -710,7 +710,7 @@ select option { background: var(--surface2); }
 }
 .notif-panel.open { transform: translateX(0); }
 
-.notif-icon-wrap { position: relative; display: inline-flex; align-items: center; }
+.notif-icon-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
 
 .notif-panel-header {
   display: flex;
