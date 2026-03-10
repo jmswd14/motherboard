@@ -315,11 +315,11 @@ select option { background: var(--surface2); }
 /* COLOR PICKERS */
 .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .color-swatch { width: 28px; height: 28px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: all 0.15s; }
-.color-swatch.selected { border-color: white; transform: scale(1.15); }
+.color-swatch.selected { border-color: var(--swatch-border-selected); transform: scale(1.15); }
 
 .list-color-picker { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 .list-color-swatch { width: 24px; height: 24px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; transition: all 0.15s; }
-.list-color-swatch.selected { border-color: white; transform: scale(1.2); }
+.list-color-swatch.selected { border-color: var(--swatch-border-selected); transform: scale(1.2); }
 
 /* ── HAMBURGER ── */
 .hamburger {
@@ -444,6 +444,7 @@ select option { background: var(--surface2); }
 }
 .ls-signout { font-size: 12px; color: #666666; color: var(--text-muted); cursor: pointer; transition: color 0.15s; display: block; }
 .ls-signout:hover { color: #FF6B6B; color: var(--p-high); }
+.theme-toggle-btn { background: none; border: none; cursor: pointer; width: 100%; text-align: left; padding: 0; margin-bottom: 6px; }
 
 /* Left sidebar — collapsed state (class added to .app by JS) */
 .app.ls-collapsed .left-sidebar        { width: 60px; }

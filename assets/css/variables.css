@@ -30,6 +30,9 @@
   --p-low:    #6BCB77;
   --p-low-bg: rgba(107, 203, 119, 0.12);
 
+  /* ── Misc ── */
+  --swatch-border-selected: white;
+
   /* ── Shape ── */
   --radius:    14px;
   --radius-sm: 8px;
@@ -40,6 +43,7 @@
 
   /* ── Spacing scale ── */
   --sp-1: 4px;
+
   --sp-2: 8px;
   --sp-3: 12px;
   --sp-4: 16px;
@@ -47,4 +51,24 @@
   --sp-6: 32px;
   --sp-7: 48px;
   --sp-8: 64px;
+}
+
+/* ── LIGHT MODE OVERRIDES ─────────────────────────────────────────────────── */
+html[data-theme="light"] {
+  --bg:       #F7F6F2;
+  --surface:  #FFFFFF;
+  --surface2: #F0EFEB;
+  --surface3: #E8E7E3;
+
+  --border:  #E0DFDA;
+  --border2: #CECDC8;
+
+  --text:       #1A1918;
+  --text-muted: #8A8885;
+  --text-dim:   #B5B3AE;
+
+  --accent:     #C4A96E;
+  --accent-dim: rgba(196, 169, 110, 0.12);
+
+  --swatch-border-selected: #1A1918;
 }

@@ -909,6 +909,7 @@ async function init() {
   const { data: { session } } = await _sb.auth.getSession();
   if (!session) { window.location.href = '../login.html'; return; }
   _uid = session.user.id;
+  VG_THEME.sync();
   await loadAll();
   renderSidebar();
   renderTasks();
