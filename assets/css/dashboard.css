@@ -664,6 +664,28 @@
 .goals-placeholder-icon { font-size: 28px; opacity: 0.25; }
 .goals-placeholder-label { font-size: 12px; font-weight: 300; }
 
+/* ── GREETING SOLAR ARC ── */
+.greeting-solar {
+  flex: 1;
+  min-height: 80px;
+  display: flex;
+  align-items: flex-end;
+  padding-top: 12px;
+  overflow: hidden;
+}
+.greeting-solar svg { display: block; overflow: visible; width: 100%; }
+.greeting-solar-night {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  gap: 6px;
+  padding-top: 12px;
+}
+.greeting-solar-moon { font-size: 26px; line-height: 1; opacity: 0.45; }
+.greeting-solar-msg { font-size: 11px; color: var(--text-muted); }
+
 /* ── WIDGET OPTIONS BUTTON ── */
 .widget-options-btn {
   background: none;

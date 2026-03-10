@@ -214,6 +214,7 @@ let dashTags = [];
 const dashTagOpen      = {};   // { widgetId: boolean }
 const dashSelectedTags = {};   // { widgetId: string[] }
 const dashInlineTagColor = {}; // { widgetId: string }
+const greetingSolarData  = {}; // { widgetId: { sunrise: Date, sunset: Date, isFallback: boolean } }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -442,8 +443,9 @@ function loadGreeting(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
   const config = widget.config || {};
-  const showTime = config.show_time !== false;
-  const showDate = config.show_date !== false;
+  const showTime  = config.show_time  !== false;
+  const showDate  = config.show_date  !== false;
+  const showSolar = config.show_solar !== false;
   const now = new Date();
   const h = now.getHours();
   const name = currentUser?.user_metadata?.display_name;
@@ -456,14 +458,158 @@ function loadGreeting(widget) {
     <div class="greeting-msg">${msg}</div>
     ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
   `;
+
+  if (widget.size === 'large' && showSolar) {
+    el.innerHTML += `<div class="greeting-solar" data-solar-update="${widget.id}"></div>`;
+    const solarEl = el.querySelector('.greeting-solar');
+    if (greetingSolarData[widget.id]) {
+      renderSolarArc(solarEl, greetingSolarData[widget.id], now);
+    } else {
+      getGeoCoords()
+        .then(({ lat, lng }) => {
+          const times = getSunTimes(lat, lng) || getFallbackSunTimes();
+          greetingSolarData[widget.id] = times;
+          renderSolarArc(solarEl, times, new Date());
+        })
+        .catch(() => {
+          const times = getFallbackSunTimes();
+          greetingSolarData[widget.id] = times;
+          renderSolarArc(solarEl, times, new Date());
+        });
+    }
+  }
 }
 
 function updateGreetingClocks() {
   const now = new Date();
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
-  document.querySelectorAll('[data-clock="true"]').forEach(el => {
-    el.textContent = timeStr;
+  document.querySelectorAll('[data-clock="true"]').forEach(el => { el.textContent = timeStr; });
+  document.querySelectorAll('[data-solar-update]').forEach(solarEl => {
+    const wid = solarEl.dataset.solarUpdate;
+    const times = greetingSolarData[wid];
+    if (times) renderSolarArc(solarEl, times, now);
   });
+}
+
+// ── SOLAR ARC ─────────────────────────────────────────────────────────────────
+
+async function getGeoCoords() {
+  try {
+    const cached = JSON.parse(localStorage.getItem('vg-geo') || 'null');
+    if (cached && Date.now() - cached.ts < 86400000)
+      return { lat: cached.lat, lng: cached.lng };
+  } catch(_) {}
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) { reject('unavailable'); return; }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        localStorage.setItem('vg-geo', JSON.stringify({ lat, lng, ts: Date.now() }));
+        resolve({ lat, lng });
+      },
+      err => reject(err),
+      { timeout: 6000, maximumAge: 86400000 }
+    );
+  });
+}
+
+function getSunTimes(lat, lng) {
+  const now = new Date();
+  const JD = Math.floor(now.getTime() / 86400000) + 2440587.5;
+  const n = Math.round(JD - 2451545.009 + lng / 360);
+  const Jstar = 2451545.009 - lng / 360 + n;
+  const M = ((357.5291 + 0.98560028 * (Jstar - 2451545)) % 360 + 360) % 360;
+  const Mrad = M * Math.PI / 180;
+  const C = 1.9148 * Math.sin(Mrad) + 0.02 * Math.sin(2 * Mrad) + 0.0003 * Math.sin(3 * Mrad);
+  const lambda = (M + C + 180 + 102.9372) % 360;
+  const Jtransit = Jstar + 0.0053 * Math.sin(Mrad) - 0.0069 * Math.sin(2 * lambda * Math.PI / 180);
+  const lambdaRad = lambda * Math.PI / 180;
+  const sinDec = Math.sin(lambdaRad) * Math.sin(23.4397 * Math.PI / 180);
+  const dec = Math.asin(sinDec);
+  const latRad = lat * Math.PI / 180;
+  const cosW = (Math.sin(-0.8333 * Math.PI / 180) - Math.sin(latRad) * sinDec) /
+               (Math.cos(latRad) * Math.cos(dec));
+  if (Math.abs(cosW) > 1) return null;
+  const W = Math.acos(cosW) * 180 / Math.PI;
+  const toDate = jd => new Date((jd - 2440587.5) * 86400000);
+  return { sunrise: toDate(Jtransit - W / 360), sunset: toDate(Jtransit + W / 360), isFallback: false };
+}
+
+function getFallbackSunTimes() {
+  const d = new Date();
+  const sr = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 6, 30);
+  const ss = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 19, 30);
+  return { sunrise: sr, sunset: ss, isFallback: true };
+}
+
+function renderSolarArc(el, times, now) {
+  const { sunrise, sunset, isFallback } = times;
+  const srMs = sunrise.getTime(), ssMs = sunset.getTime(), nowMs = now.getTime();
+  const isDay = nowMs >= srMs && nowMs <= ssMs;
+
+  // CSS variable values
+  const style = getComputedStyle(document.documentElement);
+  const accent  = style.getPropertyValue('--accent').trim()     || '#E8D5B0';
+  const border2 = style.getPropertyValue('--border2').trim()    || '#3A3A38';
+  const textMut = style.getPropertyValue('--text-muted').trim() || '#888';
+
+  if (!isDay) {
+    // Nighttime: show moon + countdown
+    const nextSunrise = nowMs < srMs ? sunrise : new Date(sunrise.getTime() + 86400000);
+    const minsUntil = Math.round((nextSunrise.getTime() - nowMs) / 60000);
+    const hrs = Math.floor(minsUntil / 60), mins = minsUntil % 60;
+    const countdown = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+    el.innerHTML = `
+      <div class="greeting-solar-night">
+        <div class="greeting-solar-moon">☽</div>
+        <div class="greeting-solar-msg">Sunrise in ${countdown}</div>
+      </div>`;
+    return;
+  }
+
+  // Daytime arc
+  const W = 400, H = 90;
+  const cx = W / 2, cy = H;
+  const r = W / 2 - 12;
+  const leftX = cx - r, rightX = cx + r;
+
+  const p = Math.max(0.001, Math.min(0.999, (nowMs - srMs) / (ssMs - srMs)));
+  const angle = (1 - p) * Math.PI;
+  const sunX = cx + r * Math.cos(angle);
+  const sunY = cy - r * Math.sin(angle);
+
+  // Filled arc from left to sun position
+  const fillAngle = (1 - Math.min(p, 0.9995)) * Math.PI;
+  const fillX = cx + r * Math.cos(fillAngle);
+  const fillY = cy - r * Math.sin(fillAngle);
+  const largeArc = p > 0.5 ? 1 : 0;
+
+  const fmtTime = d => d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  const srLabel = isFallback ? '' : fmtTime(sunrise);
+  const ssLabel = isFallback ? '' : fmtTime(sunset);
+
+  el.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H + 22}" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="sg">
+          <feGaussianBlur stdDeviation="3.5" result="b"/>
+          <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+      </defs>
+      <!-- Background arc -->
+      <path d="M ${leftX} ${cy} A ${r} ${r} 0 0 1 ${rightX} ${cy}"
+            fill="none" stroke="${border2}" stroke-width="1.5"/>
+      <!-- Filled arc (sunrise → now) -->
+      <path d="M ${leftX} ${cy} A ${r} ${r} 0 ${largeArc} 1 ${fillX} ${fillY}"
+            fill="none" stroke="${accent}" stroke-width="2" opacity="0.55"/>
+      <!-- Sun dot -->
+      <circle cx="${sunX}" cy="${sunY}" r="6" fill="${accent}" filter="url(#sg)"/>
+      <!-- Horizon baseline -->
+      <line x1="${leftX - 6}" y1="${cy}" x2="${rightX + 6}" y2="${cy}"
+            stroke="${border2}" stroke-width="1" opacity="0.4"/>
+      ${srLabel ? `<text x="${leftX + 2}" y="${cy + 16}" font-size="9.5" fill="${textMut}" font-family="Geist,sans-serif">↑ ${srLabel}</text>` : ''}
+      ${ssLabel ? `<text x="${rightX - 2}" y="${cy + 16}" font-size="9.5" fill="${textMut}" font-family="Geist,sans-serif" text-anchor="end">↓ ${ssLabel}</text>` : ''}
+    </svg>`;
 }
 
 // TASKS TODAY ─────────────────────────────────────────────────────────────────
@@ -1194,7 +1340,8 @@ function buildOptionsForm(widget, config, habits) {
   if (type === 'greeting') {
     rows = `
       ${woToggle('wo-show-time', 'Show time', config.show_time !== false)}
-      ${woToggle('wo-show-date', 'Show date', config.show_date !== false)}`;
+      ${woToggle('wo-show-date', 'Show date', config.show_date !== false)}
+      ${woToggle('wo-show-solar', 'Solar arc (large size only)', config.show_solar !== false)}`;
 
   } else if (type === 'tasks-today') {
     const listOpts = dashLists.map(l =>
@@ -1362,8 +1509,9 @@ function saveWidgetOptions() {
 
   const newConfig = {};
   if (type === 'greeting') {
-    newConfig.show_time = getOn('wo-show-time');
-    newConfig.show_date = getOn('wo-show-date');
+    newConfig.show_time  = getOn('wo-show-time');
+    newConfig.show_date  = getOn('wo-show-date');
+    newConfig.show_solar = getOn('wo-show-solar');
   } else if (type === 'tasks-today') {
     newConfig.limit = getInt('wo-limit') || 8;
     newConfig.list_id = getVal('wo-list') || null;
