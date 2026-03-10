@@ -181,6 +181,11 @@ const JOURNAL_PROMPTS = [
   "At the end of this year, what do you most want to be able to say you did?",
 ];
 
+const TAG_COLORS = [
+  '#7B9EC4','#B87A8A','#C09A50','#5A9B80','#8C7EC0',
+  '#B87856','#4E9BAC','#A87860','#A89060','#628E92','#9A5872','#6A9660',
+];
+
 let widgets = [];
 let editMode = false;
 let dragSrcIdx = null;
@@ -190,7 +195,9 @@ let clockInterval = null;
 let dashLists = [];
 let dashTags = [];
 const ftPriority = {};
-const ftSelectedTags = {};
+const dashTagOpen      = {};   // { widgetId: boolean }
+const dashSelectedTags = {};   // { widgetId: string[] }
+const dashInlineTagColor = {}; // { widgetId: string }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -706,18 +713,16 @@ async function loadDashTags() {
 
 function loadQuickTask(widget) {
   const wid = widget.id;
-  if (!ftPriority[wid]) ftPriority[wid] = null;
-  if (!ftSelectedTags[wid]) ftSelectedTags[wid] = new Set();
+  if (!ftPriority[wid])         ftPriority[wid]         = null;
+  if (!dashSelectedTags[wid])   dashSelectedTags[wid]   = [];
+  if (!dashTagOpen[wid])        dashTagOpen[wid]         = false;
+  if (!dashInlineTagColor[wid]) dashInlineTagColor[wid]  = TAG_COLORS[0];
 
   const el = document.getElementById(`wb-${wid}`);
   if (!el) return;
 
   const listOptions = dashLists.map(l =>
     `<option value="${l.id}">${esc(l.name)}</option>`
-  ).join('');
-
-  const tagChips = dashTags.map(t =>
-    `<span class="ft-tag-chip" data-tag-id="${t.id}" style="--tag-color:${t.color}" onclick="toggleDashTag('${wid}','${t.id}',this)">${esc(t.name)}</span>`
   ).join('');
 
   el.innerHTML = `
@@ -735,7 +740,31 @@ function loadQuickTask(widget) {
         <button type="button" class="ft-priority-pill" data-p="medium" onclick="toggleDashPriority('${wid}','medium',this)">Med</button>
         <button type="button" class="ft-priority-pill" data-p="low" onclick="toggleDashPriority('${wid}','low',this)">Low</button>
       </div>
-      ${tagChips ? `<div class="ft-tag-row">${tagChips}</div>` : ''}
+      <div class="tag-dropdown-wrap" id="tag-dropdown-wrap-${wid}">
+        <div class="tag-dropdown-trigger" id="tag-dropdown-trigger-${wid}" onclick="toggleDashTagDropdown(event,'${wid}')">
+          <div class="tag-dropdown-selected" id="tag-dropdown-selected-${wid}">
+            <span class="tag-dropdown-placeholder">Select tags...</span>
+          </div>
+          <span class="tag-dropdown-arrow">▼</span>
+        </div>
+        <div class="tag-dropdown-menu" id="tag-dropdown-menu-${wid}">
+          <div id="tag-dropdown-options-${wid}"></div>
+          <div class="tag-dropdown-divider"></div>
+          <div class="tag-dropdown-add" onclick="showDashInlineTagForm('${wid}')">
+            <span style="font-size:16px;line-height:1;">+</span> Add new tag
+          </div>
+          <div class="tag-inline-form" id="tag-inline-form-${wid}">
+            <span class="tag-inline-form-label">Tag Name</span>
+            <input type="text" id="inline-tag-name-${wid}" placeholder="e.g. urgent, waiting...">
+            <span class="tag-inline-form-label">Color</span>
+            <div class="tag-inline-swatches" id="inline-tag-swatches-${wid}"></div>
+            <div class="tag-inline-actions">
+              <button type="button" class="tag-inline-btn" onclick="hideDashInlineTagForm('${wid}')">Cancel</button>
+              <button type="button" class="tag-inline-btn primary" onclick="saveDashInlineTag('${wid}')">Create &amp; Select</button>
+            </div>
+          </div>
+        </div>
+      </div>
       <textarea class="ft-notes" id="ft-notes-${wid}" placeholder="Notes (optional)" rows="2"></textarea>
       <div class="ft-submit-row">
         <button class="quick-add-btn" type="submit">Add Task</button>
@@ -743,6 +772,8 @@ function loadQuickTask(widget) {
       </div>
     </form>
   `;
+
+  renderDashTagDropdown(wid);
 }
 
 function toggleDashPriority(wid, priority, btn) {
@@ -753,15 +784,85 @@ function toggleDashPriority(wid, priority, btn) {
   if (ftPriority[wid]) btn.classList.add('active');
 }
 
-function toggleDashTag(wid, tagId, el) {
-  if (!ftSelectedTags[wid]) ftSelectedTags[wid] = new Set();
-  if (ftSelectedTags[wid].has(tagId)) {
-    ftSelectedTags[wid].delete(tagId);
-    el.classList.remove('active');
+// ── TAG DROPDOWN (mirrors tasks.js pattern, scoped per widget) ────────────────
+
+function renderDashTagDropdown(wid) {
+  const opts = document.getElementById(`tag-dropdown-options-${wid}`);
+  if (!opts) return;
+  const selected = dashSelectedTags[wid] || [];
+
+  opts.innerHTML = dashTags.map(t => `
+    <div class="tag-dropdown-option ${selected.includes(t.id) ? 'selected' : ''}"
+         onclick="toggleDashTaskTag('${wid}','${t.id}')">
+      <span class="option-dot" style="background:${t.color};"></span>
+      <span style="color:${t.color};font-weight:500;">${esc(t.name)}</span>
+      <span class="option-check">${selected.includes(t.id) ? '✓' : ''}</span>
+    </div>`).join('');
+
+  const sel = document.getElementById(`tag-dropdown-selected-${wid}`);
+  if (!sel) return;
+  if (selected.length) {
+    sel.innerHTML = selected.map(tid => {
+      const t = dashTags.find(x => x.id === tid);
+      return t ? `<span class="tag-chip" style="background:${t.color}28;color:${t.color};padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;">${esc(t.name)}</span>` : '';
+    }).join('');
   } else {
-    ftSelectedTags[wid].add(tagId);
-    el.classList.add('active');
+    sel.innerHTML = `<span class="tag-dropdown-placeholder">Select tags...</span>`;
   }
+}
+
+function toggleDashTagDropdown(e, wid) {
+  e.stopPropagation();
+  dashTagOpen[wid] = !dashTagOpen[wid];
+  document.getElementById(`tag-dropdown-trigger-${wid}`)?.classList.toggle('open', dashTagOpen[wid]);
+  document.getElementById(`tag-dropdown-menu-${wid}`)?.classList.toggle('open', dashTagOpen[wid]);
+  if (!dashTagOpen[wid]) hideDashInlineTagForm(wid);
+}
+
+function toggleDashTaskTag(wid, tid) {
+  if (!dashSelectedTags[wid]) dashSelectedTags[wid] = [];
+  if (dashSelectedTags[wid].includes(tid)) {
+    dashSelectedTags[wid] = dashSelectedTags[wid].filter(x => x !== tid);
+  } else {
+    dashSelectedTags[wid].push(tid);
+  }
+  renderDashTagDropdown(wid);
+}
+
+function showDashInlineTagForm(wid) {
+  dashInlineTagColor[wid] = TAG_COLORS[0];
+  const nameEl = document.getElementById(`inline-tag-name-${wid}`);
+  if (nameEl) { nameEl.value = ''; nameEl.style.borderColor = ''; }
+  const sw = document.getElementById(`inline-tag-swatches-${wid}`);
+  if (sw) sw.innerHTML = TAG_COLORS.map((c, i) => `
+    <div class="tag-inline-swatch ${i === 0 ? 'selected' : ''}" style="background:${c}"
+         onclick="selectDashInlineTagColor('${wid}','${c}',this)"></div>`).join('');
+  document.getElementById(`tag-inline-form-${wid}`)?.classList.add('show');
+  setTimeout(() => document.getElementById(`inline-tag-name-${wid}`)?.focus(), 80);
+}
+
+function hideDashInlineTagForm(wid) {
+  document.getElementById(`tag-inline-form-${wid}`)?.classList.remove('show');
+}
+
+function selectDashInlineTagColor(wid, c, el) {
+  dashInlineTagColor[wid] = c;
+  document.querySelectorAll(`#inline-tag-swatches-${wid} .tag-inline-swatch`).forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+async function saveDashInlineTag(wid) {
+  const nameEl = document.getElementById(`inline-tag-name-${wid}`);
+  const name = nameEl?.value.trim();
+  if (!name) { if (nameEl) nameEl.style.borderColor = 'var(--p-high)'; return; }
+  if (nameEl) nameEl.style.borderColor = '';
+  const newTag = { id: crypto.randomUUID(), name: name.toLowerCase(), color: dashInlineTagColor[wid] || TAG_COLORS[0] };
+  dashTags.push(newTag);
+  await DB.from('tags').insert({ ...newTag, user_id: currentUser.id });
+  if (!dashSelectedTags[wid]) dashSelectedTags[wid] = [];
+  dashSelectedTags[wid].push(newTag.id);
+  hideDashInlineTagForm(wid);
+  renderDashTagDropdown(wid);
 }
 
 async function fullAddTask(e, wid) {
@@ -774,7 +875,7 @@ async function fullAddTask(e, wid) {
   const dueDate = document.getElementById(`ft-due-${wid}`)?.value || null;
   const notes = document.getElementById(`ft-notes-${wid}`)?.value.trim() || null;
   const priority = ftPriority[wid] || null;
-  const tagIds = ftSelectedTags[wid] ? [...ftSelectedTags[wid]] : [];
+  const tagIds = dashSelectedTags[wid] ? [...dashSelectedTags[wid]] : [];
 
   const task = {
     id: crypto.randomUUID(),
@@ -807,8 +908,8 @@ async function fullAddTask(e, wid) {
     document.getElementById(`ft-priority-${wid}`)?.querySelectorAll('.ft-priority-pill.active').forEach(b => b.classList.remove('active'));
 
     // Reset tags
-    if (ftSelectedTags[wid]) ftSelectedTags[wid].clear();
-    document.querySelectorAll(`#wb-${wid} .ft-tag-chip.active`).forEach(c => c.classList.remove('active'));
+    dashSelectedTags[wid] = [];
+    renderDashTagDropdown(wid);
 
     const okEl = document.getElementById(`ft-ok-${wid}`);
     if (okEl) { okEl.classList.add('show'); setTimeout(() => okEl.classList.remove('show'), 2000); }
@@ -924,6 +1025,18 @@ function closeMobileMenus() {
   _leftSidebar.classList.remove('mobile-open');
   _overlay.classList.remove('show');
 }
+
+// Close any open tag dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+  Object.keys(dashTagOpen).forEach(wid => {
+    if (dashTagOpen[wid] && !document.getElementById(`tag-dropdown-wrap-${wid}`)?.contains(e.target)) {
+      dashTagOpen[wid] = false;
+      document.getElementById(`tag-dropdown-trigger-${wid}`)?.classList.remove('open');
+      document.getElementById(`tag-dropdown-menu-${wid}`)?.classList.remove('open');
+      hideDashInlineTagForm(wid);
+    }
+  });
+});
 
 init();
 </script>
