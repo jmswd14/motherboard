@@ -418,6 +418,9 @@
   gap: 12px;
 }
 
+/* ── MODAL Z-INDEX — must sit above detail-overlay (2000) ── */
+#add-asset-modal, #log-value-modal { z-index: 3000; }
+
 /* ── CONFIRM DELETE ── */
 #fin-confirm-delete-modal { z-index: 4000; }
 
