@@ -383,6 +383,33 @@
 /* ── CONFIRM DELETE ── */
 #fin-confirm-delete-modal { z-index: 4000; }
 
+/* ── INPUT WITH INLINE PREFIX ── */
+.input-prefix-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-prefix {
+  position: absolute;
+  left: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  pointer-events: none;
+  user-select: none;
+}
+.input-with-prefix {
+  padding-left: 26px !important;
+}
+
+/* ── FORM HINT ── */
+.form-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  line-height: 1.4;
+  min-height: 1em;
+}
+
 /* ── MISC ── */
 .fin-section-title {
   font-size: 11px;

@@ -205,48 +205,33 @@
       <label>Asset Name <span style="color:var(--p-high);">*</span></label>
       <input type="text" id="asset-name-input" placeholder="e.g. Chase Checking, My IRA...">
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>Type <span style="color:var(--p-high);">*</span></label>
-        <select id="asset-type-input">
-          <option value="Checking">Checking</option>
-          <option value="Savings">Savings</option>
-          <option value="Retirement">Retirement</option>
-          <option value="Brokerage">Brokerage</option>
-          <option value="Real Estate">Real Estate</option>
-          <option value="Crypto">Crypto</option>
-          <option value="Business">Business</option>
-          <option value="Physical">Physical</option>
-          <option value="Cash">Cash</option>
-          <option value="Other">Other</option>
-        </select>
-      </div>
-      <div class="form-group">
-        <label>Currency</label>
-        <select id="asset-currency-input">
-          <option value="USD">USD</option>
-          <option value="GBP">GBP</option>
-          <option value="EUR">EUR</option>
-          <option value="CAD">CAD</option>
-          <option value="AUD">AUD</option>
-          <option value="CHF">CHF</option>
-          <option value="JPY">JPY</option>
-          <option value="CNY">CNY</option>
-          <option value="HKD">HKD</option>
-          <option value="SGD">SGD</option>
-          <option value="BTC">BTC</option>
-          <option value="ETH">ETH</option>
-        </select>
-      </div>
+    <div class="form-group">
+      <label>Type <span style="color:var(--p-high);">*</span></label>
+      <select id="asset-type-input">
+        <option value="Brokerage/Investments">Brokerage/Investments</option>
+        <option value="Business Equity">Business Equity</option>
+        <option value="Cash">Cash</option>
+        <option value="Checking &amp; Savings">Checking &amp; Savings</option>
+        <option value="Crypto">Crypto</option>
+        <option value="Physical Assets">Physical Assets</option>
+        <option value="Real Estate">Real Estate</option>
+        <option value="Retirement">Retirement</option>
+      </select>
     </div>
     <div class="form-row">
       <div class="form-group">
         <label>Update reminder day</label>
-        <input type="number" id="asset-cycle-input" placeholder="e.g. 1 (1st of month)" min="1" max="28">
+        <select id="asset-cycle-input" onchange="updateCycleHelperText()">
+          <option value="">No reminder</option>
+        </select>
+        <div class="form-hint" id="cycle-helper-text"></div>
       </div>
       <div class="form-group" id="initial-value-group">
         <label>Initial Value</label>
-        <input type="number" id="asset-initial-input" placeholder="0.00" step="0.01">
+        <div class="input-prefix-wrap">
+          <span class="input-prefix">$</span>
+          <input type="number" id="asset-initial-input" class="input-with-prefix" placeholder="0.00" step="0.01">
+        </div>
       </div>
     </div>
     <div class="form-group">
@@ -304,39 +289,21 @@
 
 const DB = window.supabaseClient;
 
-// Hardcoded FX rates to USD
-const FX = {
-  USD: 1,
-  GBP: 1.27,
-  EUR: 1.08,
-  CAD: 0.74,
-  AUD: 0.65,
-  CHF: 1.13,
-  JPY: 0.0067,
-  CNY: 0.14,
-  HKD: 0.13,
-  SGD: 0.75,
-  BTC: 85000,
-  ETH: 2000,
-};
-
 const ASSET_TYPES = [
-  'Checking','Savings','Retirement','Brokerage',
-  'Real Estate','Crypto','Business','Physical','Cash','Other'
+  'Brokerage/Investments','Business Equity','Cash','Checking & Savings',
+  'Crypto','Physical Assets','Real Estate','Retirement'
 ];
 
 // Type -> accent color dot
 const TYPE_COLORS = {
-  'Checking':    '#7BA3C8',
-  'Savings':     '#6BBFA0',
-  'Retirement':  '#E8D5B0',
-  'Brokerage':   '#A78BCA',
-  'Real Estate': '#C8A67B',
-  'Crypto':      '#7BC8C0',
-  'Business':    '#C87B7B',
-  'Physical':    '#B0C87B',
-  'Cash':        '#C8C07B',
-  'Other':       '#888888',
+  'Brokerage/Investments': '#A78BCA',
+  'Business Equity':       '#C87B7B',
+  'Cash':                  '#C8C07B',
+  'Checking & Savings':    '#7BA3C8',
+  'Crypto':                '#7BC8C0',
+  'Physical Assets':       '#B0C87B',
+  'Real Estate':           '#C8A67B',
+  'Retirement':            '#E8D5B0',
 };
 
 // ── STATE ──────────────────────────────────────────────────────────────────────
@@ -355,6 +322,7 @@ async function init() {
   if (!session) { window.location.href = '../login.html'; return; }
   currentUser = session.user;
 
+  buildCycleSelect();
   await loadData();
   renderAll();
   updateSidebarDate();
@@ -380,23 +348,12 @@ async function signOut() {
   window.location.href = '../login.html';
 }
 
-// ── CURRENCY ──────────────────────────────────────────────────────────────────
-
-function toUSD(value, currency) {
-  return value * (FX[currency] || 1);
-}
+// ── FORMAT ────────────────────────────────────────────────────────────────────
 
 function fmtUSD(v) {
   if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
   if (Math.abs(v) >= 1e3) return '$' + Math.round(v).toLocaleString();
   return '$' + v.toFixed(2);
-}
-
-function fmtNative(v, currency) {
-  const sym = { USD:'$',GBP:'£',EUR:'€',CAD:'CA$',AUD:'A$',CHF:'CHF ',JPY:'¥',CNY:'¥',HKD:'HK$',SGD:'S$',BTC:'₿',ETH:'Ξ' }[currency] || '';
-  if (currency === 'BTC' || currency === 'ETH') return sym + v.toFixed(4);
-  if (currency === 'JPY') return sym + Math.round(v).toLocaleString();
-  return sym + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
 }
 
 // ── LATEST LOG VALUE ──────────────────────────────────────────────────────────
@@ -407,10 +364,10 @@ function getLatestLog(assetId) {
   return assetLogs[assetLogs.length - 1]; // sorted asc by logged_at
 }
 
-function getAssetCurrentUSD(asset) {
+function getAssetCurrentValue(asset) {
   const log = getLatestLog(asset.id);
   if (!log) return 0;
-  return toUSD(parseFloat(log.value), asset.currency);
+  return parseFloat(log.value);
 }
 
 // ── DUE-FOR-UPDATE CHECK ──────────────────────────────────────────────────────
@@ -433,11 +390,11 @@ function getDueAssets() {
 // ── NET WORTH CALCULATION ─────────────────────────────────────────────────────
 
 function calcNetWorth() {
-  return assets.reduce((sum, a) => sum + getAssetCurrentUSD(a), 0);
+  return assets.reduce((sum, a) => sum + getAssetCurrentValue(a), 0);
 }
 
 // For the 12-month chart: for each month, find each asset's most recent log
-// on or before the last day of that month, sum in USD.
+// on or before the last day of that month, sum values.
 function calcMonthlyNetWorth() {
   const now = new Date();
   const months = [];
@@ -454,7 +411,7 @@ function calcMonthlyNetWorth() {
       const assetLogs = logs.filter(l => l.asset_id === asset.id && l.logged_at <= cutoff);
       if (assetLogs.length) {
         const latest = assetLogs[assetLogs.length - 1];
-        total += toUSD(parseFloat(latest.value), asset.currency);
+        total += parseFloat(latest.value);
       }
     }
     months.push({ label, total });
@@ -576,7 +533,7 @@ function renderCategoryGrid() {
   const byType = {};
   for (const asset of assets) {
     if (!byType[asset.type]) byType[asset.type] = { total: 0, count: 0 };
-    byType[asset.type].total += getAssetCurrentUSD(asset);
+    byType[asset.type].total += getAssetCurrentValue(asset);
     byType[asset.type].count++;
   }
 
@@ -601,11 +558,9 @@ function renderAssetsView() {
 
   grid.innerHTML = filtered.map(asset => {
     const log = getLatestLog(asset.id);
-    const usd = getAssetCurrentUSD(asset);
     const overdue = isDueForUpdate(asset);
     const color = TYPE_COLORS[asset.type] || '#888';
-    const nativeVal = log ? fmtNative(parseFloat(log.value), asset.currency) : '—';
-    const nativeNote = (asset.currency !== 'USD' && log) ? `${fmtUSD(usd)} USD` : '';
+    const displayVal = log ? fmtUSD(parseFloat(log.value)) : '—';
     const lastDate = log ? formatDate(log.logged_at) : 'No data yet';
 
     return `
@@ -615,8 +570,7 @@ function renderAssetsView() {
           ${esc(asset.type)}
         </div>
         <div class="asset-card-name">${esc(asset.name)}</div>
-        <div class="asset-card-value">${nativeVal}</div>
-        ${nativeNote ? `<div class="asset-card-usd">${esc(nativeNote)}</div>` : '<div class="asset-card-usd"></div>'}
+        <div class="asset-card-value">${displayVal}</div>
         <div class="asset-card-footer">
           <span>Updated ${esc(lastDate)}</span>
           ${overdue ? '<span class="asset-card-overdue-tag">Update due</span>' : ''}
@@ -711,15 +665,13 @@ function renderDetailPanel() {
   if (!currentAsset) return;
   const asset = currentAsset;
   const log = getLatestLog(asset.id);
-  const usd = getAssetCurrentUSD(asset);
 
   document.getElementById('dp-type').textContent = asset.type;
   document.getElementById('dp-name').textContent = asset.name;
 
   if (log) {
-    document.getElementById('dp-value').textContent = fmtNative(parseFloat(log.value), asset.currency);
-    const sub = asset.currency !== 'USD' ? `${fmtUSD(usd)} USD · updated ${formatDate(log.logged_at)}` : `Updated ${formatDate(log.logged_at)}`;
-    document.getElementById('dp-value-sub').textContent = sub;
+    document.getElementById('dp-value').textContent = fmtUSD(parseFloat(log.value));
+    document.getElementById('dp-value-sub').textContent = `Updated ${formatDate(log.logged_at)}`;
   } else {
     document.getElementById('dp-value').textContent = '—';
     document.getElementById('dp-value-sub').textContent = 'No logs yet';
@@ -807,7 +759,7 @@ function renderDetailLogs() {
   list.innerHTML = assetLogs.map(log => `
     <div class="detail-log-row">
       <span class="detail-log-date">${esc(formatDate(log.logged_at))}</span>
-      <span class="detail-log-val">${fmtNative(parseFloat(log.value), currentAsset.currency)}</span>
+      <span class="detail-log-val">${fmtUSD(parseFloat(log.value))}</span>
       ${log.notes ? `<span class="detail-log-notes" title="${esc(log.notes)}">${esc(log.notes)}</span>` : '<span></span>'}
       <button class="detail-log-delete" onclick="confirmDeleteLog('${log.id}')" title="Delete entry">×</button>
     </div>
@@ -836,9 +788,9 @@ function closeModal(id) {
 function resetAssetModal() {
   document.getElementById('editing-asset-id').value = '';
   document.getElementById('asset-name-input').value = '';
-  document.getElementById('asset-type-input').value = 'Checking';
-  document.getElementById('asset-currency-input').value = 'USD';
+  document.getElementById('asset-type-input').value = 'Brokerage/Investments';
   document.getElementById('asset-cycle-input').value = '';
+  document.getElementById('cycle-helper-text').textContent = '';
   document.getElementById('asset-initial-input').value = '';
   document.getElementById('asset-notes-input').value = '';
   document.getElementById('asset-modal-title').textContent = 'New Asset';
@@ -860,17 +812,16 @@ function openEditAsset() {
   document.getElementById('asset-modal-title').textContent = 'Edit Asset';
   document.getElementById('asset-name-input').value = a.name;
   document.getElementById('asset-type-input').value = a.type;
-  document.getElementById('asset-currency-input').value = a.currency || 'USD';
   document.getElementById('asset-cycle-input').value = a.update_cycle_day || '';
   document.getElementById('asset-notes-input').value = a.notes || '';
   document.getElementById('initial-value-group').style.display = 'none'; // no initial value on edit
+  updateCycleHelperText();
   openModal('add-asset-modal');
 }
 
 async function saveAsset() {
   const name = document.getElementById('asset-name-input').value.trim();
   const type = document.getElementById('asset-type-input').value;
-  const currency = document.getElementById('asset-currency-input').value;
   const cycleDay = parseInt(document.getElementById('asset-cycle-input').value) || null;
   const notes = document.getElementById('asset-notes-input').value.trim() || null;
   const initialVal = parseFloat(document.getElementById('asset-initial-input').value);
@@ -880,11 +831,11 @@ async function saveAsset() {
 
   if (editingId) {
     // Update
-    const { error } = await DB.from('assets').update({ name, type, currency, update_cycle_day: cycleDay, notes })
+    const { error } = await DB.from('assets').update({ name, type, update_cycle_day: cycleDay, notes })
       .eq('id', editingId).eq('user_id', currentUser.id);
     if (error) { console.error(error); return; }
     const idx = assets.findIndex(a => a.id === editingId);
-    if (idx !== -1) assets[idx] = { ...assets[idx], name, type, currency, update_cycle_day: cycleDay, notes };
+    if (idx !== -1) assets[idx] = { ...assets[idx], name, type, update_cycle_day: cycleDay, notes };
     if (currentAsset && currentAsset.id === editingId) currentAsset = assets[idx];
   } else {
     // Insert
@@ -893,7 +844,7 @@ async function saveAsset() {
       user_id: currentUser.id,
       name,
       type,
-      currency,
+      currency: 'USD',
       update_cycle_day: cycleDay,
       notes,
       created_at: new Date().toISOString(),
@@ -1028,6 +979,35 @@ function formatDateShort(iso) {
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
   const date = new Date(y, m - 1, d);
   return date.toLocaleDateString('default', { month: 'short', year: '2-digit' });
+}
+
+function ordinal(n) {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return n + 'th';
+  switch (n % 10) {
+    case 1: return n + 'st';
+    case 2: return n + 'nd';
+    case 3: return n + 'rd';
+    default: return n + 'th';
+  }
+}
+
+function buildCycleSelect() {
+  const sel = document.getElementById('asset-cycle-input');
+  for (let d = 1; d <= 28; d++) {
+    const opt = document.createElement('option');
+    opt.value = d;
+    opt.textContent = ordinal(d);
+    sel.appendChild(opt);
+  }
+}
+
+function updateCycleHelperText() {
+  const val = parseInt(document.getElementById('asset-cycle-input').value);
+  const hint = document.getElementById('cycle-helper-text');
+  hint.textContent = val
+    ? `We'll remind you to update this asset on the ${ordinal(val)} of each month`
+    : '';
 }
 
 function updateSidebarDate() {
