@@ -301,6 +301,7 @@
 }
 .greeting-msg { font-size: 14px; color: var(--text-dim); }
 .greeting-date { font-size: 12px; color: var(--text-muted); margin-top: 10px; }
+.greeting-location { font-size: 11px; color: var(--text-muted); margin-top: 4px; opacity: 0.7; letter-spacing: 0.02em; }
 
 /* ── TASKS TODAY ── */
 .mini-tasks-list { flex: 1; overflow: hidden; }

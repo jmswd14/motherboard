@@ -439,6 +439,23 @@ function loadAllWidgetData() {
 }
 
 // GREETING ────────────────────────────────────────────────────────────────────
+
+function pickGreeting(h) {
+  // Daily seed — consistent within the day, changes each morning
+  const seed = Math.floor(Date.now() / 86400000);
+  const morning   = ['Good morning', 'Rise and shine', 'Morning', 'Top of the morning', 'Wakey wakey', 'Morning, sunshine', 'Early bird'];
+  const afternoon = ['Good afternoon', 'Afternoon', "Hope the day's treating you well", "Afternoon already?", 'Getting through the day'];
+  const evening   = ['Good evening', 'Evening', 'Hope you had a great day', 'Wind-down time', 'Almost there'];
+  const night     = ['Burning the midnight oil', 'Night owl hours', 'Still at it?', 'Late night session', 'Up late?'];
+  const anytime   = ['Howdy, partner', 'Hey there', 'Hello, friend', 'Salutations', "What's good?", 'Welcome back', 'Well, hello', 'Hey, you'];
+  let pool;
+  if (h < 12)      pool = [...morning, ...anytime];
+  else if (h < 17) pool = [...afternoon, ...anytime];
+  else if (h < 21) pool = [...evening, ...anytime];
+  else             pool = [...night, ...anytime];
+  return pool[seed % pool.length];
+}
+
 function loadGreeting(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
@@ -449,7 +466,7 @@ function loadGreeting(widget) {
   const now = new Date();
   const h = now.getHours();
   const name = currentUser?.user_metadata?.display_name;
-  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = pickGreeting(h);
   const msg = name ? `${greeting}, ${name}.` : `${greeting}.`;
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
@@ -457,27 +474,31 @@ function loadGreeting(widget) {
     ${showTime ? `<div class="greeting-time" data-clock="true">${timeStr}</div>` : ''}
     <div class="greeting-msg">${msg}</div>
     ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
+    <div class="greeting-location" id="gl-${widget.id}"></div>
   `;
 
-  if (widget.size === 'large' && showSolar) {
-    el.innerHTML += `<div class="greeting-solar" data-solar-update="${widget.id}"></div>`;
-    const solarEl = el.querySelector('.greeting-solar');
-    if (greetingSolarData[widget.id]) {
-      renderSolarArc(solarEl, greetingSolarData[widget.id], now);
-    } else {
-      getGeoCoords()
-        .then(({ lat, lng }) => {
-          const times = getSunTimes(lat, lng) || getFallbackSunTimes();
-          greetingSolarData[widget.id] = times;
-          renderSolarArc(solarEl, times, new Date());
-        })
-        .catch(() => {
-          const times = getFallbackSunTimes();
-          greetingSolarData[widget.id] = times;
-          renderSolarArc(solarEl, times, new Date());
-        });
-    }
+  // Populate location and solar arc async
+  function appendSolar(lat, lng) {
+    if (!(widget.size === 'large' && showSolar)) return;
+    const solarDiv = document.createElement('div');
+    solarDiv.className = 'greeting-solar';
+    solarDiv.dataset.solarUpdate = widget.id;
+    el.appendChild(solarDiv);
+    const times = greetingSolarData[widget.id]
+      || (lat !== null ? (getSunTimes(lat, lng) || getFallbackSunTimes()) : getFallbackSunTimes());
+    greetingSolarData[widget.id] = times;
+    renderSolarArc(solarDiv, times, new Date());
   }
+
+  getGeoCoords()
+    .then(({ lat, lng }) => {
+      getLocationName(lat, lng).then(locName => {
+        const locEl = document.getElementById(`gl-${widget.id}`);
+        if (locEl && locName) locEl.textContent = locName;
+      });
+      appendSolar(lat, lng);
+    })
+    .catch(() => appendSolar(null, null));
 }
 
 function updateGreetingClocks() {
@@ -552,6 +573,26 @@ function getFallbackSunTimes() {
   };
 }
 
+async function getLocationName(lat, lng) {
+  try {
+    const cached = JSON.parse(localStorage.getItem('vg-geo-name') || 'null');
+    if (cached && Date.now() - cached.ts < 86400000) return cached.name;
+  } catch(_) {}
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+      { headers: { 'Accept-Language': 'en' } }
+    );
+    const data = await res.json();
+    const addr  = data.address || {};
+    const city  = addr.city || addr.town || addr.village || addr.county || '';
+    const state = addr.state || '';
+    const name  = city && state ? `${city}, ${state}` : city || state || '';
+    if (name) localStorage.setItem('vg-geo-name', JSON.stringify({ name, ts: Date.now() }));
+    return name;
+  } catch(_) { return ''; }
+}
+
 function getMoonPhase() {
   const JD = Date.now() / 86400000 + 2440587.5;
   // Known new moon: JD 2451550.1 (Jan 6, 2000 18:14 UTC)
@@ -598,7 +639,7 @@ function renderSolarArc(el, times, now) {
   // Arc display (daytime + ±1h twilight windows)
   // SVG coordinate system: cx=200, cy=115, r=105
   // Arc spans leftX(95)→rightX(305), peak at y≈10
-  const cx = 200, cy = 115, r = 105;
+  const cx = 200, cy = 90, r = 105;
   const leftX = cx - r, rightX = cx + r;
 
   // Sun progress p: 0=sunrise, 1=sunset (can be slightly outside for twilight)
