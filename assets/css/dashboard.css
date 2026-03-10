@@ -332,38 +332,43 @@
 }
 
 /* ── HABIT CHECK-IN ── */
-.habit-row-mini {
+.habit-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin-bottom: 6px;
+  gap: 12px;
+  transition: border-color 0.15s, background 0.15s;
 }
-.habit-row-mini:last-child { border-bottom: none; }
-.habit-emoji-sm { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
-.habit-name-sm { font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.habit-toggle {
-  width: 30px; height: 17px;
-  border-radius: 9px;
-  background: var(--surface3);
-  border: 1px solid var(--border2);
+.habit-row:last-child { margin-bottom: 0; }
+.habit-row:hover { border-color: var(--border2); }
+.habit-row.habit-done { background: rgba(107,203,119,0.04); border-color: rgba(107,203,119,0.18); }
+.habit-row-left { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+.habit-row-right { display: flex; align-items: center; flex-shrink: 0; }
+.habit-emoji { font-size: 18px; flex-shrink: 0; line-height: 1; width: 22px; text-align: center; }
+.habit-name { font-size: 13px; color: var(--text); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.habit-yn-btns { display: flex; gap: 5px; }
+.habit-yn-btn {
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 13px;
   cursor: pointer;
-  position: relative;
-  transition: background 0.2s, border-color 0.2s;
-  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-family: var(--font-sans);
 }
-.habit-toggle::after {
-  content: '';
-  position: absolute;
-  width: 11px; height: 11px;
-  border-radius: 50%;
-  background: var(--text-muted);
-  top: 2px; left: 2px;
-  transition: all 0.2s;
-}
-.habit-toggle.checked { background: var(--p-low); border-color: var(--p-low); }
-.habit-toggle.checked::after { background: white; left: 15px; }
+.habit-yn-btn:hover { border-color: var(--border2); color: var(--text); }
 
 /* ── UPCOMING EVENTS ── */
 .event-row-mini {
