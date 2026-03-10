@@ -449,10 +449,8 @@ function renderHabitRow(habit) {
   if (habit.type === 'yes_no') {
     const isYes = log != null && log.completed === true;
     const isNo  = log != null && log.completed === false;
-    const hColor = habit.color || SUCCESS_COLOR;
-    const MUTED_RED = '#E07070';
-    const yStyle = isYes ? `background:${hColor};border-color:${hColor};color:#0f0f0f;` : '';
-    const nStyle = isNo  ? `background:${MUTED_RED};border-color:${MUTED_RED};color:#0f0f0f;` : '';
+    const yStyle = isYes ? `background:${SUCCESS_COLOR};border-color:${SUCCESS_COLOR};color:#0f0f0f;` : '';
+    const nStyle = isNo  ? `background:${FAIL_COLOR};border-color:${FAIL_COLOR};color:#0f0f0f;` : '';
     inputHtml = `<div class="habit-yn-btns">
       <button class="habit-yn-btn yn-yes" style="${yStyle}"
               onclick="logYesNo('${habit.id}', true, ${isYes})">✓</button>

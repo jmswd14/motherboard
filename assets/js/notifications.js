@@ -187,8 +187,9 @@
   };
 
   window.clearAllNotifs = async function () {
-    if (!currentUserId) return;
-    await DB.from('notifications').delete().eq('user_id', currentUserId);
+    if (!currentUserId || !notifications.length) return;
+    const ids = notifications.map(n => n.id);
+    await DB.from('notifications').delete().in('id', ids);
     notifications = [];
     renderList();
     await refreshBadge();

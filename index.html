@@ -90,7 +90,7 @@
       </div>
       <div class="dash-topbar-right">
         <button class="add-widget-btn" id="add-widget-btn" onclick="openAddPanel()">+ Add widget</button>
-        <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()">Customise</button>
+        <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()">Customize</button>
       </div>
     </div>
 
@@ -345,7 +345,7 @@ function toggleEditMode() {
     btn.classList.add('done');
     addBtn.classList.add('visible');
   } else {
-    btn.textContent = 'Customise';
+    btn.textContent = 'Customize';
     btn.classList.remove('done');
     addBtn.classList.remove('visible');
     closeAddPanel();
@@ -528,11 +528,10 @@ async function loadHabitCheckin(widget) {
       </div>
       <div style="flex:1;overflow:hidden;">
         ${habits.map(h => {
-          const hColor = h.color || '#6BCB77';
           const isYes  = logMap[h.id] === true;
           const isNo   = logMap[h.id] === false;
-          const yStyle = isYes ? `background:${hColor};border-color:${hColor};color:#0f0f0f;` : '';
-          const nStyle = isNo  ? `background:${MUTED_RED};border-color:${MUTED_RED};color:#0f0f0f;` : '';
+          const yStyle = isYes ? `background:#6BCB77;border-color:#6BCB77;color:#0f0f0f;` : '';
+          const nStyle = isNo  ? `background:#FF6B6B;border-color:#FF6B6B;color:#0f0f0f;` : '';
           return `
             <div class="habit-row${isYes ? ' habit-done' : ''}">
               <div class="habit-row-left">
@@ -541,7 +540,7 @@ async function loadHabitCheckin(widget) {
               </div>
               <div class="habit-row-right">
                 <div class="habit-yn-btns">
-                  <button class="habit-yn-btn yn-yes" data-color="${hColor}" style="${yStyle}"
+                  <button class="habit-yn-btn yn-yes" data-color="#6BCB77" style="${yStyle}"
                           onclick="toggleHabit('${h.id}',true,${isYes},this)">✓</button>
                   <button class="habit-yn-btn yn-no" style="${nStyle}"
                           onclick="toggleHabit('${h.id}',false,${isNo},this)">✗</button>
@@ -559,7 +558,7 @@ async function loadHabitCheckin(widget) {
 }
 
 async function toggleHabit(habitId, completed, wasActive, btnEl) {
-  const MUTED_RED  = '#E07070';
+  const MUTED_RED  = '#FF6B6B';
   const btns       = btnEl.closest('.habit-yn-btns');
   const yesBtn     = btns.querySelector('.yn-yes');
   const noBtn      = btns.querySelector('.yn-no');
