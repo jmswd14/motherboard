@@ -25,6 +25,7 @@
       <div class="notif-panel-header">
         <span class="notif-panel-title">Notifications</span>
         <button class="notif-mark-all-btn" onclick="markAllNotifsRead()">Mark all read</button>
+        <button class="notif-mark-all-btn" onclick="clearAllNotifs()">Clear all</button>
         <button class="notif-panel-close" onclick="closeNotifPanel()">×</button>
       </div>
       <div class="notif-list" id="notif-list">
@@ -181,6 +182,14 @@
     await DB.from('notifications').update({ read: true })
       .eq('user_id', currentUserId).eq('read', false);
     notifications.forEach(n => n.read = true);
+    renderList();
+    await refreshBadge();
+  };
+
+  window.clearAllNotifs = async function () {
+    if (!currentUserId) return;
+    await DB.from('notifications').delete().eq('user_id', currentUserId);
+    notifications = [];
     renderList();
     await refreshBadge();
   };

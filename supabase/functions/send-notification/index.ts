@@ -4,10 +4,31 @@ const RESEND_API_KEY            = Deno.env.get('RESEND_API_KEY') ?? ''
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL') ?? ''
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
 
-// Fix 2 — log env var presence at cold start so it shows in function logs
 console.log('[send-notification] SUPABASE_URL:', SUPABASE_URL ? SUPABASE_URL.slice(0, 10) + '...' : 'MISSING')
 console.log('[send-notification] SUPABASE_SERVICE_ROLE_KEY:', SUPABASE_SERVICE_ROLE_KEY ? SUPABASE_SERVICE_ROLE_KEY.slice(0, 10) + '...' : 'MISSING')
 console.log('[send-notification] RESEND_API_KEY:', RESEND_API_KEY ? RESEND_API_KEY.slice(0, 10) + '...' : 'MISSING')
+
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
+
+function buildEmailHtml(display_name: string | null, body: string, items: string[] | null): string {
+  let html = `<div style="font-family:system-ui,sans-serif;max-width:540px;margin:0 auto;color:#e0e0e0;background:#1a1a1a;padding:32px;border-radius:8px;">`
+  if (display_name) {
+    html += `<p style="margin:0 0 16px;font-size:15px;">Hi ${escapeHtml(display_name)},</p>`
+  }
+  html += `<p style="margin:0 0 16px;font-size:14px;line-height:1.6;">${body}</p>`
+  if (items && items.length > 0) {
+    html += `<ul style="margin:0 0 16px;padding-left:20px;font-size:14px;line-height:1.8;">`
+    for (const item of items) {
+      html += `<li>${escapeHtml(item)}</li>`
+    }
+    html += `</ul>`
+  }
+  html += `<p style="margin:24px 0 0;font-size:12px;color:#666;border-top:1px solid #333;padding-top:16px;">Sent by <a href="https://jameswood.github.io/vanguard" style="color:#E8D5B0;text-decoration:none;">Vanguard</a></p>`
+  html += `</div>`
+  return html
+}
 
 function htmlToPlainText(html: string): string {
   return html
@@ -31,14 +52,16 @@ serve(async (req) => {
   }
 
   try {
-    const { to, subject, html, user_id, type, link } = await req.json()
+    const { to, subject, body, user_id, type, link, items, display_name } = await req.json()
 
-    if (!to || !subject || !html) {
-      return new Response(JSON.stringify({ error: 'Missing required fields: to, subject, html' }), {
+    if (!to || !subject || !body) {
+      return new Response(JSON.stringify({ error: 'Missing required fields: to, subject, body' }), {
         status: 400,
         headers: { 'Content-Type': 'application/json' },
       })
     }
+
+    const emailHtml = buildEmailHtml(display_name ?? null, body, items ?? null)
 
     // ── Send email via Resend ────────────────────────────────────────────────
     const res = await fetch('https://api.resend.com/emails', {
@@ -51,7 +74,7 @@ serve(async (req) => {
         from: 'Vanguard <notifications@resend.dev>',
         to: [to],
         subject,
-        html,
+        html: emailHtml,
       }),
     })
 
@@ -76,6 +99,11 @@ serve(async (req) => {
     } else if (!user_id) {
       console.log('[send-notification] No user_id provided — skipping DB insert')
     } else {
+      // Build a plain-text message from items if available, otherwise strip HTML from body
+      const message = items && items.length > 0
+        ? items.join(', ')
+        : htmlToPlainText(body)
+
       const dbRes = await fetch(`${SUPABASE_URL}/rest/v1/notifications`, {
         method: 'POST',
         headers: {
@@ -88,13 +116,12 @@ serve(async (req) => {
           user_id,
           type:    type || 'system',
           title:   subject,
-          message: htmlToPlainText(html),
+          message,
           read:    false,
           link:    link || null,
         }),
       })
 
-      // Fix 1 — check DB insert result and surface errors
       if (!dbRes.ok) {
         const dbBody = await dbRes.text()
         dbError = `DB insert failed (${dbRes.status}): ${dbBody}`

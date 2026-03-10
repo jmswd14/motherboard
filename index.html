@@ -65,7 +65,7 @@
         <span class="left-nav-label">Finance</span>
       </a>
       <a class="left-nav-item" href="#" onclick="toggleNotifPanel(); return false;">
-        <span class="left-nav-icon notif-icon-wrap">◬<span class="notif-badge" id="notif-badge" style="display:none"></span></span>
+        <span class="left-nav-icon notif-icon-wrap"><svg width="15" height="15" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7a5.002 5.002 0 0 0-3.005-4.901z"/></svg><span class="notif-badge" id="notif-badge" style="display:none"></span></span>
         <span class="left-nav-label">Notifications</span>
       </a>
       <a class="left-nav-item" href="settings/index.html">
@@ -112,7 +112,7 @@ const DB = window.supabaseClient;
 
 const DEFAULT_LAYOUT = [
   { widget_type: 'greeting',        size: 'wide',  position: 0, config: {} },
-  { widget_type: 'quick-task',      size: 'small', position: 1, config: {} },
+  { widget_type: 'quick-task',      size: 'large', position: 1, config: {} },
   { widget_type: 'journal-prompt',  size: 'small', position: 2, config: {} },
   { widget_type: 'tasks-today',     size: 'large', position: 3, config: {} },
   { widget_type: 'habit-checkin',   size: 'wide',  position: 4, config: {} },
@@ -137,7 +137,7 @@ const WIDGET_CATALOG = [
   { type: 'habit-checkin',   size: 'wide',  icon: '◉', name: 'Habit Check-in',  desc: "Check off today's habits" },
   { type: 'upcoming-events', size: 'large', icon: '◫', name: 'Upcoming Events', desc: 'Next 7 days of events' },
   { type: 'habit-streaks',   size: 'wide',  icon: '↑', name: 'Habit Streaks',   desc: 'Your top habit streaks' },
-  { type: 'quick-task',      size: 'small', icon: '+', name: 'Quick Add Task',   desc: 'Add a task instantly' },
+  { type: 'quick-task',      size: 'large', icon: '+', name: 'Quick Add Task',   desc: 'Add a task instantly' },
   { type: 'journal-prompt',  size: 'small', icon: '✦', name: 'Journal Prompt',  desc: 'Daily reflection prompt' },
   { type: 'goals-progress',  size: 'large', icon: '◎', name: 'Goals Progress',  desc: 'Track long-term goals' },
 ];
@@ -187,6 +187,10 @@ let dragSrcIdx = null;
 let currentUser = null;
 let todayStr = '';
 let clockInterval = null;
+let dashLists = [];
+let dashTags = [];
+const ftPriority = {};
+const ftSelectedTags = {};
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -200,7 +204,7 @@ async function init() {
   const dateStr = today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   document.getElementById('dash-date').textContent = dateStr;
 
-  await loadLayout();
+  await Promise.all([loadLayout(), loadDashLists(), loadDashTags()]);
   renderGrid();
   loadAllWidgetData();
 
@@ -414,7 +418,9 @@ function loadGreeting(widget) {
   if (!el) return;
   const now = new Date();
   const h = now.getHours();
-  const msg = h < 12 ? 'Good morning.' : h < 17 ? 'Good afternoon.' : 'Good evening.';
+  const name = currentUser?.user_metadata?.display_name;
+  const greeting = h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+  const msg = name ? `${greeting}, ${name}.` : `${greeting}.`;
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   el.innerHTML = `
@@ -683,43 +689,92 @@ async function loadHabitStreaks(widget) {
   }
 }
 
-// QUICK ADD TASK ──────────────────────────────────────────────────────────────
+// QUICK ADD TASK (full form) ───────────────────────────────────────────────────
+async function loadDashLists() {
+  try {
+    const { data } = await DB.from('lists').select('id, name, color').order('created_at');
+    dashLists = data || [];
+  } catch (e) { dashLists = []; }
+}
+
+async function loadDashTags() {
+  try {
+    const { data } = await DB.from('tags').select('id, name, color').order('name');
+    dashTags = data || [];
+  } catch (e) { dashTags = []; }
+}
+
 function loadQuickTask(widget) {
-  const el = document.getElementById(`wb-${widget.id}`);
+  const wid = widget.id;
+  if (!ftPriority[wid]) ftPriority[wid] = null;
+  if (!ftSelectedTags[wid]) ftSelectedTags[wid] = new Set();
+
+  const el = document.getElementById(`wb-${wid}`);
   if (!el) return;
 
+  const listOptions = dashLists.map(l =>
+    `<option value="${l.id}">${esc(l.name)}</option>`
+  ).join('');
+
+  const tagChips = dashTags.map(t =>
+    `<span class="ft-tag-chip" data-tag-id="${t.id}" style="--tag-color:${t.color}" onclick="toggleDashTag('${wid}','${t.id}',this)">${esc(t.name)}</span>`
+  ).join('');
+
   el.innerHTML = `
-    <form class="quick-add-form" onsubmit="quickAddTask(event,'${widget.id}')">
-      <input
-        class="quick-add-input"
-        type="text"
-        placeholder="What needs doing?"
-        id="qa-name-${widget.id}"
-        autocomplete="off"
-        required
-      >
-      <div class="quick-add-row">
-        <select class="quick-add-select" id="qa-priority-${widget.id}">
-          <option value="">Priority</option>
-          <option value="high">High</option>
-          <option value="medium">Medium</option>
-          <option value="low">Low</option>
+    <form class="full-task-form" onsubmit="fullAddTask(event,'${wid}')">
+      <input class="quick-add-input" type="text" placeholder="Task name" id="ft-name-${wid}" autocomplete="off" required>
+      <div class="ft-two-col">
+        <select class="quick-add-select" id="ft-list-${wid}">
+          <option value="">No list</option>
+          ${listOptions}
         </select>
-        <button class="quick-add-btn" type="submit">Add</button>
+        <input class="ft-date-input" type="date" id="ft-due-${wid}">
       </div>
-      <div class="quick-add-success" id="qa-ok-${widget.id}">Task added</div>
+      <div class="ft-priority-row" id="ft-priority-${wid}">
+        <button type="button" class="ft-priority-pill" data-p="high" onclick="toggleDashPriority('${wid}','high',this)">High</button>
+        <button type="button" class="ft-priority-pill" data-p="medium" onclick="toggleDashPriority('${wid}','medium',this)">Med</button>
+        <button type="button" class="ft-priority-pill" data-p="low" onclick="toggleDashPriority('${wid}','low',this)">Low</button>
+      </div>
+      ${tagChips ? `<div class="ft-tag-row">${tagChips}</div>` : ''}
+      <textarea class="ft-notes" id="ft-notes-${wid}" placeholder="Notes (optional)" rows="2"></textarea>
+      <div class="ft-submit-row">
+        <button class="quick-add-btn" type="submit">Add Task</button>
+        <div class="quick-add-success" id="ft-ok-${wid}">Task added ✓</div>
+      </div>
     </form>
   `;
 }
 
-async function quickAddTask(e, widgetId) {
-  e.preventDefault();
-  const nameEl = document.getElementById(`qa-name-${widgetId}`);
-  const priorityEl = document.getElementById(`qa-priority-${widgetId}`);
-  const okEl = document.getElementById(`qa-ok-${widgetId}`);
+function toggleDashPriority(wid, priority, btn) {
+  const prev = ftPriority[wid];
+  ftPriority[wid] = (prev === priority) ? null : priority;
+  const container = document.getElementById(`ft-priority-${wid}`);
+  if (container) container.querySelectorAll('.ft-priority-pill').forEach(b => b.classList.remove('active'));
+  if (ftPriority[wid]) btn.classList.add('active');
+}
 
+function toggleDashTag(wid, tagId, el) {
+  if (!ftSelectedTags[wid]) ftSelectedTags[wid] = new Set();
+  if (ftSelectedTags[wid].has(tagId)) {
+    ftSelectedTags[wid].delete(tagId);
+    el.classList.remove('active');
+  } else {
+    ftSelectedTags[wid].add(tagId);
+    el.classList.add('active');
+  }
+}
+
+async function fullAddTask(e, wid) {
+  e.preventDefault();
+  const nameEl = document.getElementById(`ft-name-${wid}`);
   const name = nameEl.value.trim();
   if (!name) return;
+
+  const listId = document.getElementById(`ft-list-${wid}`)?.value || null;
+  const dueDate = document.getElementById(`ft-due-${wid}`)?.value || null;
+  const notes = document.getElementById(`ft-notes-${wid}`)?.value.trim() || null;
+  const priority = ftPriority[wid] || null;
+  const tagIds = ftSelectedTags[wid] ? [...ftSelectedTags[wid]] : [];
 
   const task = {
     id: crypto.randomUUID(),
@@ -728,20 +783,38 @@ async function quickAddTask(e, widgetId) {
     completed: false,
     position: 0,
   };
-  if (priorityEl && priorityEl.value) task.priority = priorityEl.value;
+  if (listId)        task.list_id  = listId;
+  if (dueDate)       task.due_date = dueDate;
+  if (notes)         task.notes    = notes;
+  if (priority)      task.priority = priority;
+  if (tagIds.length) task.tags     = tagIds;
 
   try {
     const { error } = await DB.from('tasks').insert(task);
     if (error) throw error;
+
+    // Reset form fields
     nameEl.value = '';
-    if (priorityEl) priorityEl.value = '';
-    if (okEl) {
-      okEl.classList.add('show');
-      setTimeout(() => okEl.classList.remove('show'), 2000);
-    }
+    const listEl = document.getElementById(`ft-list-${wid}`);
+    const dueEl  = document.getElementById(`ft-due-${wid}`);
+    const notesEl = document.getElementById(`ft-notes-${wid}`);
+    if (listEl)  listEl.value  = '';
+    if (dueEl)   dueEl.value   = '';
+    if (notesEl) notesEl.value = '';
+
+    // Reset priority
+    ftPriority[wid] = null;
+    document.getElementById(`ft-priority-${wid}`)?.querySelectorAll('.ft-priority-pill.active').forEach(b => b.classList.remove('active'));
+
+    // Reset tags
+    if (ftSelectedTags[wid]) ftSelectedTags[wid].clear();
+    document.querySelectorAll(`#wb-${wid} .ft-tag-chip.active`).forEach(c => c.classList.remove('active'));
+
+    const okEl = document.getElementById(`ft-ok-${wid}`);
+    if (okEl) { okEl.classList.add('show'); setTimeout(() => okEl.classList.remove('show'), 2000); }
     nameEl.focus();
   } catch (err) {
-    console.error('Quick add task error:', err);
+    console.error('Full add task error:', err);
   }
 }
 

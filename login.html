@@ -121,7 +121,7 @@ async function submit() {
   btn.textContent = isSignUp ? 'Creating account...' : 'Signing in...';
   showMsg('', '');
 
-  const { error } = isSignUp
+  const { data: authData, error } = isSignUp
     ? await _sb.auth.signUp({ email, password })
     : await _sb.auth.signInWithPassword({ email, password });
 
@@ -133,7 +133,9 @@ async function submit() {
   if (isSignUp) {
     showMsg('Account created. Check your email to confirm, then sign in.', 'success');
   } else {
-    window.location.href = 'index.html';
+    const name = authData?.user?.user_metadata?.display_name;
+    showMsg(name ? `Welcome back, ${name}.` : 'Welcome back.', 'success');
+    setTimeout(() => { window.location.href = 'index.html'; }, 1200);
   }
 }
 

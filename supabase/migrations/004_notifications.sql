@@ -114,7 +114,7 @@ select cron.schedule(
   'hourly-notifications',
   '0 * * * *',
   $$
-  -- ── 1. Per-type notification emails ──────────────────────────────────────
+  -- ── 1. Per-type notification emails (with real item data) ─────────────────
   select
     net.http_post(
       url     := 'https://<PROJECT_REF>.supabase.co/functions/v1/send-notification',
@@ -123,21 +123,75 @@ select cron.schedule(
         'Authorization', 'Bearer ' || current_setting('app.service_role_key', true)
       ),
       body    := jsonb_build_object(
-        'to',      u.email,
-        'subject', case uns.type
-                     when 'task_due_today'    then 'Tasks due today — Vanguard'
-                     when 'task_overdue'      then 'Overdue tasks — Vanguard'
-                     when 'habit_checkin'     then 'Habit check-in — Vanguard'
-                     when 'journal_prompt'    then 'Journal prompt — Vanguard'
-                     when 'finance_asset_due' then 'Asset update due — Vanguard'
-                   end,
-        'html',    '<p>Your scheduled Vanguard notification: ' || uns.type || '</p>'
+        'to',           u.email,
+        'user_id',      u.id::text,
+        'type',         uns.type,
+        'display_name', u.raw_user_meta_data->>'display_name',
+        'link',         case uns.type
+                          when 'task_due_today'    then '/vanguard/tasks/'
+                          when 'task_overdue'      then '/vanguard/tasks/'
+                          when 'habit_checkin'     then '/vanguard/habits/'
+                          when 'journal_prompt'    then '/vanguard/journal/'
+                          when 'finance_asset_due' then '/vanguard/finance/'
+                        end,
+        'subject',      case uns.type
+                          when 'task_due_today'    then 'Tasks due today — Vanguard'
+                          when 'task_overdue'      then 'Overdue tasks — Vanguard'
+                          when 'habit_checkin'     then 'Habit check-in — Vanguard'
+                          when 'journal_prompt'    then 'Journal prompt — Vanguard'
+                          when 'finance_asset_due' then 'Asset update due — Vanguard'
+                        end,
+        'body',         case uns.type
+                          when 'task_due_today'    then 'You have tasks due today:'
+                          when 'task_overdue'      then 'These tasks are overdue:'
+                          when 'habit_checkin'     then 'Time to check in on your habits:'
+                          when 'journal_prompt'    then 'Your journal is waiting for you. Take a few minutes to reflect.'
+                          when 'finance_asset_due' then 'These assets are due for a value update:'
+                        end,
+        'items',        case uns.type
+                          when 'task_due_today' then (
+                            select jsonb_agg(t.name order by t.position)
+                            from   public.tasks t
+                            where  t.user_id     = uns.user_id
+                              and  t.due_date    = current_date
+                              and  t.completed   = false
+                            limit 10
+                          )
+                          when 'task_overdue' then (
+                            select jsonb_agg(t.name order by t.due_date)
+                            from   public.tasks t
+                            where  t.user_id     = uns.user_id
+                              and  t.due_date    < current_date
+                              and  t.completed   = false
+                            limit 10
+                          )
+                          when 'habit_checkin' then (
+                            select jsonb_agg(h.name order by h.created_at)
+                            from   public.habits h
+                            where  h.user_id = uns.user_id
+                              and  h.active  = true
+                              and  not exists (
+                                select 1 from public.habit_logs hl
+                                where  hl.habit_id  = h.id
+                                  and  hl.date      = current_date
+                                  and  hl.completed = true
+                              )
+                            limit 10
+                          )
+                          when 'finance_asset_due' then (
+                            select jsonb_agg(a.name order by a.created_at)
+                            from   public.assets a
+                            where  a.user_id = uns.user_id
+                            limit 10
+                          )
+                          else null
+                        end
       )
     )
   from public.user_notification_settings uns
   join auth.users u on u.id = uns.user_id
   where uns.enabled = true
-    and extract(hour from uns.time at time zone 'UTC') = extract(hour from now() at time zone 'UTC');
+    and extract(hour from uns.time) = extract(hour from now() at time zone 'UTC');
 
   -- ── 2. Task reminder emails ───────────────────────────────────────────────
   select
@@ -148,23 +202,29 @@ select cron.schedule(
         'Authorization', 'Bearer ' || current_setting('app.service_role_key', true)
       ),
       body    := jsonb_build_object(
-        'to',      u.email,
-        'subject', 'Task reminder — Vanguard',
-        'html',    '<p>Reminder: your task is due soon.</p>'
+        'to',           u.email,
+        'user_id',      u.id::text,
+        'type',         'system',
+        'display_name', u.raw_user_meta_data->>'display_name',
+        'link',         '/vanguard/tasks/',
+        'subject',      'Task reminder — Vanguard',
+        'body',         'This task is due soon:',
+        'items',        jsonb_build_array(tk.name)
       )
     )
   from public.task_reminders tr
-  join auth.users u on u.id = tr.user_id
+  join auth.users u  on u.id  = tr.user_id
+  join public.tasks tk on tk.id = tr.task_id
   where tr.sent = false
     and tr.remind_at <= now()
-    and tr.remind_at > now() - interval '1 hour';
+    and tr.remind_at >  now() - interval '1 hour';
 
   -- Mark sent
   update public.task_reminders
   set    sent = true
   where  sent = false
     and  remind_at <= now()
-    and  remind_at > now() - interval '1 hour';
+    and  remind_at >  now() - interval '1 hour';
   $$
 );
 
