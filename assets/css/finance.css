@@ -395,28 +395,31 @@ input[type="number"] {
   background: var(--surface2);
   outline: none;
   transition: border-color 0.15s;
+  -moz-appearance: textfield;
 }
 input[type="number"]:focus { border-color: var(--border2); }
-
-/* ── INPUT WITH INLINE $ PREFIX ── */
-.input-prefix-wrap {
-  position: relative;
-  display: block;
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
-.input-prefix {
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
+
+/* ── INITIAL VALUE ROW — $ prefix inline with input ── */
+.initial-value-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.initial-value-prefix {
   color: var(--text-muted);
   font-size: 13.5px;
   line-height: 1;
-  pointer-events: none;
-  user-select: none;
+  flex-shrink: 0;
 }
-.input-with-prefix {
-  width: 100%;
-  padding-left: 26px !important;
+.initial-value-row input[type="number"] {
+  flex: 1;
+  width: auto;
+  min-width: 0;
 }
 
 /* ── FORM HINT ── */
