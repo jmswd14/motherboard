@@ -82,6 +82,15 @@
   };
 
   function openNotifPanel() {
+    // Collapse left sidebar if it is currently expanded
+    const app = document.querySelector('.app');
+    const leftSidebar = document.querySelector('.left-sidebar');
+    if (app && !app.classList.contains('ls-collapsed')) {
+      app.classList.add('ls-collapsed');
+      if (leftSidebar) leftSidebar.classList.add('ls-collapsed');
+      localStorage.setItem('vg-ls-collapsed', 'true');
+    }
+
     panelOpen = true;
     document.getElementById('notif-panel')?.classList.add('open');
     document.getElementById('notif-scrim')?.classList.add('open');
