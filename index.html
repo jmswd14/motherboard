@@ -60,7 +60,7 @@
         <span class="left-nav-icon">◎</span>
         <span class="left-nav-label">Goals</span>
       </a>
-      <a class="left-nav-item disabled">
+      <a class="left-nav-item" href="finance/index.html">
         <span class="left-nav-icon">◈</span>
         <span class="left-nav-label">Finance</span>
       </a>
@@ -758,16 +758,56 @@ function loadJournalPrompt(widget) {
   `;
 }
 
-// GOALS PROGRESS ──────────────────────────────────────────────────────────────
-function loadGoalsProgress(widget) {
+// GOALS PROGRESS / NET WORTH ──────────────────────────────────────────────────
+async function loadGoalsProgress(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
-  el.innerHTML = `
-    <div class="goals-placeholder">
-      <div class="goals-placeholder-icon">◎</div>
-      <div class="goals-placeholder-label">Goals coming soon</div>
-    </div>
-  `;
+
+  const FX = { USD:1, GBP:1.27, EUR:1.08, CAD:0.74, AUD:0.65, CHF:1.13, JPY:0.0067, CNY:0.14, HKD:0.13, SGD:0.75, BTC:85000, ETH:2000 };
+
+  try {
+    const { data: assets } = await DB.from('assets').select('id,currency').eq('user_id', currentUser.id);
+    if (!assets || !assets.length) {
+      el.innerHTML = `
+        <div class="goals-placeholder">
+          <div class="goals-placeholder-icon">◈</div>
+          <div class="goals-placeholder-label">No assets tracked yet</div>
+        </div>
+        <a href="finance/index.html" class="widget-footer-link">Open Finance →</a>
+      `;
+      return;
+    }
+
+    const { data: logs } = await DB.from('asset_logs').select('asset_id,value,logged_at').eq('user_id', currentUser.id).order('logged_at', { ascending: false });
+
+    // Latest log per asset
+    let total = 0;
+    for (const asset of assets) {
+      const log = (logs || []).find(l => l.asset_id === asset.id);
+      if (log) total += parseFloat(log.value) * (FX[asset.currency] || 1);
+    }
+
+    const fmt = v => {
+      if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+      if (Math.abs(v) >= 1e3) return '$' + Math.round(v).toLocaleString();
+      return '$' + v.toFixed(2);
+    };
+
+    el.innerHTML = `
+      <div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:8px;">Net Worth</div>
+      <div style="font-family:var(--font-serif);font-size:34px;font-weight:300;color:var(--accent);letter-spacing:-0.02em;line-height:1;">${esc(fmt(total))}</div>
+      <div style="font-size:12px;color:var(--text-muted);margin-top:6px;">${assets.length} asset${assets.length !== 1 ? 's' : ''} tracked</div>
+      <a href="finance/index.html" class="widget-footer-link" style="margin-top:auto;">View Finance →</a>
+    `;
+  } catch(err) {
+    el.innerHTML = `
+      <div class="goals-placeholder">
+        <div class="goals-placeholder-icon">◈</div>
+        <div class="goals-placeholder-label">Finance</div>
+      </div>
+      <a href="finance/index.html" class="widget-footer-link">Open Finance →</a>
+    `;
+  }
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────

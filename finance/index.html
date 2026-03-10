@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Finance">
+<link rel="apple-touch-icon" href="/vanguard/apple-touch-icon.png">
+<link rel="manifest" href="/vanguard/manifest.json">
+<title>Finance — Vanguard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../assets/css/shared.css">
+<link rel="stylesheet" href="../assets/css/finance.css">
+</head>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="../assets/js/supabase-client.js"></script>
+<body>
+
+<!-- Overlay (mobile) -->
+<div class="overlay" id="overlay" onclick="closeMobileMenus()"></div>
+
+<!-- Mobile toggles -->
+<button class="hamburger" onclick="openLeftMobile()" title="Menu">☰</button>
+<button class="rs-mobile-btn" onclick="openRightMobile()" title="Views">◈</button>
+
+<div class="app dual-sidebar" id="app">
+
+  <!-- ── LEFT SIDEBAR — global nav ── -->
+  <nav class="left-sidebar" id="left-sidebar">
+    <div class="left-sidebar-brand">
+      <h1 class="ls-wordmark">
+        <span class="ls-brand-full">Vanguard</span>
+        <span class="ls-brand-short">V</span>
+      </h1>
+      <button class="ls-collapse-btn" id="ls-collapse-btn" onclick="toggleLeftCollapse()" title="Collapse sidebar">‹</button>
+    </div>
+
+    <div class="left-nav">
+      <a class="left-nav-item" href="../index.html">
+        <span class="left-nav-icon">⊞</span>
+        <span class="left-nav-label">Dashboard</span>
+      </a>
+      <a class="left-nav-item" href="../tasks/index.html">
+        <span class="left-nav-icon">☑</span>
+        <span class="left-nav-label">Tasks</span>
+      </a>
+      <a class="left-nav-item" href="../calendar/index.html">
+        <span class="left-nav-icon">◫</span>
+        <span class="left-nav-label">Calendar</span>
+      </a>
+      <a class="left-nav-item" href="../habits/index.html">
+        <span class="left-nav-icon">◉</span>
+        <span class="left-nav-label">Habits</span>
+      </a>
+      <a class="left-nav-item" href="../journal/index.html">
+        <span class="left-nav-icon">✦</span>
+        <span class="left-nav-label">Journal</span>
+      </a>
+      <a class="left-nav-item disabled">
+        <span class="left-nav-icon">◎</span>
+        <span class="left-nav-label">Goals</span>
+      </a>
+      <a class="left-nav-item active" href="index.html">
+        <span class="left-nav-icon">◈</span>
+        <span class="left-nav-label">Finance</span>
+      </a>
+    </div>
+
+    <div class="left-sidebar-footer">
+      <span class="ls-signout" onclick="signOut()">Sign out</span>
+    </div>
+  </nav>
+
+  <!-- ── RIGHT SIDEBAR — app nav ── -->
+  <nav class="right-sidebar" id="right-sidebar">
+    <div class="right-sidebar-header">
+      <button class="rs-collapse-btn" id="rs-collapse-btn" onclick="toggleRightCollapse()" title="Collapse sidebar">›</button>
+      <div class="rs-header-text">
+        <h2>Finance</h2>
+      </div>
+      <span class="rs-header-icon">◈</span>
+    </div>
+
+    <div class="right-sidebar-body">
+      <div class="sidebar-section">Views</div>
+
+      <div class="sidebar-item active" id="nav-overview" onclick="setView('overview', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">⊞</span>
+          <span class="rs-nav-label">Overview</span>
+        </div>
+      </div>
+
+      <div class="sidebar-item" id="nav-assets" onclick="setView('assets', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">◈</span>
+          <span class="rs-nav-label">All Assets</span>
+        </div>
+        <span class="sidebar-count" id="count-assets">0</span>
+      </div>
+
+      <hr class="sidebar-divider">
+
+      <div class="sidebar-section">Asset Types</div>
+      <div id="type-nav"></div>
+
+      <hr class="sidebar-divider">
+
+      <div class="sidebar-add-list" onclick="openModal('add-asset-modal')">
+        <span style="font-size:16px;line-height:1;">+</span>
+        <span class="rs-add-label">New Asset</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── MAIN CONTENT ── -->
+  <main class="content">
+    <div class="topbar">
+      <div class="topbar-left">
+        <h2 id="view-title">Overview</h2>
+      </div>
+      <div class="topbar-right">
+        <button class="btn btn-primary" onclick="openModal('add-asset-modal')">+ New Asset</button>
+      </div>
+    </div>
+
+    <!-- OVERVIEW VIEW -->
+    <div id="view-overview">
+      <!-- Net Worth Hero -->
+      <div class="nw-hero">
+        <div class="nw-label">Total Net Worth</div>
+        <div class="nw-amount" id="nw-total">—</div>
+        <div class="nw-sub" id="nw-sub"></div>
+      </div>
+
+      <!-- Due-for-update banner -->
+      <div class="due-banner" id="due-banner" style="display:none">
+        <span class="due-banner-icon">⚑</span>
+        <span class="due-banner-text" id="due-banner-text"></span>
+        <span class="due-banner-link" onclick="setView('assets', document.getElementById('nav-assets'))">View assets →</span>
+      </div>
+
+      <!-- 12-month chart -->
+      <div class="nw-chart-wrap">
+        <div class="nw-chart-header">
+          <span class="nw-chart-title">Net Worth — Last 12 Months</span>
+        </div>
+        <svg class="nw-chart-svg" id="nw-chart" height="160" viewBox="0 0 800 160" preserveAspectRatio="none"></svg>
+      </div>
+
+      <!-- Category breakdown -->
+      <div class="fin-section-title">By Category</div>
+      <div class="category-grid" id="category-grid"></div>
+    </div>
+
+    <!-- ASSETS VIEW -->
+    <div id="view-assets" style="display:none">
+      <div class="assets-header">
+        <span class="assets-title" id="assets-type-filter-label">All Assets</span>
+      </div>
+      <div class="asset-grid" id="asset-grid"></div>
+    </div>
+  </main>
+
+</div><!-- /.app -->
+
+<!-- ── ASSET DETAIL OVERLAY ── -->
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-scrim" onclick="closeDetail()"></div>
+  <div class="detail-panel" id="detail-panel">
+    <div class="detail-panel-header">
+      <button class="detail-panel-close" onclick="closeDetail()">×</button>
+      <div class="detail-type-badge" id="dp-type"></div>
+      <div class="detail-name" id="dp-name"></div>
+      <div class="detail-value" id="dp-value"></div>
+      <div class="detail-value-sub" id="dp-value-sub"></div>
+    </div>
+    <div class="detail-panel-body">
+      <!-- Chart -->
+      <div class="detail-chart-wrap">
+        <div class="detail-section-label">Value History</div>
+        <svg class="detail-chart-svg" id="dp-chart" height="120" viewBox="0 0 400 120" preserveAspectRatio="none"></svg>
+      </div>
+      <!-- Log history -->
+      <div class="detail-section-label">Log Entries</div>
+      <div class="detail-log-list" id="dp-log-list"></div>
+    </div>
+    <div class="detail-panel-footer">
+      <button class="btn btn-primary" onclick="openLogModal()">+ Log Value</button>
+      <button class="btn" onclick="openEditAsset()">Edit</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAsset()" style="margin-left:auto;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- ADD / EDIT ASSET -->
+<div class="modal-backdrop" id="add-asset-modal">
+  <div class="modal finance-modal">
+    <div class="modal-title" id="asset-modal-title">New Asset</div>
+    <input type="hidden" id="editing-asset-id">
+    <div class="form-group">
+      <label>Asset Name <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="asset-name-input" placeholder="e.g. Chase Checking, My IRA...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Type <span style="color:var(--p-high);">*</span></label>
+        <select id="asset-type-input">
+          <option value="Checking">Checking</option>
+          <option value="Savings">Savings</option>
+          <option value="Retirement">Retirement</option>
+          <option value="Brokerage">Brokerage</option>
+          <option value="Real Estate">Real Estate</option>
+          <option value="Crypto">Crypto</option>
+          <option value="Business">Business</option>
+          <option value="Physical">Physical</option>
+          <option value="Cash">Cash</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Currency</label>
+        <select id="asset-currency-input">
+          <option value="USD">USD</option>
+          <option value="GBP">GBP</option>
+          <option value="EUR">EUR</option>
+          <option value="CAD">CAD</option>
+          <option value="AUD">AUD</option>
+          <option value="CHF">CHF</option>
+          <option value="JPY">JPY</option>
+          <option value="CNY">CNY</option>
+          <option value="HKD">HKD</option>
+          <option value="SGD">SGD</option>
+          <option value="BTC">BTC</option>
+          <option value="ETH">ETH</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Update reminder day</label>
+        <input type="number" id="asset-cycle-input" placeholder="e.g. 1 (1st of month)" min="1" max="28">
+      </div>
+      <div class="form-group" id="initial-value-group">
+        <label>Initial Value</label>
+        <input type="number" id="asset-initial-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="asset-notes-input" placeholder="Any extra details..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('add-asset-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveAsset()">Save Asset</button>
+    </div>
+  </div>
+</div>
+
+<!-- LOG VALUE -->
+<div class="modal-backdrop" id="log-value-modal">
+  <div class="modal finance-modal">
+    <div class="modal-title">Log Value</div>
+    <input type="hidden" id="logging-asset-id">
+    <input type="hidden" id="editing-log-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date <span style="color:var(--p-high);">*</span></label>
+        <input type="date" id="log-date-input">
+      </div>
+      <div class="form-group">
+        <label>Value <span style="color:var(--p-high);">*</span></label>
+        <input type="number" id="log-value-input" placeholder="0.00" step="0.01">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="log-notes-input" placeholder="Optional note..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('log-value-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveLog()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM DELETE -->
+<div class="modal-backdrop" id="fin-confirm-delete-modal">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title" style="font-size:20px;">Are you sure?</div>
+    <p id="fin-confirm-delete-msg" style="font-size:14px;color:var(--text-muted);line-height:1.6;margin-bottom:4px;"></p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('fin-confirm-delete-modal')">Cancel</button>
+      <button class="btn" id="fin-confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ──────────────────────────────────────────────────────────────────
+
+const DB = window.supabaseClient;
+
+// Hardcoded FX rates to USD
+const FX = {
+  USD: 1,
+  GBP: 1.27,
+  EUR: 1.08,
+  CAD: 0.74,
+  AUD: 0.65,
+  CHF: 1.13,
+  JPY: 0.0067,
+  CNY: 0.14,
+  HKD: 0.13,
+  SGD: 0.75,
+  BTC: 85000,
+  ETH: 2000,
+};
+
+const ASSET_TYPES = [
+  'Checking','Savings','Retirement','Brokerage',
+  'Real Estate','Crypto','Business','Physical','Cash','Other'
+];
+
+// Type -> accent color dot
+const TYPE_COLORS = {
+  'Checking':    '#7BA3C8',
+  'Savings':     '#6BBFA0',
+  'Retirement':  '#E8D5B0',
+  'Brokerage':   '#A78BCA',
+  'Real Estate': '#C8A67B',
+  'Crypto':      '#7BC8C0',
+  'Business':    '#C87B7B',
+  'Physical':    '#B0C87B',
+  'Cash':        '#C8C07B',
+  'Other':       '#888888',
+};
+
+// ── STATE ──────────────────────────────────────────────────────────────────────
+
+let currentUser  = null;
+let assets       = [];   // array of asset rows
+let logs         = [];   // array of all log rows
+let currentView  = 'overview';
+let currentAsset = null; // asset open in detail panel
+let typeFilter   = null; // string or null — filter assets view by type
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+
+async function init() {
+  const { data: { session } } = await DB.auth.getSession();
+  if (!session) { window.location.href = '../login.html'; return; }
+  currentUser = session.user;
+
+  await loadData();
+  renderAll();
+  updateSidebarDate();
+  updateTypeSidebarNav();
+  updateAssetCount();
+}
+
+async function loadData() {
+  const [assetsRes, logsRes] = await Promise.all([
+    DB.from('assets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true }),
+    DB.from('asset_logs').select('*').eq('user_id', currentUser.id).order('logged_at', { ascending: true }),
+  ]);
+  if (assetsRes.error) console.error('Assets load error:', assetsRes.error);
+  if (logsRes.error) console.error('Logs load error:', logsRes.error);
+  assets = assetsRes.data || [];
+  logs = logsRes.data || [];
+}
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+
+async function signOut() {
+  await DB.auth.signOut();
+  window.location.href = '../login.html';
+}
+
+// ── CURRENCY ──────────────────────────────────────────────────────────────────
+
+function toUSD(value, currency) {
+  return value * (FX[currency] || 1);
+}
+
+function fmtUSD(v) {
+  if (Math.abs(v) >= 1e6) return '$' + (v / 1e6).toFixed(2) + 'M';
+  if (Math.abs(v) >= 1e3) return '$' + Math.round(v).toLocaleString();
+  return '$' + v.toFixed(2);
+}
+
+function fmtNative(v, currency) {
+  const sym = { USD:'$',GBP:'£',EUR:'€',CAD:'CA$',AUD:'A$',CHF:'CHF ',JPY:'¥',CNY:'¥',HKD:'HK$',SGD:'S$',BTC:'₿',ETH:'Ξ' }[currency] || '';
+  if (currency === 'BTC' || currency === 'ETH') return sym + v.toFixed(4);
+  if (currency === 'JPY') return sym + Math.round(v).toLocaleString();
+  return sym + v.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ── LATEST LOG VALUE ──────────────────────────────────────────────────────────
+
+function getLatestLog(assetId) {
+  const assetLogs = logs.filter(l => l.asset_id === assetId);
+  if (!assetLogs.length) return null;
+  return assetLogs[assetLogs.length - 1]; // sorted asc by logged_at
+}
+
+function getAssetCurrentUSD(asset) {
+  const log = getLatestLog(asset.id);
+  if (!log) return 0;
+  return toUSD(parseFloat(log.value), asset.currency);
+}
+
+// ── DUE-FOR-UPDATE CHECK ──────────────────────────────────────────────────────
+
+function isDueForUpdate(asset) {
+  if (!asset.update_cycle_day) return false;
+  const today = new Date();
+  const cycleDay = parseInt(asset.update_cycle_day);
+  if (today.getDate() < cycleDay) return false;
+  // Check if there's a log this month
+  const ym = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+  const hasThisMonth = logs.some(l => l.asset_id === asset.id && l.logged_at && l.logged_at.startsWith(ym));
+  return !hasThisMonth;
+}
+
+function getDueAssets() {
+  return assets.filter(isDueForUpdate);
+}
+
+// ── NET WORTH CALCULATION ─────────────────────────────────────────────────────
+
+function calcNetWorth() {
+  return assets.reduce((sum, a) => sum + getAssetCurrentUSD(a), 0);
+}
+
+// For the 12-month chart: for each month, find each asset's most recent log
+// on or before the last day of that month, sum in USD.
+function calcMonthlyNetWorth() {
+  const now = new Date();
+  const months = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const year = d.getFullYear();
+    const month = d.getMonth(); // 0-indexed
+    const lastDay = new Date(year, month + 1, 0);
+    const cutoff = lastDay.toISOString().slice(0, 10); // YYYY-MM-DD
+    const label = d.toLocaleString('default', { month: 'short' });
+
+    let total = 0;
+    for (const asset of assets) {
+      const assetLogs = logs.filter(l => l.asset_id === asset.id && l.logged_at <= cutoff);
+      if (assetLogs.length) {
+        const latest = assetLogs[assetLogs.length - 1];
+        total += toUSD(parseFloat(latest.value), asset.currency);
+      }
+    }
+    months.push({ label, total });
+  }
+  return months;
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+
+function renderAll() {
+  if (currentView === 'overview') renderOverview();
+  else renderAssetsView();
+}
+
+function renderOverview() {
+  // Hero
+  const nw = calcNetWorth();
+  const el = document.getElementById('nw-total');
+  el.textContent = fmtUSD(nw);
+  el.classList.toggle('nw-negative', nw < 0);
+  document.getElementById('nw-sub').textContent = `${assets.length} asset${assets.length !== 1 ? 's' : ''} tracked`;
+
+  // Due banner
+  const due = getDueAssets();
+  const banner = document.getElementById('due-banner');
+  if (due.length) {
+    banner.style.display = 'flex';
+    const names = due.map(a => a.name).join(', ');
+    document.getElementById('due-banner-text').textContent =
+      `${due.length} asset${due.length !== 1 ? 's' : ''} due for update: ${names}`;
+  } else {
+    banner.style.display = 'none';
+  }
+
+  // Chart
+  renderNWChart();
+
+  // Category breakdown
+  renderCategoryGrid();
+}
+
+function renderNWChart() {
+  const svg = document.getElementById('nw-chart');
+  const monthly = calcMonthlyNetWorth();
+  svg.innerHTML = '';
+
+  const W = 800, H = 160, padL = 0, padR = 0, padT = 16, padB = 32;
+  const vals = monthly.map(m => m.total);
+  const minV = Math.min(...vals, 0);
+  const maxV = Math.max(...vals, 1);
+  const range = maxV - minV || 1;
+
+  function xPos(i) { return padL + (i / (monthly.length - 1)) * (W - padL - padR); }
+  function yPos(v) { return padT + (1 - (v - minV) / range) * (H - padT - padB); }
+
+  // Gradient fill
+  const gradId = 'nw-grad';
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="#E8D5B0" stop-opacity="0.18"/>
+        <stop offset="100%" stop-color="#E8D5B0" stop-opacity="0"/>
+      </linearGradient>
+    </defs>`;
+
+  // Area path
+  const points = monthly.map((m, i) => `${xPos(i)},${yPos(m.total)}`).join(' ');
+  const areaPath = `M${xPos(0)},${H - padB} L${points.split(' ').map((p,i)=> i===0?`${xPos(0)},${yPos(monthly[0].total)}`:p).join(' L')} L${xPos(monthly.length-1)},${H - padB} Z`;
+  // simpler: polyline + manual close
+  const polyPts = monthly.map((m, i) => `${xPos(i)},${yPos(m.total)}`).join(' ');
+  const closedPts = `${xPos(0)},${H - padB} ${polyPts} ${xPos(monthly.length-1)},${H - padB}`;
+
+  const area = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  area.setAttribute('points', closedPts);
+  area.setAttribute('fill', `url(#${gradId})`);
+  svg.appendChild(area);
+
+  // Line
+  const line = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  line.setAttribute('points', polyPts);
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', '#E8D5B0');
+  line.setAttribute('stroke-width', '1.5');
+  svg.appendChild(line);
+
+  // Month labels
+  monthly.forEach((m, i) => {
+    // Show every other label to avoid crowding
+    if (monthly.length > 6 && i % 2 !== 0 && i !== monthly.length - 1) return;
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', xPos(i));
+    t.setAttribute('y', H - 6);
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '10');
+    t.setAttribute('fill', '#666');
+    t.setAttribute('font-family', 'Geist, sans-serif');
+    t.textContent = m.label;
+    svg.appendChild(t);
+  });
+
+  // Dots on last point
+  const lastI = monthly.length - 1;
+  const dot = document.createElementNS('http://www.w3.org/2000/svg','circle');
+  dot.setAttribute('cx', xPos(lastI));
+  dot.setAttribute('cy', yPos(monthly[lastI].total));
+  dot.setAttribute('r', '3');
+  dot.setAttribute('fill', '#E8D5B0');
+  svg.appendChild(dot);
+}
+
+function renderCategoryGrid() {
+  const grid = document.getElementById('category-grid');
+  if (!assets.length) {
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:13px;">No assets yet. Add your first asset to get started.</div>';
+    return;
+  }
+
+  // Group by type
+  const byType = {};
+  for (const asset of assets) {
+    if (!byType[asset.type]) byType[asset.type] = { total: 0, count: 0 };
+    byType[asset.type].total += getAssetCurrentUSD(asset);
+    byType[asset.type].count++;
+  }
+
+  grid.innerHTML = Object.entries(byType).map(([type, data]) => `
+    <div class="cat-card">
+      <div class="cat-card-type">${esc(type)}</div>
+      <div class="cat-card-value">${fmtUSD(data.total)}</div>
+      <div class="cat-card-count">${data.count} asset${data.count !== 1 ? 's' : ''}</div>
+    </div>
+  `).join('');
+}
+
+function renderAssetsView() {
+  const grid = document.getElementById('asset-grid');
+  const filtered = typeFilter ? assets.filter(a => a.type === typeFilter) : assets;
+  document.getElementById('assets-type-filter-label').textContent = typeFilter ? typeFilter : 'All Assets';
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="asset-empty">${typeFilter ? `No ${typeFilter} assets yet.` : 'No assets yet. Add your first asset to get started.'}</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(asset => {
+    const log = getLatestLog(asset.id);
+    const usd = getAssetCurrentUSD(asset);
+    const overdue = isDueForUpdate(asset);
+    const color = TYPE_COLORS[asset.type] || '#888';
+    const nativeVal = log ? fmtNative(parseFloat(log.value), asset.currency) : '—';
+    const nativeNote = (asset.currency !== 'USD' && log) ? `${fmtUSD(usd)} USD` : '';
+    const lastDate = log ? formatDate(log.logged_at) : 'No data yet';
+
+    return `
+      <div class="asset-card${overdue ? ' overdue' : ''}" onclick="openDetail('${asset.id}')">
+        <div class="asset-card-type">
+          <span class="asset-card-type-dot" style="background:${color}"></span>
+          ${esc(asset.type)}
+        </div>
+        <div class="asset-card-name">${esc(asset.name)}</div>
+        <div class="asset-card-value">${nativeVal}</div>
+        ${nativeNote ? `<div class="asset-card-usd">${esc(nativeNote)}</div>` : '<div class="asset-card-usd"></div>'}
+        <div class="asset-card-footer">
+          <span>Updated ${esc(lastDate)}</span>
+          ${overdue ? '<span class="asset-card-overdue-tag">Update due</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// ── VIEWS ─────────────────────────────────────────────────────────────────────
+
+function setView(view, el) {
+  currentView = view;
+  typeFilter = null;
+
+  document.querySelectorAll('.sidebar-item[id^="nav-"]').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item[data-type]').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  document.getElementById('view-overview').style.display = view === 'overview' ? '' : 'none';
+  document.getElementById('view-assets').style.display = view === 'assets' ? '' : 'none';
+
+  const titles = { overview: 'Overview', assets: 'All Assets' };
+  document.getElementById('view-title').textContent = titles[view] || view;
+
+  renderAll();
+  closeMobileMenus();
+}
+
+function filterByType(type, el) {
+  typeFilter = type;
+  currentView = 'assets';
+
+  document.getElementById('view-overview').style.display = 'none';
+  document.getElementById('view-assets').style.display = '';
+  document.getElementById('view-title').textContent = type;
+
+  document.querySelectorAll('.sidebar-item[id^="nav-"]').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item[data-type]').forEach(i => i.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  renderAssetsView();
+  closeMobileMenus();
+}
+
+// ── TYPE SIDEBAR NAV ──────────────────────────────────────────────────────────
+
+function updateTypeSidebarNav() {
+  const nav = document.getElementById('type-nav');
+  // Get types that have at least 1 asset
+  const typesWithAssets = [...new Set(assets.map(a => a.type))];
+  if (!typesWithAssets.length) {
+    nav.innerHTML = '<div style="padding:6px 24px;font-size:12px;color:var(--text-muted);">No assets yet</div>';
+    return;
+  }
+  nav.innerHTML = typesWithAssets.map(type => {
+    const count = assets.filter(a => a.type === type).length;
+    const color = TYPE_COLORS[type] || '#888';
+    return `
+      <div class="sidebar-item" data-type="${esc(type)}" onclick="filterByType('${esc(type)}', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon" style="color:${color}">◈</span>
+          <span class="rs-nav-label">${esc(type)}</span>
+        </div>
+        <span class="sidebar-count">${count}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+function updateAssetCount() {
+  document.getElementById('count-assets').textContent = assets.length;
+}
+
+// ── DETAIL PANEL ──────────────────────────────────────────────────────────────
+
+function openDetail(assetId) {
+  currentAsset = assets.find(a => a.id === assetId);
+  if (!currentAsset) return;
+  renderDetailPanel();
+  document.getElementById('detail-overlay').classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeDetail() {
+  document.getElementById('detail-overlay').classList.remove('open');
+  document.body.style.overflow = '';
+  currentAsset = null;
+}
+
+function renderDetailPanel() {
+  if (!currentAsset) return;
+  const asset = currentAsset;
+  const log = getLatestLog(asset.id);
+  const usd = getAssetCurrentUSD(asset);
+
+  document.getElementById('dp-type').textContent = asset.type;
+  document.getElementById('dp-name').textContent = asset.name;
+
+  if (log) {
+    document.getElementById('dp-value').textContent = fmtNative(parseFloat(log.value), asset.currency);
+    const sub = asset.currency !== 'USD' ? `${fmtUSD(usd)} USD · updated ${formatDate(log.logged_at)}` : `Updated ${formatDate(log.logged_at)}`;
+    document.getElementById('dp-value-sub').textContent = sub;
+  } else {
+    document.getElementById('dp-value').textContent = '—';
+    document.getElementById('dp-value-sub').textContent = 'No logs yet';
+  }
+
+  renderDetailChart();
+  renderDetailLogs();
+}
+
+function renderDetailChart() {
+  const svg = document.getElementById('dp-chart');
+  const assetLogs = logs.filter(l => l.asset_id === currentAsset.id);
+  svg.innerHTML = '';
+
+  if (assetLogs.length < 2) {
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', '200');
+    t.setAttribute('y', '60');
+    t.setAttribute('text-anchor', 'middle');
+    t.setAttribute('font-size', '12');
+    t.setAttribute('fill', '#666');
+    t.setAttribute('font-family', 'Geist, sans-serif');
+    t.textContent = assetLogs.length === 1 ? 'Add another entry to see a chart' : 'No log entries yet';
+    svg.appendChild(t);
+    return;
+  }
+
+  const W = 400, H = 120, padL = 0, padR = 0, padT = 12, padB = 24;
+  const vals = assetLogs.map(l => parseFloat(l.value));
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+  const color = TYPE_COLORS[currentAsset.type] || '#E8D5B0';
+
+  function xPos(i) { return padL + (i / (assetLogs.length - 1)) * (W - padL - padR); }
+  function yPos(v) { return padT + (1 - (v - minV) / range) * (H - padT - padB); }
+
+  const gradId = 'dp-grad';
+  svg.innerHTML = `
+    <defs>
+      <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${color}" stop-opacity="0.2"/>
+        <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+      </linearGradient>
+    </defs>`;
+
+  const polyPts = assetLogs.map((l, i) => `${xPos(i)},${yPos(parseFloat(l.value))}`).join(' ');
+  const closedPts = `${xPos(0)},${H - padB} ${polyPts} ${xPos(assetLogs.length-1)},${H - padB}`;
+
+  const area = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+  area.setAttribute('points', closedPts);
+  area.setAttribute('fill', `url(#${gradId})`);
+  svg.appendChild(area);
+
+  const line = document.createElementNS('http://www.w3.org/2000/svg','polyline');
+  line.setAttribute('points', polyPts);
+  line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', color);
+  line.setAttribute('stroke-width', '1.5');
+  svg.appendChild(line);
+
+  // Label first and last date
+  [{i: 0}, {i: assetLogs.length - 1}].forEach(({i}) => {
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('x', xPos(i));
+    t.setAttribute('y', H - 4);
+    t.setAttribute('text-anchor', i === 0 ? 'start' : 'end');
+    t.setAttribute('font-size', '9');
+    t.setAttribute('fill', '#666');
+    t.setAttribute('font-family', 'Geist, sans-serif');
+    t.textContent = formatDateShort(assetLogs[i].logged_at);
+    svg.appendChild(t);
+  });
+}
+
+function renderDetailLogs() {
+  const list = document.getElementById('dp-log-list');
+  const assetLogs = logs.filter(l => l.asset_id === currentAsset.id).slice().reverse();
+
+  if (!assetLogs.length) {
+    list.innerHTML = '<div class="detail-empty-logs">No log entries yet. Log a value to get started.</div>';
+    return;
+  }
+
+  list.innerHTML = assetLogs.map(log => `
+    <div class="detail-log-row">
+      <span class="detail-log-date">${esc(formatDate(log.logged_at))}</span>
+      <span class="detail-log-val">${fmtNative(parseFloat(log.value), currentAsset.currency)}</span>
+      ${log.notes ? `<span class="detail-log-notes" title="${esc(log.notes)}">${esc(log.notes)}</span>` : '<span></span>'}
+      <button class="detail-log-delete" onclick="confirmDeleteLog('${log.id}')" title="Delete entry">×</button>
+    </div>
+  `).join('');
+}
+
+// ── SAVE ASSET ────────────────────────────────────────────────────────────────
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+  if (id === 'add-asset-modal') {
+    const editingId = document.getElementById('editing-asset-id').value;
+    if (!editingId) {
+      // New asset: show initial value field
+      document.getElementById('initial-value-group').style.display = '';
+    }
+  }
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+  if (id === 'add-asset-modal') resetAssetModal();
+  if (id === 'log-value-modal') resetLogModal();
+}
+
+function resetAssetModal() {
+  document.getElementById('editing-asset-id').value = '';
+  document.getElementById('asset-name-input').value = '';
+  document.getElementById('asset-type-input').value = 'Checking';
+  document.getElementById('asset-currency-input').value = 'USD';
+  document.getElementById('asset-cycle-input').value = '';
+  document.getElementById('asset-initial-input').value = '';
+  document.getElementById('asset-notes-input').value = '';
+  document.getElementById('asset-modal-title').textContent = 'New Asset';
+  document.getElementById('initial-value-group').style.display = '';
+}
+
+function resetLogModal() {
+  document.getElementById('logging-asset-id').value = '';
+  document.getElementById('editing-log-id').value = '';
+  document.getElementById('log-date-input').value = todayISO();
+  document.getElementById('log-value-input').value = '';
+  document.getElementById('log-notes-input').value = '';
+}
+
+function openEditAsset() {
+  if (!currentAsset) return;
+  const a = currentAsset;
+  document.getElementById('editing-asset-id').value = a.id;
+  document.getElementById('asset-modal-title').textContent = 'Edit Asset';
+  document.getElementById('asset-name-input').value = a.name;
+  document.getElementById('asset-type-input').value = a.type;
+  document.getElementById('asset-currency-input').value = a.currency || 'USD';
+  document.getElementById('asset-cycle-input').value = a.update_cycle_day || '';
+  document.getElementById('asset-notes-input').value = a.notes || '';
+  document.getElementById('initial-value-group').style.display = 'none'; // no initial value on edit
+  openModal('add-asset-modal');
+}
+
+async function saveAsset() {
+  const name = document.getElementById('asset-name-input').value.trim();
+  const type = document.getElementById('asset-type-input').value;
+  const currency = document.getElementById('asset-currency-input').value;
+  const cycleDay = parseInt(document.getElementById('asset-cycle-input').value) || null;
+  const notes = document.getElementById('asset-notes-input').value.trim() || null;
+  const initialVal = parseFloat(document.getElementById('asset-initial-input').value);
+  const editingId = document.getElementById('editing-asset-id').value;
+
+  if (!name) { alert('Asset name is required.'); return; }
+
+  if (editingId) {
+    // Update
+    const { error } = await DB.from('assets').update({ name, type, currency, update_cycle_day: cycleDay, notes })
+      .eq('id', editingId).eq('user_id', currentUser.id);
+    if (error) { console.error(error); return; }
+    const idx = assets.findIndex(a => a.id === editingId);
+    if (idx !== -1) assets[idx] = { ...assets[idx], name, type, currency, update_cycle_day: cycleDay, notes };
+    if (currentAsset && currentAsset.id === editingId) currentAsset = assets[idx];
+  } else {
+    // Insert
+    const asset = {
+      id: crypto.randomUUID(),
+      user_id: currentUser.id,
+      name,
+      type,
+      currency,
+      update_cycle_day: cycleDay,
+      notes,
+      created_at: new Date().toISOString(),
+    };
+    const { error } = await DB.from('assets').insert(asset);
+    if (error) { console.error(error); return; }
+    assets.push(asset);
+
+    // Log initial value if provided
+    if (!isNaN(initialVal) && initialVal !== '') {
+      const log = {
+        id: crypto.randomUUID(),
+        asset_id: asset.id,
+        user_id: currentUser.id,
+        value: initialVal,
+        logged_at: todayISO(),
+        notes: 'Initial value',
+        created_at: new Date().toISOString(),
+      };
+      const { error: le } = await DB.from('asset_logs').insert(log);
+      if (!le) logs.push(log);
+    }
+  }
+
+  closeModal('add-asset-modal');
+  if (currentAsset) renderDetailPanel();
+  renderAll();
+  updateTypeSidebarNav();
+  updateAssetCount();
+}
+
+// ── LOG VALUE ─────────────────────────────────────────────────────────────────
+
+function openLogModal() {
+  if (!currentAsset) return;
+  resetLogModal();
+  document.getElementById('logging-asset-id').value = currentAsset.id;
+  openModal('log-value-modal');
+}
+
+async function saveLog() {
+  const assetId = document.getElementById('logging-asset-id').value;
+  const date = document.getElementById('log-date-input').value;
+  const value = parseFloat(document.getElementById('log-value-input').value);
+  const notes = document.getElementById('log-notes-input').value.trim() || null;
+
+  if (!date || isNaN(value)) { alert('Date and value are required.'); return; }
+
+  const log = {
+    id: crypto.randomUUID(),
+    asset_id: assetId,
+    user_id: currentUser.id,
+    value,
+    logged_at: date,
+    notes,
+    created_at: new Date().toISOString(),
+  };
+
+  const { error } = await DB.from('asset_logs').insert(log);
+  if (error) { console.error(error); return; }
+
+  // Insert into sorted array
+  const insertIdx = logs.findIndex(l => l.logged_at > date);
+  if (insertIdx === -1) logs.push(log);
+  else logs.splice(insertIdx, 0, log);
+
+  closeModal('log-value-modal');
+  renderDetailPanel();
+  renderAll();
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+
+function confirmDeleteAsset() {
+  if (!currentAsset) return;
+  const msg = document.getElementById('fin-confirm-delete-msg');
+  msg.textContent = `Delete "${currentAsset.name}"? All log entries for this asset will also be deleted. This cannot be undone.`;
+  const btn = document.getElementById('fin-confirm-delete-btn');
+  btn.onclick = async () => {
+    closeModal('fin-confirm-delete-modal');
+    await DB.from('asset_logs').delete().eq('asset_id', currentAsset.id).eq('user_id', currentUser.id);
+    await DB.from('assets').delete().eq('id', currentAsset.id).eq('user_id', currentUser.id);
+    logs = logs.filter(l => l.asset_id !== currentAsset.id);
+    assets = assets.filter(a => a.id !== currentAsset.id);
+    closeDetail();
+    renderAll();
+    updateTypeSidebarNav();
+    updateAssetCount();
+  };
+  openModal('fin-confirm-delete-modal');
+}
+
+function confirmDeleteLog(logId) {
+  const log = logs.find(l => l.id === logId);
+  if (!log) return;
+  const msg = document.getElementById('fin-confirm-delete-msg');
+  msg.textContent = `Delete log entry from ${formatDate(log.logged_at)}? This cannot be undone.`;
+  const btn = document.getElementById('fin-confirm-delete-btn');
+  btn.onclick = async () => {
+    closeModal('fin-confirm-delete-modal');
+    const { error } = await DB.from('asset_logs').delete().eq('id', logId).eq('user_id', currentUser.id);
+    if (!error) {
+      logs = logs.filter(l => l.id !== logId);
+      renderDetailPanel();
+      renderAll();
+    }
+  };
+  openModal('fin-confirm-delete-modal');
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  if (s == null) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function todayISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function formatDate(iso) {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('default', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatDateShort(iso) {
+  if (!iso) return '';
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString('default', { month: 'short', year: '2-digit' });
+}
+
+function updateSidebarDate() {
+  const el = document.getElementById('sidebar-date-label');
+  if (!el) return;
+  const now = new Date();
+  el.textContent = now.toLocaleDateString('default', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+// ── SIDEBAR COLLAPSE ──────────────────────────────────────────────────────────
+
+const _app          = document.getElementById('app');
+const _leftSidebar  = document.getElementById('left-sidebar');
+const _rightSidebar = document.getElementById('right-sidebar');
+const _overlay      = document.getElementById('overlay');
+
+(function restoreState() {
+  if (localStorage.getItem('vg-ls-collapsed') === 'true') {
+    _leftSidebar.classList.add('ls-collapsed');
+    _app.classList.add('ls-collapsed');
+    document.getElementById('ls-collapse-btn').textContent = '›';
+  }
+  if (localStorage.getItem('vg-rs-collapsed') === 'true') {
+    _rightSidebar.classList.add('rs-collapsed');
+    _app.classList.add('rs-collapsed');
+    document.getElementById('rs-collapse-btn').textContent = '‹';
+  }
+})();
+
+function toggleLeftCollapse() {
+  const collapsed = _leftSidebar.classList.toggle('ls-collapsed');
+  _app.classList.toggle('ls-collapsed', collapsed);
+  document.getElementById('ls-collapse-btn').textContent = collapsed ? '›' : '‹';
+  localStorage.setItem('vg-ls-collapsed', collapsed);
+}
+
+function toggleRightCollapse() {
+  const collapsed = _rightSidebar.classList.toggle('rs-collapsed');
+  _app.classList.toggle('rs-collapsed', collapsed);
+  document.getElementById('rs-collapse-btn').textContent = collapsed ? '‹' : '›';
+  localStorage.setItem('vg-rs-collapsed', collapsed);
+}
+
+function openLeftMobile() {
+  _leftSidebar.classList.add('mobile-open');
+  _overlay.classList.add('show');
+}
+function openRightMobile() {
+  _rightSidebar.classList.add('mobile-open');
+  _overlay.classList.add('show');
+}
+function closeMobileMenus() {
+  _leftSidebar.classList.remove('mobile-open');
+  _rightSidebar.classList.remove('mobile-open');
+  _overlay.classList.remove('show');
+}
+
+// Keyboard: Escape closes detail or modals
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    if (document.querySelector('.modal-backdrop.show')) {
+      document.querySelectorAll('.modal-backdrop.show').forEach(m => {
+        // Don't close confirm if another modal is waiting
+        m.classList.remove('show');
+      });
+    } else if (document.getElementById('detail-overlay').classList.contains('open')) {
+      closeDetail();
+    }
+  }
+});
+
+// ── KICK OFF ──────────────────────────────────────────────────────────────────
+init();
+</script>
+
+</body>
+</html>
