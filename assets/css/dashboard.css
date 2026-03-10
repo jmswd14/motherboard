@@ -332,6 +332,27 @@
 }
 
 /* ── HABIT CHECK-IN ── */
+.habit-checkin-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.habit-checkin-today {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 16px;
+  color: var(--accent);
+  font-weight: 300;
+}
+.habit-checkin-date {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  letter-spacing: 0.02em;
+}
 .habit-row {
   display: flex;
   align-items: center;

@@ -516,7 +516,13 @@ async function loadHabitCheckin(widget) {
     const logMap = {};
     (logs || []).forEach(l => { logMap[l.habit_id] = l.completed; });
 
+    const todayLabel = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+
     el.innerHTML = `
+      <div class="habit-checkin-header">
+        <span class="habit-checkin-today">Today</span>
+        <span class="habit-checkin-date">${todayLabel}</span>
+      </div>
       <div style="flex:1;overflow:hidden;">
         ${habits.map(h => {
           const hColor = h.color || '#6BCB77';
