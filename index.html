@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Portal">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="manifest" href="manifest.json">
-<title>Dashboard — Vanguard</title>
+<title>Dashboard — Motherboard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Geist:wght@300;400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/css/shared.css">
@@ -31,7 +31,7 @@
   <nav class="left-sidebar" id="left-sidebar">
     <div class="left-sidebar-brand">
       <h1 class="ls-wordmark">
-        <span class="ls-brand-full">Vanguard</span>
+        <span class="ls-brand-full">Motherboard</span>
         <span class="ls-brand-short">V</span>
       </h1>
       <button class="ls-collapse-btn" id="ls-collapse-btn" onclick="toggleLeftCollapse()" title="Collapse sidebar">‹</button>
@@ -900,7 +900,7 @@ async function loadUpcomingEvents(widget) {
     const todayStr = now.toISOString().slice(0, 10);
     const endStr   = end.toISOString().slice(0, 10);
 
-    // Fetch Vanguard events and (optionally) tasks in parallel
+    // Fetch Motherboard events and (optionally) tasks in parallel
     const fetches = [
       DB.from('events')
         .select('id, title, date, time, all_day')

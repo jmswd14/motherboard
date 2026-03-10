@@ -132,18 +132,18 @@ select cron.schedule(
         'type',         uns.type,
         'display_name', u.raw_user_meta_data->>'display_name',
         'link',         case uns.type
-                          when 'task_due_today'    then '/vanguard/tasks/'
-                          when 'task_overdue'      then '/vanguard/tasks/'
-                          when 'habit_checkin'     then '/vanguard/habits/'
-                          when 'journal_prompt'    then '/vanguard/journal/'
-                          when 'finance_asset_due' then '/vanguard/finance/'
+                          when 'task_due_today'    then '/motherboard/tasks/'
+                          when 'task_overdue'      then '/motherboard/tasks/'
+                          when 'habit_checkin'     then '/motherboard/habits/'
+                          when 'journal_prompt'    then '/motherboard/journal/'
+                          when 'finance_asset_due' then '/motherboard/finance/'
                         end,
         'subject',      case uns.type
-                          when 'task_due_today'    then 'Tasks due today — Vanguard'
-                          when 'task_overdue'      then 'Overdue tasks — Vanguard'
-                          when 'habit_checkin'     then 'Habit check-in — Vanguard'
-                          when 'journal_prompt'    then 'Journal prompt — Vanguard'
-                          when 'finance_asset_due' then 'Asset update due — Vanguard'
+                          when 'task_due_today'    then 'Tasks due today — Motherboard'
+                          when 'task_overdue'      then 'Overdue tasks — Motherboard'
+                          when 'habit_checkin'     then 'Habit check-in — Motherboard'
+                          when 'journal_prompt'    then 'Journal prompt — Motherboard'
+                          when 'finance_asset_due' then 'Asset update due — Motherboard'
                         end,
         'body',         case uns.type
                           when 'task_due_today'    then 'You have tasks due today:'
@@ -210,8 +210,8 @@ select cron.schedule(
         'user_id',      u.id::text,
         'type',         'system',
         'display_name', u.raw_user_meta_data->>'display_name',
-        'link',         '/vanguard/tasks/',
-        'subject',      'Task reminder — Vanguard',
+        'link',         '/motherboard/tasks/',
+        'subject',      'Task reminder — Motherboard',
         'body',         'This task is due soon:',
         'items',        jsonb_build_array(tk.name)
       )

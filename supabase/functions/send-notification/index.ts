@@ -25,7 +25,7 @@ function buildEmailHtml(display_name: string | null, body: string, items: string
     }
     html += `</ul>`
   }
-  html += `<p style="margin:24px 0 0;font-size:12px;color:#666;border-top:1px solid #333;padding-top:16px;">Sent by <a href="https://jameswood.github.io/vanguard" style="color:#E8D5B0;text-decoration:none;">Vanguard</a></p>`
+  html += `<p style="margin:24px 0 0;font-size:12px;color:#666;border-top:1px solid #333;padding-top:16px;">Sent by <a href="https://jmswd14.github.io/motherboard" style="color:#E8D5B0;text-decoration:none;">Motherboard</a></p>`
   html += `</div>`
   return html
 }
@@ -71,7 +71,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Vanguard <notifications@resend.dev>',
+        from: 'Motherboard <notifications@resend.dev>',
         to: [to],
         subject,
         html: emailHtml,

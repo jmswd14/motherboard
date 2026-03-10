@@ -1,13 +1,13 @@
 {
-  "name": "Vanguard",
-  "short_name": "Vanguard",
+  "name": "Motherboard",
+  "short_name": "Motherboard",
   "background_color": "#0F0F0F",
   "theme_color": "#0F0F0F",
   "display": "standalone",
-  "start_url": "/vanguard/",
+  "start_url": "/motherboard/",
   "icons": [
     {
-      "src": "/vanguard/apple-touch-icon.png",
+      "src": "/motherboard/apple-touch-icon.png",
       "sizes": "180x180",
       "type": "image/png"
     }

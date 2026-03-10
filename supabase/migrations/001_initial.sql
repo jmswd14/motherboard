@@ -1,5 +1,5 @@
 -- ─────────────────────────────────────────────────────
--- Vanguard — Initial Schema
+-- Motherboard — Initial Schema
 -- Run this in: Supabase Dashboard → SQL Editor
 -- ─────────────────────────────────────────────────────
 
