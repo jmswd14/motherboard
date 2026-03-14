@@ -20,9 +20,10 @@ const TAG_COLORS = [
 const LIST_COLORS = ['#7C9EFF','#FF8FAB','#FFD166','#06D6A0','#CB9CF2','#FF9F68','#4DD9F0','#F4A261','#E76F51','#A8DADC'];
 
 // ────────── DATA (in-memory, loaded from Supabase) ──────────
-let tasks      = [];
-let categories = []; // DB table still called 'lists'
-let tags       = [];
+let tasks          = [];
+let categories     = []; // DB table still called 'lists'
+let tags           = [];
+let recurringTasks = [];
 
 // ────────── STATE ──────────
 let currentView       = 'all';
@@ -66,16 +67,18 @@ function getCategory(id) { return categories.find(c => c.id === id); }
 // ────────── DB TRANSFORM ──────────
 function fromDbTask(t) {
   return {
-    id:          t.id,
-    name:        t.name,
-    category:    t.category_id || '',   // DB column renamed from list_id → category_id
-    priority:    t.priority || 'medium',
-    due:         t.due || '',
-    tags:        t.tags || [],
-    notes:       t.notes || '',
-    done:        t.done || false,
-    completedAt: t.completed_at ? new Date(t.completed_at).getTime() : null,
-    order:       t.position || 0,
+    id:              t.id,
+    name:            t.name,
+    category:        t.category_id || '',   // DB column renamed from list_id → category_id
+    priority:        t.priority || 'medium',
+    due:             t.due || '',
+    tags:            t.tags || [],
+    notes:           t.notes || '',
+    done:            t.done || false,
+    completedAt:     t.completed_at ? new Date(t.completed_at).getTime() : null,
+    order:           t.position || 0,
+    recurringTaskId: t.recurring_task_id || null,
+    recurringDate:   t.recurring_date || null,
   };
 }
 
@@ -101,6 +104,9 @@ async function loadAll() {
     await _sb.from('lists').insert(defaults);
     categories = defaults;
   }
+
+  await loadRecurringTasks();
+  await generateRecurringInstances();
 }
 
 // ────────── CONTEXT MENUS (unified) ──────────
@@ -135,11 +141,13 @@ function renderSidebar() {
   document.getElementById('sidebar-date-label').textContent = d;
 
   const active = tasks.filter(t => !t.done);
-  document.getElementById('count-all').textContent     = active.length;
-  document.getElementById('count-today').textContent   = active.filter(t => isToday(t.due)).length;
-  document.getElementById('count-week').textContent    = active.filter(t => isThisWeek(t.due)).length;
-  document.getElementById('count-overdue').textContent = active.filter(t => isOverdue(t.due)).length;
-  document.getElementById('count-nodate').textContent  = active.filter(t => !t.due).length;
+  document.getElementById('count-all').textContent       = active.length;
+  document.getElementById('count-today').textContent     = active.filter(t => isToday(t.due)).length;
+  document.getElementById('count-week').textContent      = active.filter(t => isThisWeek(t.due)).length;
+  document.getElementById('count-overdue').textContent   = active.filter(t => isOverdue(t.due)).length;
+  document.getElementById('count-nodate').textContent    = active.filter(t => !t.due).length;
+  const rtCount = document.getElementById('count-recurring');
+  if (rtCount) rtCount.textContent = recurringTasks.length || '';
 
   const ln = document.getElementById('category-nav');
   ln.innerHTML = categories.map(c => {
@@ -163,7 +171,7 @@ function setView(view, el) {
   if (el) el.classList.add('active');
   else { const navEl = document.getElementById('nav-' + view); if (navEl) navEl.classList.add('active'); }
 
-  const titles = { all: 'All Tasks', today: 'Today', week: 'This Week', overdue: 'Overdue', nodate: 'No Due Date' };
+  const titles = { all: 'All Tasks', today: 'Today', week: 'This Week', overdue: 'Overdue', nodate: 'No Due Date', recurring: 'Recurring' };
   if (view.startsWith('category:')) {
     const c = getCategory(view.replace('category:', ''));
     document.getElementById('view-title').textContent = c ? c.name : 'Category';
@@ -274,6 +282,12 @@ function getFilteredTasks() {
 
 // ────────── RENDER TASKS ──────────
 function renderTasks() {
+  if (currentView === 'recurring') {
+    renderRecurringView();
+    renderSidebar();
+    return;
+  }
+
   const container = document.getElementById('tasks-container');
   const filtered  = getFilteredTasks();
 
@@ -312,6 +326,8 @@ function renderTaskItem(t) {
   const menuId   = `task-menu-${t.id}`;
   const safeName = t.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
+  const recurringBadge = t.recurringTaskId ? `<span class="recurring-badge" title="Generated from recurring task">↻</span>` : '';
+
   return `<div class="task-item" data-id="${t.id}"
               onclick="editTask('${t.id}')"
               ondragover="onDragOver(event,'${t.id}')"
@@ -321,7 +337,7 @@ function renderTaskItem(t) {
     <span class="task-drag-handle" draggable="true" onmousedown="dragFromHandle=true" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
     <div class="task-checkbox" onclick="event.stopPropagation();completeTask('${t.id}')"></div>
     <div class="task-body">
-      <div class="task-name">${t.name}</div>
+      <div class="task-name">${recurringBadge}${t.name}</div>
       <div class="task-meta">
         <span class="priority-badge ${priorityClass}">${priorityLabel}</span>
         ${dueHtml}
@@ -401,17 +417,19 @@ async function uncompleteTask(tid) {
 
 function confirmDelete(type, itemId, itemName) {
   const messages = {
-    task:     `"${itemName}" will be permanently deleted.`,
-    category: `The category "${itemName}" will be deleted. Tasks in this category won't be deleted but will lose their category assignment.`,
-    tag:      `The tag "${itemName}" will be removed from all tasks and deleted permanently.`,
+    task:      `"${itemName}" will be permanently deleted.`,
+    category:  `The category "${itemName}" will be deleted. Tasks in this category won't be deleted but will lose their category assignment.`,
+    tag:       `The tag "${itemName}" will be removed from all tasks and deleted permanently.`,
+    recurring: `The recurring task "${itemName}" will be deleted. Already-generated tasks will not be affected.`,
   };
   document.getElementById('confirm-delete-msg').textContent = messages[type] || 'This will be permanently deleted.';
   const btn = document.getElementById('confirm-delete-btn');
   btn.onclick = () => {
     closeModal('confirm-delete-modal');
-    if (type === 'task')     deleteTask(itemId);
-    if (type === 'category') deleteCategory(itemId);
-    if (type === 'tag')      deleteTag(itemId);
+    if (type === 'task')      deleteTask(itemId);
+    if (type === 'category')  deleteCategory(itemId);
+    if (type === 'tag')       deleteTag(itemId);
+    if (type === 'recurring') deleteRecurringTask(itemId);
   };
   openModal('confirm-delete-modal');
 }
@@ -573,6 +591,216 @@ async function deleteCategory(cid) {
   ]);
 }
 
+// ────────── RECURRING TASKS ──────────
+
+async function loadRecurringTasks() {
+  const { data } = await _sb.from('recurring_tasks').select('*').eq('user_id', _uid).order('created_at', { ascending: true });
+  recurringTasks = data || [];
+}
+
+function shouldGenerateToday(rt) {
+  if (rt.last_generated_date === todayStr) return false;
+  if (rt.frequency === 'daily')   return true;
+  if (rt.frequency === 'weekly')  return today.getDay() === rt.frequency_day;
+  if (rt.frequency === 'monthly') return today.getDate() === rt.frequency_day;
+  return false;
+}
+
+async function generateRecurringInstances() {
+  for (const rt of recurringTasks) {
+    if (!rt.active || !shouldGenerateToday(rt)) continue;
+    // Safety: skip if an instance already exists for today
+    if (tasks.some(t => t.recurringTaskId === rt.id && t.recurringDate === todayStr)) continue;
+
+    const newId  = uid();
+    const minPos = tasks.length ? Math.min(...tasks.map(t => t.order || 0)) : 0;
+    const { data } = await _sb.from('tasks').insert({
+      id:               newId,
+      user_id:          _uid,
+      name:             rt.name,
+      category_id:      rt.list_id || null,
+      priority:         rt.priority,
+      due:              todayStr,
+      tags:             rt.tags || [],
+      notes:            rt.notes || '',
+      done:             false,
+      position:         minPos - 1,
+      recurring_task_id: rt.id,
+      recurring_date:   todayStr,
+    }).select().single();
+
+    if (data) tasks.unshift(fromDbTask(data));
+    await _sb.from('recurring_tasks').update({ last_generated_date: todayStr }).eq('id', rt.id);
+    rt.last_generated_date = todayStr;
+  }
+}
+
+function frequencyLabel(rt) {
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const ordinal = n => {
+    const s = ['th','st','nd','rd'];
+    const v = n % 100;
+    return n + (s[(v-20)%10] || s[v] || s[0]);
+  };
+  if (rt.frequency === 'daily')   return 'Daily';
+  if (rt.frequency === 'weekly')  return 'Weekly — ' + (days[rt.frequency_day] || '');
+  if (rt.frequency === 'monthly') return 'Monthly — ' + ordinal(rt.frequency_day);
+  return '';
+}
+
+function renderRecurringView() {
+  const container = document.getElementById('tasks-container');
+  document.getElementById('view-subtitle').textContent = `${recurringTasks.length} template${recurringTasks.length !== 1 ? 's' : ''}`;
+  if (!recurringTasks.length) {
+    container.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">↻</div>
+      <h3>No recurring tasks</h3>
+      <p>Create a recurring task to auto-generate it on a schedule</p>
+    </div>
+    <div style="text-align:center;margin-top:16px;">
+      <button class="btn btn-primary" onclick="openModal('add-recurring-modal')">+ New Recurring Task</button>
+    </div>`;
+  } else {
+    container.innerHTML = recurringTasks.map(rt => {
+      const cat     = getCategory(rt.list_id);
+      const menuId  = `rt-menu-${rt.id}`;
+      const safeName = rt.name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+      return `<div class="recurring-task-row ${rt.active ? '' : 'rt-paused'}">
+        <span class="recurring-badge">↻</span>
+        <div class="rt-body">
+          <div class="rt-name">${rt.name}</div>
+          <div class="rt-meta">
+            <span class="recurring-freq-label">${frequencyLabel(rt)}</span>
+            ${cat ? `<span class="list-badge"><span class="list-color-dot" style="background:${cat.color};width:6px;height:6px;"></span>${cat.name}</span>` : ''}
+            ${rt.active ? '' : '<span class="rt-paused-label">Paused</span>'}
+          </div>
+        </div>
+        <div class="task-menu-wrap" onclick="event.stopPropagation()">
+          <span class="task-menu-btn" onclick="openContextMenu(event,'${menuId}')">⋯</span>
+          <div class="task-menu-dropdown" id="${menuId}">
+            <div class="task-menu-option" onclick="closeContextMenu();openEditRecurringModal('${rt.id}')">Edit</div>
+            <div class="task-menu-option" onclick="closeContextMenu();toggleRecurringActive('${rt.id}')">${rt.active ? 'Pause' : 'Resume'}</div>
+            <div class="task-menu-option danger" onclick="closeContextMenu();confirmDelete('recurring','${rt.id}','${safeName}')">Delete</div>
+          </div>
+        </div>
+      </div>`;
+    }).join('') + `<div style="margin-top:24px;">
+      <button class="btn" onclick="openModal('add-recurring-modal')">+ New Recurring Task</button>
+    </div>`;
+  }
+  document.getElementById('completed-section').innerHTML = '';
+}
+
+let editingRecurringId = null;
+
+function buildMonthDaySelect() {
+  const sel = document.getElementById('rt-month-select');
+  if (!sel || sel.options.length) return;
+  const ordinal = n => { const s=['th','st','nd','rd']; const v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
+  for (let d = 1; d <= 28; d++) {
+    const o = document.createElement('option');
+    o.value = d; o.textContent = ordinal(d);
+    sel.appendChild(o);
+  }
+}
+
+function openModal_addRecurring() {
+  buildMonthDaySelect();
+  editingRecurringId = null;
+  document.getElementById('rt-modal-title').textContent = 'New Recurring Task';
+  document.getElementById('rt-name-input').value = '';
+  document.getElementById('rt-priority-input').value = 'medium';
+  document.getElementById('rt-notes-input').value = '';
+  setRecurringFrequency('daily');
+  populateRecurringModal('');
+  document.getElementById('add-recurring-modal').classList.add('show');
+  setTimeout(() => document.getElementById('rt-name-input')?.focus(), 80);
+}
+
+function openEditRecurringModal(id) {
+  buildMonthDaySelect();
+  const rt = recurringTasks.find(r => r.id === id);
+  if (!rt) return;
+  editingRecurringId = id;
+  document.getElementById('rt-modal-title').textContent = 'Edit Recurring Task';
+  document.getElementById('rt-name-input').value = rt.name;
+  document.getElementById('rt-priority-input').value = rt.priority;
+  document.getElementById('rt-notes-input').value = rt.notes || '';
+  setRecurringFrequency(rt.frequency, rt.frequency_day);
+  populateRecurringModal(rt.list_id || '');
+  document.getElementById('add-recurring-modal').classList.add('show');
+  setTimeout(() => document.getElementById('rt-name-input')?.focus(), 80);
+}
+
+function populateRecurringModal(selectedListId) {
+  const sel = document.getElementById('rt-category-input');
+  sel.innerHTML = categories.map(c => `<option value="${c.id}" ${selectedListId === c.id ? 'selected' : ''}>${c.name}</option>`).join('');
+}
+
+function setRecurringFrequency(freq, day) {
+  document.querySelectorAll('.freq-btn').forEach(b => b.classList.toggle('active', b.dataset.freq === freq));
+  const weekSel  = document.getElementById('rt-freq-week');
+  const monthSel = document.getElementById('rt-freq-month');
+  weekSel.style.display  = freq === 'weekly'  ? '' : 'none';
+  monthSel.style.display = freq === 'monthly' ? '' : 'none';
+  const wSel = document.getElementById('rt-week-select');
+  const mSel = document.getElementById('rt-month-select');
+  if (freq === 'weekly'  && day != null && wSel) wSel.value = day;
+  if (freq === 'monthly' && day != null && mSel) mSel.value = day;
+}
+
+async function saveRecurringTask() {
+  const name = document.getElementById('rt-name-input').value.trim();
+  if (!name) { document.getElementById('rt-name-input').style.borderColor = 'var(--p-high)'; return; }
+  document.getElementById('rt-name-input').style.borderColor = '';
+
+  const activeFreqBtn = document.querySelector('.freq-btn.active');
+  const freq = activeFreqBtn ? activeFreqBtn.dataset.freq : 'daily';
+  let freqDay = null;
+  if (freq === 'weekly')  freqDay = parseInt(document.getElementById('rt-week-select').value,  10);
+  if (freq === 'monthly') freqDay = parseInt(document.getElementById('rt-month-select').value, 10);
+
+  const payload = {
+    user_id:       _uid,
+    name,
+    list_id:       document.getElementById('rt-category-input').value || null,
+    priority:      document.getElementById('rt-priority-input').value,
+    notes:         document.getElementById('rt-notes-input').value.trim(),
+    frequency:     freq,
+    frequency_day: freqDay,
+    active:        true,
+  };
+
+  closeModal('add-recurring-modal');
+
+  if (editingRecurringId) {
+    await _sb.from('recurring_tasks').update(payload).eq('id', editingRecurringId).eq('user_id', _uid);
+    const idx = recurringTasks.findIndex(r => r.id === editingRecurringId);
+    if (idx !== -1) recurringTasks[idx] = { ...recurringTasks[idx], ...payload };
+  } else {
+    const { data } = await _sb.from('recurring_tasks').insert({ ...payload, id: uid() }).select().single();
+    if (data) recurringTasks.push(data);
+  }
+
+  if (currentView === 'recurring') renderRecurringView();
+  renderSidebar();
+}
+
+async function toggleRecurringActive(id) {
+  const rt = recurringTasks.find(r => r.id === id);
+  if (!rt) return;
+  rt.active = !rt.active;
+  await _sb.from('recurring_tasks').update({ active: rt.active }).eq('id', id).eq('user_id', _uid);
+  if (currentView === 'recurring') renderRecurringView();
+}
+
+async function deleteRecurringTask(id) {
+  recurringTasks = recurringTasks.filter(r => r.id !== id);
+  if (currentView === 'recurring') renderRecurringView();
+  renderSidebar();
+  await _sb.from('recurring_tasks').delete().eq('id', id).eq('user_id', _uid);
+}
+
 // ────────── TAGS ──────────
 async function addTag() {
   const name = document.getElementById('new-tag-name').value.trim();
@@ -719,6 +947,7 @@ async function saveInlineTag() {
 
 // ────────── MODALS ──────────
 function openModal(mid) {
+  if (mid === 'add-recurring-modal') { openModal_addRecurring(); return; }
   if (mid === 'add-task-modal') {
     document.getElementById('task-modal-title').textContent = 'New Task';
     document.getElementById('editing-task-id').value = '';

@@ -132,6 +132,14 @@
         <span class="sidebar-count" id="count-nodate">0</span>
       </div>
 
+      <div class="sidebar-item" id="nav-recurring" onclick="setView('recurring', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">↻</span>
+          <span class="rs-nav-label">Recurring</span>
+        </div>
+        <span class="sidebar-count" id="count-recurring"></span>
+      </div>
+
       <hr class="sidebar-divider">
 
       <div class="sidebar-section">Categories</div>
@@ -304,6 +312,63 @@
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('confirm-delete-modal')">Cancel</button>
       <button class="btn" id="confirm-delete-btn" style="background:var(--p-high);color:white;border-color:var(--p-high);">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD/EDIT RECURRING TASK -->
+<div class="modal-backdrop" id="add-recurring-modal">
+  <div class="modal">
+    <div class="modal-title" id="rt-modal-title">New Recurring Task</div>
+    <div class="form-group">
+      <label>Task Name <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="rt-name-input" placeholder="What needs to repeat?">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Category</label>
+        <select id="rt-category-input"></select>
+      </div>
+      <div class="form-group">
+        <label>Priority</label>
+        <select id="rt-priority-input">
+          <option value="high">🔴 High</option>
+          <option value="medium" selected>🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Frequency</label>
+      <div class="freq-selector">
+        <button type="button" class="freq-btn active" data-freq="daily"   onclick="setRecurringFrequency('daily')">Daily</button>
+        <button type="button" class="freq-btn"        data-freq="weekly"  onclick="setRecurringFrequency('weekly')">Weekly</button>
+        <button type="button" class="freq-btn"        data-freq="monthly" onclick="setRecurringFrequency('monthly')">Monthly</button>
+      </div>
+    </div>
+    <div class="form-group" id="rt-freq-week" style="display:none;">
+      <label>Day of Week</label>
+      <select id="rt-week-select">
+        <option value="0">Sunday</option>
+        <option value="1">Monday</option>
+        <option value="2">Tuesday</option>
+        <option value="3">Wednesday</option>
+        <option value="4">Thursday</option>
+        <option value="5">Friday</option>
+        <option value="6">Saturday</option>
+      </select>
+    </div>
+    <div class="form-group" id="rt-freq-month" style="display:none;">
+      <label>Day of Month</label>
+      <select id="rt-month-select"></select>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <textarea id="rt-notes-input" placeholder="Any extra details..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('add-recurring-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRecurringTask()">Save</button>
     </div>
   </div>
 </div>

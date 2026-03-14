@@ -436,6 +436,72 @@
 }
 .right-sidebar.rs-collapsed .rs-add-label { display: none; }
 
+/* ── RECURRING TASKS ── */
+
+/* Badge on generated task rows */
+.recurring-badge {
+  font-size: 11px;
+  color: var(--text);
+  opacity: 0.45;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
+/* Template rows in the Recurring view */
+.recurring-task-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  transition: opacity 0.2s;
+}
+.recurring-task-row:last-of-type { border-bottom: none; }
+.recurring-task-row.rt-paused { opacity: 0.45; }
+.recurring-task-row .recurring-badge { font-size: 14px; opacity: 0.7; flex-shrink: 0; }
+
+.rt-body { flex: 1; min-width: 0; }
+.rt-name { font-size: 14px; color: var(--text); margin-bottom: 3px; }
+.rt-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.recurring-freq-label {
+  font-size: 11px;
+  color: var(--accent);
+  opacity: 0.85;
+  letter-spacing: 0.03em;
+}
+
+.rt-paused-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Frequency selector in modal */
+.freq-selector {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+}
+
+.freq-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.freq-btn:last-child { border-right: none; }
+.freq-btn:hover { background: var(--surface2); color: var(--text); }
+.freq-btn.active { background: var(--surface2); color: var(--accent); }
+
 /* ── MOBILE OVERRIDES ── */
 @media (max-width: 740px) {
   .task-menu-btn { opacity: 1; }
