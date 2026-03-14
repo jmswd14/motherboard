@@ -408,7 +408,7 @@ function getTasksForDay(dateStr) {
   const real = tasks.filter(t => !t.done && t.due === dateStr);
   const realRtIds = new Set(real.map(t => t.recurringTaskId).filter(Boolean));
   const virtual = recurringTemplates
-    .filter(rt => !realRtIds.has(rt.id) && recurringOccursOn(rt, dateStr))
+    .filter(rt => dateStr >= todayStr && !realRtIds.has(rt.id) && recurringOccursOn(rt, dateStr))
     .map(rt => ({
       id:                'rt-virtual-' + rt.id,
       name:              rt.name,

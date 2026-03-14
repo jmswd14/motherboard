@@ -303,9 +303,10 @@
   padding: 2px 5px;
   border-radius: 5px;
 }
-.task-item:hover .task-menu-btn      { opacity: 1; }
-.completed-task:hover .task-menu-btn { opacity: 1; }
-.manage-tag-row:hover .task-menu-btn { opacity: 1; }
+.task-item:hover .task-menu-btn        { opacity: 1; }
+.completed-task:hover .task-menu-btn   { opacity: 1; }
+.manage-tag-row:hover .task-menu-btn   { opacity: 1; }
+.recurring-task-row .task-menu-btn     { opacity: 1; }
 .task-menu-btn:hover { color: var(--text); background: var(--surface3); }
 
 .task-menu-dropdown {
