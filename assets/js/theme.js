@@ -6,11 +6,28 @@
 window.VG_THEME = {
 
   apply: function(theme) {
-    const isLight = theme === 'light' ||
-      (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
-    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    const el = document.documentElement;
+    if (theme === 'retro') {
+      el.setAttribute('data-theme', 'retro');
+      const c1 = localStorage.getItem('vg-retro-c1') || '#00FF41';
+      const c2 = localStorage.getItem('vg-retro-c2') || '#FF6600';
+      el.style.setProperty('--retro-c1', c1);
+      el.style.setProperty('--retro-c2', c2);
+    } else {
+      const isLight = theme === 'light' ||
+        (theme === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      el.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    }
     localStorage.setItem('vg-theme', theme);
     this.updateToggle(theme);
+  },
+
+  applyRetroColors: function(c1, c2) {
+    const el = document.documentElement;
+    el.style.setProperty('--retro-c1', c1);
+    el.style.setProperty('--retro-c2', c2);
+    localStorage.setItem('vg-retro-c1', c1);
+    localStorage.setItem('vg-retro-c2', c2);
   },
 
   updateToggle: function(theme) {
@@ -20,6 +37,7 @@ window.VG_THEME = {
       dark:   { icon: '☾', label: 'Dark'   },
       light:  { icon: '☀', label: 'Light'  },
       system: { icon: '◑', label: 'System' },
+      retro:  { icon: '⬛', label: 'Retro'  },
     };
     const { icon, label } = cfg[theme] || cfg.dark;
     const iconEl  = btn.querySelector('.left-nav-icon');
@@ -55,13 +73,17 @@ window.VG_THEME = {
     if (!user) return;
     const { data } = await client
       .from('user_preferences')
-      .select('value')
+      .select('key,value')
       .eq('user_id', user.id)
-      .eq('key', 'theme')
-      .maybeSingle();
-    if (data && data.value) {
-      localStorage.setItem('vg-theme', data.value);
-      this.apply(data.value);
+      .in('key', ['theme', 'retro_color1', 'retro_color2']);
+    if (!data) return;
+    const prefs = {};
+    data.forEach(function(r) { prefs[r.key] = r.value; });
+    if (prefs.retro_color1) localStorage.setItem('vg-retro-c1', prefs.retro_color1);
+    if (prefs.retro_color2) localStorage.setItem('vg-retro-c2', prefs.retro_color2);
+    if (prefs.theme) {
+      localStorage.setItem('vg-theme', prefs.theme);
+      this.apply(prefs.theme);
     }
   },
 };

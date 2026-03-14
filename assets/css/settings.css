@@ -230,6 +230,22 @@
   cursor: default;
 }
 
+/* ── RETRO COLOR SWATCHES ── */
+.retro-swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.retro-swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: border-color 0.15s;
+  padding: 0;
+}
+.retro-swatch.selected { border-color: white; }
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .settings-tab { padding: 10px 14px; font-size: 12px; }

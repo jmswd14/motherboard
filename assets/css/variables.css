@@ -72,3 +72,32 @@ html[data-theme="light"] {
 
   --swatch-border-selected: #1A1918;
 }
+
+/* ── RETRO TERMINAL MODE OVERRIDES ───────────────────────────────────────── */
+html[data-theme="retro"] {
+  /* Base palette */
+  --bg:       #000000;
+  --surface:  #0A0A0A;
+  --surface2: #111111;
+  --surface3: #181818;
+  --border:   #1C1C1C;
+  --border2:  #222222;
+
+  /* Colors driven by user's two picks */
+  --text:       var(--retro-c1, #00FF41);
+  --text-dim:   var(--retro-c1, #00FF41);
+  --text-muted: var(--retro-c1, #00FF41);
+  --accent:     var(--retro-c2, #FF6600);
+  --accent-dim: color-mix(in srgb, var(--retro-c2, #FF6600) 15%, transparent);
+
+  /* Typography */
+  --font-sans:  'Share Tech Mono', monospace;
+  --font-serif: 'Share Tech Mono', monospace;
+
+  /* Geometry — hard square corners */
+  --radius:    0px;
+  --radius-sm: 0px;
+
+  /* Swatch border uses c1 */
+  --swatch-border-selected: var(--retro-c1, #00FF41);
+}
