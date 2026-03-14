@@ -1482,7 +1482,6 @@ function renderMovieWidget(el, movie) {
     ? movie.overview.slice(0, 180) + (movie.overview.length > 180 ? '…' : '')
     : '';
 
-  const widgetId = el.id.replace('wb-', '');
   el.innerHTML = `
     <div class="movie-wrap">
       <div class="movie-poster-col">${poster}</div>
@@ -1490,7 +1489,6 @@ function renderMovieWidget(el, movie) {
         <div class="movie-title">${esc(movie.title)}</div>
         <div class="movie-meta">${esc(year)}&nbsp;&nbsp;★ ${esc(rating)}</div>
         <div class="movie-blurb">${esc(blurb)}</div>
-        <button class="movie-refresh" onclick="refreshMovieWidget('${widgetId}')" title="New suggestion">↺</button>
       </div>
     </div>
   `;
@@ -1498,6 +1496,7 @@ function renderMovieWidget(el, movie) {
 
 function refreshMovieWidget(widgetId) {
   Object.keys(localStorage).filter(k => k.startsWith(`vg-movie-${widgetId}`)).forEach(k => localStorage.removeItem(k));
+  closeWidgetOptions();
   const widget = widgets.find(w => w.id === widgetId);
   if (widget) loadMovieSuggest(widget);
 }
@@ -1779,6 +1778,10 @@ function buildOptionsForm(widget, config, habits) {
 
   } else if (type === 'movie-suggest') {
     rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Pick</label>
+        <button class="widget-option-btn" onclick="refreshMovieWidget('${widget.id}')">New suggestion</button>
+      </div>
       <div class="widget-option-row">
         <label class="widget-option-label">Genre</label>
         <select class="widget-option-select" id="wo-movie-genre">
