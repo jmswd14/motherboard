@@ -1154,9 +1154,9 @@ function loadQuickTask(widget) {
         <input class="ft-date-input" type="date" id="ft-due-${wid}">
       </div>
       <select class="quick-add-select" id="ft-priority-${wid}">
-        <option value="high"   ${defPriority === 'high'   ? 'selected' : ''}>🔴 High</option>
-        <option value="medium" ${defPriority === 'medium' ? 'selected' : ''}>🟡 Medium</option>
-        <option value="low"    ${defPriority === 'low'    ? 'selected' : ''}>🟢 Low</option>
+        <option value="high"   ${defPriority === 'high'   ? 'selected' : ''}>[!] HIGH</option>
+        <option value="medium" ${defPriority === 'medium' ? 'selected' : ''}>[~] MED</option>
+        <option value="low"    ${defPriority === 'low'    ? 'selected' : ''}>[.] LOW</option>
       </select>
       <div class="tag-dropdown-wrap" id="tag-dropdown-wrap-${wid}">
         <div class="tag-dropdown-trigger" id="tag-dropdown-trigger-${wid}" onclick="toggleDashTagDropdown(event,'${wid}')">
