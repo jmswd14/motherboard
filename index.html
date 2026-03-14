@@ -1447,15 +1447,20 @@ async function loadMovieSuggest(widget) {
 
   try {
     const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    const page = (dayOfYear % 10) + 1;
     const genre = config.genre_id ? `&with_genres=${config.genre_id}` : '';
     const minRating = config.min_rating || 7;
-    const url = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}&page=${page}${genre}`;
+    const base = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genre}`;
 
-    const res = await fetch(url);
-    if (!res.ok) throw new Error('TMDB error');
-    const data = await res.json();
-    const results = data.results || [];
+    // Try a seeded page first; fall back to page 1 if it returns nothing (filtered queries have fewer pages)
+    let results = [];
+    const seededPage = (dayOfYear % 5) + 1;
+    const r1 = await fetch(`${base}&page=${seededPage}`);
+    if (r1.ok) results = (await r1.json()).results || [];
+    if (!results.length) {
+      const r2 = await fetch(`${base}&page=1`);
+      if (r2.ok) results = (await r2.json()).results || [];
+    }
+
     const movie = results[dayOfYear % results.length];
     if (!movie) throw new Error('no results');
 
