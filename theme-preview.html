@@ -166,6 +166,174 @@
       letter-spacing: 0.06em;
       opacity: 0.85;
     }
+
+    /* ══════════════════════════════════════════════
+       ON THIS DAY — WIDGET PREVIEW (retro theme)
+       c1 = #00FF41 (text)   c2 = #FF6600 (accent)
+    ══════════════════════════════════════════════ */
+    .hw-section {
+      max-width: 960px;
+      margin: 56px auto 0;
+      padding-top: 36px;
+      border-top: 1px solid #1e1e1e;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .hw-section-title {
+      font-size: 10px;
+      color: #444;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .hw-tier-label {
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #3a3a3a;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #1e1e1e;
+    }
+    .hw-tier { margin-bottom: 48px; }
+    .hw-grid-small {
+      display: grid;
+      grid-template-columns: repeat(3, 240px);
+      gap: 16px;
+    }
+    .hw-grid-wide,
+    .hw-grid-large {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    .hw-wrap { display: flex; flex-direction: column; gap: 7px; }
+    .hw-id { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: #333; }
+
+    /* shared widget shell */
+    .hw {
+      background: #0A0A0A;
+      border: 1px solid #1C1C1C;
+      border-radius: 0;
+      padding: 14px;
+      overflow: hidden;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    /* S1 — Big Year */
+    .hw-s1 { min-height: 120px; display: flex; flex-direction: column; justify-content: center; }
+    .hw-s1-year { font-size: 44px; color: #FF6600; line-height: 1; letter-spacing: 0.04em; }
+    .hw-s1-ago { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,255,65,0.3); margin-top: 4px; margin-bottom: 10px; }
+    .hw-s1-text { font-size: 11px; color: rgba(0,255,65,0.65); line-height: 1.5; }
+
+    /* S2 — Bracket Tag */
+    .hw-s2 { min-height: 120px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+    .hw-s2-header { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,255,65,0.3); }
+    .hw-s2-top { display: flex; align-items: flex-start; gap: 10px; }
+    .hw-s2-pill {
+      flex-shrink: 0;
+      background: rgba(255,102,0,0.1); border: 1px solid rgba(255,102,0,0.3);
+      border-radius: 0; padding: 4px 8px;
+      font-size: 12px; color: #FF6600; line-height: 1.2; letter-spacing: 0.05em;
+    }
+    .hw-s2-text {
+      font-size: 11px; color: rgba(0,255,65,0.65); line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+    }
+
+    /* S3 — Dashed Header */
+    .hw-s3 { min-height: 120px; display: flex; flex-direction: column; justify-content: space-between; }
+    .hw-s3-header { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .hw-s3-rule { flex: 1; height: 1px; background: #1C1C1C; }
+    .hw-s3-label { font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,255,65,0.3); white-space: nowrap; }
+    .hw-s3-body {
+      font-size: 11px; color: rgba(0,255,65,0.65); line-height: 1.55;
+      display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+    }
+    .hw-s3-year { color: #FF6600; font-size: 12px; margin-right: 4px; }
+    .hw-s3-footer { margin-top: 10px; font-size: 9px; letter-spacing: 0.08em; color: rgba(0,255,65,0.3); }
+
+    /* W1 — Split Panel */
+    .hw-w1 { min-height: 120px; display: flex; gap: 0; align-items: stretch; padding: 0; }
+    .hw-w1-left {
+      width: 96px; flex-shrink: 0; padding: 14px 12px;
+      border-right: 1px solid #1C1C1C;
+      display: flex; flex-direction: column; justify-content: center;
+      background: rgba(255,102,0,0.04);
+    }
+    .hw-w1-year { font-size: 34px; color: #FF6600; line-height: 1; letter-spacing: 0.02em; }
+    .hw-w1-ago { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(0,255,65,0.3); margin-top: 6px; line-height: 1.5; }
+    .hw-w1-right { flex: 1; padding: 14px 14px 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+    .hw-w1-label { font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(0,255,65,0.3); margin-bottom: 8px; }
+    .hw-w1-text { font-size: 12px; color: #00FF41; line-height: 1.6; }
+
+    /* W2 — Prompt Style */
+    .hw-w2 { min-height: 120px; display: flex; flex-direction: column; justify-content: center; }
+    .hw-w2-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+    .hw-w2-rule { flex: 1; height: 1px; background: #1C1C1C; }
+    .hw-w2-label { font-size: 8px; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(0,255,65,0.3); white-space: nowrap; }
+    .hw-w2-body { font-size: 12px; color: rgba(0,255,65,0.75); line-height: 1.65; }
+    .hw-w2-prompt { color: #FF6600; margin-right: 6px; }
+    .hw-w2-year { color: #FF6600; margin-right: 3px; }
+
+    /* W3 — Accent Bar */
+    .hw-w3 { min-height: 120px; display: flex; align-items: center; gap: 0; padding: 0; }
+    .hw-w3-bar { width: 3px; align-self: stretch; background: #FF6600; flex-shrink: 0; opacity: 0.6; }
+    .hw-w3-inner { flex: 1; padding: 14px; }
+    .hw-w3-meta { font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(0,255,65,0.3); margin-bottom: 8px; }
+    .hw-w3-year { font-size: 22px; color: #FF6600; line-height: 1; margin-bottom: 7px; letter-spacing: 0.04em; }
+    .hw-w3-text { font-size: 11px; color: rgba(0,255,65,0.65); line-height: 1.55; }
+
+    /* L1 — Timeline List */
+    .hw-l1 { min-height: 260px; display: flex; flex-direction: column; }
+    .hw-l1-header {
+      font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase; color: #FF6600;
+      margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid #1C1C1C;
+    }
+    .hw-l1-list { display: flex; flex-direction: column; flex: 1; }
+    .hw-l1-row {
+      display: flex; gap: 10px; align-items: flex-start;
+      padding: 9px 0; border-bottom: 1px solid #111;
+    }
+    .hw-l1-row:last-child { border-bottom: none; }
+    .hw-l1-year { width: 44px; flex-shrink: 0; text-align: right; font-size: 12px; color: #FF6600; padding-top: 1px; letter-spacing: 0.02em; }
+    .hw-l1-arrow { font-size: 10px; color: rgba(0,255,65,0.3); flex-shrink: 0; padding-top: 1px; }
+    .hw-l1-text { flex: 1; font-size: 11px; color: rgba(0,255,65,0.65); line-height: 1.5; }
+
+    /* L2 — Feature + Secondary */
+    .hw-l2 { min-height: 260px; display: flex; flex-direction: column; }
+    .hw-l2-hero { margin-bottom: 14px; }
+    .hw-l2-hero-label { font-size: 8px; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(0,255,65,0.3); margin-bottom: 8px; }
+    .hw-l2-hero-year { font-size: 40px; color: #FF6600; line-height: 1; letter-spacing: 0.04em; margin-bottom: 10px; }
+    .hw-l2-hero-text { font-size: 12px; color: #00FF41; line-height: 1.65; }
+    .hw-l2-divider { font-size: 10px; color: #1C1C1C; letter-spacing: 0.05em; margin: 14px 0; overflow: hidden; white-space: nowrap; }
+    .hw-l2-secondary { display: flex; flex-direction: column; gap: 8px; }
+    .hw-l2-sec-row { display: flex; gap: 10px; align-items: baseline; }
+    .hw-l2-sec-year { font-size: 11px; color: #FF6600; flex-shrink: 0; opacity: 0.7; width: 40px; letter-spacing: 0.03em; }
+    .hw-l2-sec-text { font-size: 11px; color: rgba(0,255,65,0.45); line-height: 1.45; }
+
+    /* L3 — Terminal Archive */
+    .hw-l3 { min-height: 260px; display: flex; flex-direction: column; padding: 0; }
+    .hw-l3-masthead {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; border-bottom: 1px solid #222;
+      background: rgba(255,102,0,0.06);
+    }
+    .hw-l3-title { font-size: 9px; letter-spacing: 0.2em; text-transform: uppercase; color: #FF6600; }
+    .hw-l3-date { font-size: 9px; letter-spacing: 0.1em; color: rgba(0,255,65,0.3); }
+    .hw-l3-body { padding: 14px; flex: 1; display: flex; flex-direction: column; }
+    .hw-l3-feature { margin-bottom: 12px; }
+    .hw-l3-feature-year { font-size: 12px; color: #FF6600; margin-bottom: 5px; letter-spacing: 0.06em; }
+    .hw-l3-feature-text { font-size: 12px; color: #00FF41; line-height: 1.65; }
+    .hw-l3-rule { font-size: 9px; color: #222; letter-spacing: 0.02em; margin: 12px 0; overflow: hidden; white-space: nowrap; }
+    .hw-l3-footnotes { display: flex; flex-direction: column; gap: 7px; }
+    .hw-l3-footnote { display: flex; gap: 10px; align-items: baseline; }
+    .hw-l3-fn-year { font-size: 10px; color: #FF6600; flex-shrink: 0; opacity: 0.55; width: 40px; letter-spacing: 0.03em; }
+    .hw-l3-fn-text { font-size: 10px; color: rgba(0,255,65,0.35); line-height: 1.45; }
+    .hw-l3-footer {
+      margin-top: auto; padding-top: 10px; border-top: 1px solid #111;
+      font-size: 8px; letter-spacing: 0.14em; text-transform: uppercase; color: #222; text-align: center;
+    }
   </style>
 </head>
 <body>
@@ -463,6 +631,205 @@
       </div>
 
     </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
+       ON THIS DAY — WIDGET PREVIEW
+  ══════════════════════════════════════════ -->
+  <div class="hw-section">
+    <div class="hw-section-title">SYS:HISTORY &gt; ON_THIS_DAY.WIDGET &nbsp;// MARCH 14</div>
+
+    <!-- SMALL -->
+    <div class="hw-tier">
+      <div class="hw-tier-label">Small &mdash; 1 column</div>
+      <div class="hw-grid-small">
+
+        <div class="hw-wrap">
+          <div class="hw-id">S1 &mdash; big year</div>
+          <div class="hw hw-s1">
+            <div class="hw-s1-year">1879</div>
+            <div class="hw-s1-ago">// 147 years ago</div>
+            <div class="hw-s1-text">Albert Einstein is born in Ulm, Germany.</div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">S2 &mdash; bracket tag</div>
+          <div class="hw hw-s2">
+            <div class="hw-s2-header">// ON THIS DAY</div>
+            <div class="hw-s2-top">
+              <div class="hw-s2-pill">[1794]</div>
+              <div class="hw-s2-text">Eli Whitney is granted a patent for the cotton gin, transforming Southern agriculture and deepening the institution of slavery.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">S3 &mdash; dashed header</div>
+          <div class="hw hw-s3">
+            <div class="hw-s3-header">
+              <div class="hw-s3-rule"></div>
+              <div class="hw-s3-label">MARCH 14</div>
+              <div class="hw-s3-rule"></div>
+            </div>
+            <div class="hw-s3-body">
+              <span class="hw-s3-year">1883:</span>Karl Marx dies at his desk in London, aged 64, three days after being diagnosed with pleurisy.
+            </div>
+            <div class="hw-s3-footer">// 143 YEARS AGO</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- WIDE -->
+    <div class="hw-tier">
+      <div class="hw-tier-label">Wide &mdash; 2 columns</div>
+      <div class="hw-grid-wide">
+
+        <div class="hw-wrap">
+          <div class="hw-id">W1 &mdash; split panel</div>
+          <div class="hw hw-w1">
+            <div class="hw-w1-left">
+              <div class="hw-w1-year">1879</div>
+              <div class="hw-w1-ago">147<br>YRS<br>AGO</div>
+            </div>
+            <div class="hw-w1-right">
+              <div class="hw-w1-label">// ON THIS DAY IN HISTORY</div>
+              <div class="hw-w1-text">Albert Einstein is born in Ulm, in the Kingdom of Wurttemberg in the German Empire.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">W2 &mdash; prompt style</div>
+          <div class="hw hw-w2">
+            <div class="hw-w2-header">
+              <div class="hw-w2-rule"></div>
+              <div class="hw-w2-label">ON THIS DAY</div>
+              <div class="hw-w2-rule"></div>
+            </div>
+            <div class="hw-w2-body">
+              <span class="hw-w2-prompt">&gt;</span><span class="hw-w2-year">1900</span>The Gold Standard Act is ratified in the United States, placing American currency on the gold standard for the first time.
+            </div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">W3 &mdash; accent bar</div>
+          <div class="hw hw-w3">
+            <div class="hw-w3-bar"></div>
+            <div class="hw-w3-inner">
+              <div class="hw-w3-meta">MARCH 14 // ON THIS DAY</div>
+              <div class="hw-w3-year">1794</div>
+              <div class="hw-w3-text">Eli Whitney is granted a patent for the cotton gin, transforming the American South and deepening the institution of slavery.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- LARGE -->
+    <div class="hw-tier">
+      <div class="hw-tier-label">Large &mdash; 2 columns, tall</div>
+      <div class="hw-grid-large">
+
+        <div class="hw-wrap">
+          <div class="hw-id">L1 &mdash; timeline list</div>
+          <div class="hw hw-l1">
+            <div class="hw-l1-header">ON THIS DAY // MARCH 14</div>
+            <div class="hw-l1-list">
+              <div class="hw-l1-row">
+                <div class="hw-l1-year">1879</div>
+                <div class="hw-l1-arrow">&gt;</div>
+                <div class="hw-l1-text">Albert Einstein is born in Ulm, Germany.</div>
+              </div>
+              <div class="hw-l1-row">
+                <div class="hw-l1-year">1883</div>
+                <div class="hw-l1-arrow">&gt;</div>
+                <div class="hw-l1-text">Karl Marx dies at his desk in London, aged 64.</div>
+              </div>
+              <div class="hw-l1-row">
+                <div class="hw-l1-year">1900</div>
+                <div class="hw-l1-arrow">&gt;</div>
+                <div class="hw-l1-text">The Gold Standard Act is ratified in the United States.</div>
+              </div>
+              <div class="hw-l1-row">
+                <div class="hw-l1-year">1794</div>
+                <div class="hw-l1-arrow">&gt;</div>
+                <div class="hw-l1-text">Eli Whitney is granted a patent for the cotton gin.</div>
+              </div>
+              <div class="hw-l1-row">
+                <div class="hw-l1-year">1489</div>
+                <div class="hw-l1-arrow">&gt;</div>
+                <div class="hw-l1-text">Queen Catherine Cornaro of Cyprus sells her kingdom to Venice.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">L2 &mdash; feature + secondary</div>
+          <div class="hw hw-l2">
+            <div class="hw-l2-hero">
+              <div class="hw-l2-hero-label">// ON THIS DAY IN HISTORY</div>
+              <div class="hw-l2-hero-year">1879</div>
+              <div class="hw-l2-hero-text">Albert Einstein is born in Ulm, in the Kingdom of Wurttemberg. He will go on to develop the theory of relativity, one of the two pillars of modern physics.</div>
+            </div>
+            <div class="hw-l2-divider">────────────────────────────────────</div>
+            <div class="hw-l2-secondary">
+              <div class="hw-l2-sec-row">
+                <div class="hw-l2-sec-year">1883</div>
+                <div class="hw-l2-sec-text">Karl Marx dies at his desk in London, three days after being diagnosed with pleurisy.</div>
+              </div>
+              <div class="hw-l2-sec-row">
+                <div class="hw-l2-sec-year">1900</div>
+                <div class="hw-l2-sec-text">The Gold Standard Act is ratified, placing American currency on the gold standard.</div>
+              </div>
+              <div class="hw-l2-sec-row">
+                <div class="hw-l2-sec-year">1794</div>
+                <div class="hw-l2-sec-text">Eli Whitney is granted a patent for the cotton gin.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hw-wrap">
+          <div class="hw-id">L3 &mdash; terminal archive</div>
+          <div class="hw hw-l3">
+            <div class="hw-l3-masthead">
+              <div class="hw-l3-title">HISTORICAL_RECORD.LOG</div>
+              <div class="hw-l3-date">MARCH 14</div>
+            </div>
+            <div class="hw-l3-body">
+              <div class="hw-l3-feature">
+                <div class="hw-l3-feature-year">[1879] // 147 YEARS AGO</div>
+                <div class="hw-l3-feature-text">Albert Einstein is born in Ulm, in the Kingdom of Wurttemberg. His work on the photoelectric effect, Brownian motion, and special relativity will remake our understanding of the universe.</div>
+              </div>
+              <div class="hw-l3-rule">────────────────────────────────────</div>
+              <div class="hw-l3-footnotes">
+                <div class="hw-l3-footnote">
+                  <div class="hw-l3-fn-year">1883</div>
+                  <div class="hw-l3-fn-text">Karl Marx dies at his desk in London, aged 64.</div>
+                </div>
+                <div class="hw-l3-footnote">
+                  <div class="hw-l3-fn-year">1900</div>
+                  <div class="hw-l3-fn-text">The Gold Standard Act is ratified in the United States.</div>
+                </div>
+                <div class="hw-l3-footnote">
+                  <div class="hw-l3-fn-year">1794</div>
+                  <div class="hw-l3-fn-text">Eli Whitney is granted a patent for the cotton gin.</div>
+                </div>
+              </div>
+              <div class="hw-l3-footer">SRC: WIKIPEDIA // ON_THIS_DAY_FEED</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
   </div>
 
 </body>

@@ -977,3 +977,37 @@
   color: var(--text-dim);
   line-height: 1.55;
 }
+
+/* ── ON THIS DAY WIDGET ── */
+
+/* S1 — small: big year */
+.hist-s1 { display: flex; flex-direction: column; justify-content: center; height: 100%; }
+.hist-s1-year { font-size: 42px; color: var(--accent); line-height: 1; letter-spacing: 0.04em; }
+.hist-s1-ago  { font-size: 9px; letter-spacing: 0.14em; color: var(--text-muted); opacity: 0.5; margin-top: 4px; margin-bottom: 10px; }
+.hist-s1-text { font-size: 11px; color: var(--text-muted); line-height: 1.5; }
+
+/* W1 — wide: split panel */
+.hist-w1 { display: flex; align-items: stretch; height: 100%; margin: -14px; }
+.hist-w1-left {
+  width: 88px; flex-shrink: 0; padding: 14px 12px;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; justify-content: center;
+  background: rgba(255,102,0,0.04);
+}
+.hist-w1-year { font-size: 32px; color: var(--accent); line-height: 1; letter-spacing: 0.03em; }
+.hist-w1-ago  { font-size: 9px; letter-spacing: 0.1em; color: var(--text-muted); opacity: 0.5; margin-top: 6px; line-height: 1.5; }
+.hist-w1-right { flex: 1; padding: 14px 14px 14px 16px; display: flex; flex-direction: column; justify-content: center; }
+.hist-w1-label { font-size: 8px; letter-spacing: 0.16em; color: var(--text-muted); opacity: 0.5; margin-bottom: 8px; }
+.hist-w1-text  { font-size: 12px; color: var(--text); line-height: 1.6; }
+
+/* L2 — large: feature + secondary */
+.hist-l2 { display: flex; flex-direction: column; height: 100%; }
+.hist-l2-hero { margin-bottom: 12px; }
+.hist-l2-hero-label { font-size: 8px; letter-spacing: 0.16em; color: var(--text-muted); opacity: 0.5; margin-bottom: 8px; }
+.hist-l2-hero-year  { font-size: 38px; color: var(--accent); line-height: 1; letter-spacing: 0.04em; margin-bottom: 10px; }
+.hist-l2-hero-text  { font-size: 12px; color: var(--text); line-height: 1.65; }
+.hist-l2-divider    { font-size: 9px; color: var(--border2); letter-spacing: 0.02em; margin: 12px 0; overflow: hidden; white-space: nowrap; }
+.hist-l2-secondary  { display: flex; flex-direction: column; gap: 8px; }
+.hist-l2-sec-row    { display: flex; gap: 10px; align-items: baseline; }
+.hist-l2-sec-year   { font-size: 11px; color: var(--accent); flex-shrink: 0; opacity: 0.6; width: 40px; letter-spacing: 0.03em; }
+.hist-l2-sec-text   { font-size: 11px; color: var(--text-muted); opacity: 0.6; line-height: 1.45; }

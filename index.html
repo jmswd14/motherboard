@@ -144,6 +144,7 @@ const WIDGET_LABELS = {
   'journal-prompt':  'Journal Prompt',
   'goals-progress':  'Goals Progress',
   'movie-suggest':   'Movie Pick',
+  'history-today':   'On This Day',
 };
 
 const WIDGET_CATALOG = [
@@ -156,6 +157,7 @@ const WIDGET_CATALOG = [
   { type: 'journal-prompt',  size: 'small', icon: '✦', name: 'Journal Prompt',  desc: 'Daily reflection prompt' },
   { type: 'goals-progress',  size: 'large', icon: '◎', name: 'Goals Progress',  desc: 'Track long-term goals' },
   { type: 'movie-suggest',   size: 'wide',  icon: '▶', name: 'Movie Pick',       desc: 'Daily film suggestion' },
+  { type: 'history-today',   size: 'wide',  icon: '◷', name: 'On This Day',      desc: 'Historical event from today' },
 ];
 
 const JOURNAL_PROMPTS = [
@@ -442,6 +444,7 @@ function loadAllWidgetData() {
     'journal-prompt':  loadJournalPrompt,
     'goals-progress':  loadGoalsProgress,
     'movie-suggest':   loadMovieSuggest,
+    'history-today':   loadHistoryToday,
   };
   widgets.forEach(w => {
     if (loaders[w.widget_type]) loaders[w.widget_type](w);
@@ -1485,6 +1488,85 @@ function renderMovieWidget(el, movie) {
   `;
 }
 
+// ON THIS DAY ──────────────────────────────────────────────────────────────────
+
+async function loadHistoryToday(widget) {
+  const el = document.getElementById(`wb-${widget.id}`);
+  if (!el) return;
+
+  const cacheKey = `vg-history-${widget.id}-${todayStr}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) { renderHistoryWidget(el, JSON.parse(cached), widget.size); return; }
+
+  try {
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const day = now.getDate();
+    const res = await fetch(`https://en.wikipedia.org/api/rest_v1/feed/onthisday/events/${month}/${day}`);
+    if (!res.ok) throw new Error('Wikipedia error');
+    const data = await res.json();
+    const events = (data.events || []).filter(e => e.text && e.year);
+    if (!events.length) throw new Error('no events');
+    localStorage.setItem(cacheKey, JSON.stringify(events));
+    renderHistoryWidget(el, events, widget.size);
+  } catch(e) {
+    el.innerHTML = `<div class="widget-empty"><div class="widget-empty-text">HISTORY_FEED: ERROR</div></div>`;
+  }
+}
+
+function renderHistoryWidget(el, events, size) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const dayOfYear = Math.floor((now - new Date(year, 0, 0)) / 86400000);
+  // Seed changes every year so the same date shows a different pick annually
+  const seed = year * 1000 + dayOfYear;
+  const pick = events[seed % events.length];
+  const ago = year - pick.year;
+
+  if (size === 'small') {
+    // S1 — big year
+    el.innerHTML = `
+      <div class="hist-s1">
+        <div class="hist-s1-year">${pick.year}</div>
+        <div class="hist-s1-ago">// ${ago} YEARS AGO</div>
+        <div class="hist-s1-text">${esc(pick.text)}</div>
+      </div>`;
+
+  } else if (size === 'wide') {
+    // W1 — split panel
+    el.innerHTML = `
+      <div class="hist-w1">
+        <div class="hist-w1-left">
+          <div class="hist-w1-year">${pick.year}</div>
+          <div class="hist-w1-ago">${ago}<br>YRS<br>AGO</div>
+        </div>
+        <div class="hist-w1-right">
+          <div class="hist-w1-label">// ON THIS DAY IN HISTORY</div>
+          <div class="hist-w1-text">${esc(pick.text)}</div>
+        </div>
+      </div>`;
+
+  } else {
+    // L2 — feature + secondary (large)
+    const secondary = [1, 2, 3].map(i => events[(seed + i) % events.length]);
+    const secRows = secondary.map(e => `
+      <div class="hist-l2-sec-row">
+        <div class="hist-l2-sec-year">${e.year}</div>
+        <div class="hist-l2-sec-text">${esc(e.text)}</div>
+      </div>`).join('');
+    el.innerHTML = `
+      <div class="hist-l2">
+        <div class="hist-l2-hero">
+          <div class="hist-l2-hero-label">// ON THIS DAY IN HISTORY</div>
+          <div class="hist-l2-hero-year">${pick.year}</div>
+          <div class="hist-l2-hero-text">${esc(pick.text)}</div>
+        </div>
+        <div class="hist-l2-divider">────────────────────────────────────</div>
+        <div class="hist-l2-secondary">${secRows}</div>
+      </div>`;
+  }
+}
+
 // ── WIDGET OPTIONS ────────────────────────────────────────────────────────────
 
 let optionsWidgetId = null;
@@ -1677,6 +1759,9 @@ function buildOptionsForm(widget, config, habits) {
           ).join('')}
         </select>
       </div>`;
+
+  } else if (type === 'history-today') {
+    rows = `<div class="widget-option-row" style="color:var(--text-muted);font-size:12px;">No configuration needed. Data from Wikipedia.</div>`;
 
   } else if (type === 'movie-suggest') {
     rows = `
