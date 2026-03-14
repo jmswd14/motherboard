@@ -213,6 +213,9 @@
     return String(s ?? '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
   }
 
+  // Exposed so dashboard can trigger a badge refresh after inserting notifications
+  window.refreshNotifBadge = refreshBadge;
+
   // ── KICK OFF ────────────────────────────────────────────────────────────────
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
