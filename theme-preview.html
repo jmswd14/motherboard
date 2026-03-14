@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Theme Preview — Motherboard</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Fraunces:ital,wght@1,300;1,400&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Fraunces:ital,wght@1,300;1,400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
@@ -173,47 +173,48 @@
   <div class="grid">
 
     <!-- ── BLOOMBERG ── -->
-    <div class="panel">
-      <div class="panel-label" style="background:#000000;color:#00FF41;border-color:#1C1C1C;">
-        Bloomberg Terminal
+    <div class="panel" style="font-family:'Share Tech Mono',monospace;">
+      <div class="panel-label" style="background:#000000;color:#00FF41;border-color:#222;font-family:'Share Tech Mono',monospace;letter-spacing:0.15em;">
+        BLOOMBERG TERMINAL
       </div>
       <div class="panel-body" style="background:#000000;">
-        <div class="sidebar-strip" style="background:#0A0A0A;border-color:#1C1C1C;">
-          <span class="sb-brand" style="color:#FF6600;">M</span>
-          <div class="sb-dot active" style="background:#FF6600;"></div>
-          <div class="sb-dot" style="background:#00FF41;"></div>
-          <div class="sb-dot" style="background:#00FF41;"></div>
-          <div class="sb-dot" style="background:#00FF41;"></div>
+        <div class="sidebar-strip" style="background:#000;border-color:#222;">
+          <span style="color:#FF6600;font-family:'Share Tech Mono',monospace;font-size:13px;writing-mode:vertical-rl;transform:rotate(180deg);letter-spacing:0.1em;">MB</span>
+          <div class="sb-dot active" style="background:#FF6600;border-radius:0;width:8px;height:2px;"></div>
+          <div class="sb-dot" style="background:#00FF41;border-radius:0;width:8px;height:2px;opacity:0.4;"></div>
+          <div class="sb-dot" style="background:#00FF41;border-radius:0;width:8px;height:2px;opacity:0.4;"></div>
+          <div class="sb-dot" style="background:#00FF41;border-radius:0;width:8px;height:2px;opacity:0.4;"></div>
         </div>
-        <div class="content-area">
-          <div class="widget widget-greeting" style="background:#0A0A0A;border-color:#1C1C1C;color:#00FF41;">
-            <div class="wg-time" style="color:#FF6600;">3:42 PM</div>
-            <div class="wg-msg" style="color:#00FF41;">Getting through the day, James.</div>
-            <div class="wg-loc" style="color:#00FF41;">Nashville, Tennessee</div>
+        <div class="content-area" style="gap:8px;">
+          <div class="widget widget-greeting" style="background:#000;border-color:#222;color:#00FF41;border-radius:0;padding:12px;">
+            <div style="font-size:9px;color:#FF6600;letter-spacing:0.2em;margin-bottom:6px;">SYS:DASHBOARD &gt; GREETING</div>
+            <div style="font-size:20px;color:#FF6600;letter-spacing:0.05em;line-height:1.1;">15:42:07</div>
+            <div style="font-size:11px;color:#00FF41;margin-top:4px;letter-spacing:0.04em;">GETTING THROUGH THE DAY, JAMES.</div>
+            <div style="font-size:9px;color:#00FF41;opacity:0.45;margin-top:3px;letter-spacing:0.08em;">LOC: NASHVILLE, TN</div>
           </div>
-          <div class="widget widget-tasks" style="background:#0A0A0A;border-color:#1C1C1C;color:#00FF41;">
-            <div class="wt-title" style="color:#00FF41;">Tasks Today</div>
-            <div class="task-row" style="border-color:#1C1C1C;">
-              <div class="task-dot" style="background:#FF6600;"></div>
-              <span class="task-name">Review Q2 budget</span>
+          <div class="widget widget-tasks" style="background:#000;border-color:#222;color:#00FF41;border-radius:0;padding:12px;">
+            <div style="font-size:9px;color:#FF6600;letter-spacing:0.2em;margin-bottom:8px;">TASKS &gt; DUE TODAY [3]</div>
+            <div class="task-row" style="border-color:#1C1C1C;border-radius:0;">
+              <div class="task-dot" style="background:#FF6600;border-radius:0;width:6px;height:6px;"></div>
+              <span style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">REVIEW Q2 BUDGET</span>
             </div>
             <div class="task-row" style="border-color:#1C1C1C;">
-              <div class="task-dot" style="background:#FF6600;opacity:0.6;"></div>
-              <span class="task-name">Call with design team</span>
+              <div class="task-dot" style="background:#FF6600;border-radius:0;width:6px;height:6px;opacity:0.5;"></div>
+              <span style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">CALL WITH DESIGN TEAM</span>
             </div>
             <div class="task-row" style="border-color:#1C1C1C;">
-              <div class="task-dot" style="background:#00FF41;"></div>
-              <span class="task-name">Update project docs</span>
+              <div class="task-dot" style="background:#00FF41;border-radius:0;width:6px;height:6px;"></div>
+              <span style="font-size:10px;letter-spacing:0.04em;text-transform:uppercase;">UPDATE PROJECT DOCS</span>
             </div>
           </div>
-          <div class="widget widget-stat" style="background:#0A0A0A;border-color:#1C1C1C;color:#00FF41;flex-direction:column;align-items:flex-start;">
-            <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
-              <span class="ws-label" style="color:#00FF41;">Habit Streak</span>
-              <span class="accent-tag" style="background:rgba(255,102,0,0.15);color:#FF6600;">+3 days</span>
+          <div class="widget widget-stat" style="background:#000;border-color:#222;color:#00FF41;border-radius:0;padding:12px;flex-direction:column;align-items:flex-start;">
+            <div style="font-size:9px;color:#FF6600;letter-spacing:0.2em;margin-bottom:6px;">HABITS &gt; STREAK INDEX</div>
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:baseline;">
+              <span style="font-size:28px;color:#FF6600;letter-spacing:-0.01em;">7</span>
+              <span style="font-size:9px;color:#00FF41;letter-spacing:0.1em;opacity:0.6;">DAYS +3 &uarr;</span>
             </div>
-            <div class="ws-value" style="margin-top:4px;color:#FF6600;">7 <span style="font-size:12px;opacity:0.5;color:#00FF41;">days</span></div>
-            <div class="ws-bar-wrap" style="background:#1C1C1C;width:100%;">
-              <div class="ws-bar" style="background:#FF6600;width:70%;"></div>
+            <div class="ws-bar-wrap" style="background:#1C1C1C;width:100%;border-radius:0;margin-top:8px;">
+              <div class="ws-bar" style="background:#FF6600;width:70%;border-radius:0;"></div>
             </div>
           </div>
         </div>
