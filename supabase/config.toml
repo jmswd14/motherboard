@@ -1,11 +1,2 @@
-project_id = "znhwyzgccojbjaivzllp"
-
-# Both Google OAuth functions handle their own JWT verification internally.
-# verify_jwt must remain false — Supabase resets this to true on every redeploy
-# without this config file present.
-
-[functions.google-oauth-exchange]
-verify_jwt = false
-
-[functions.refresh-google-token]
+[functions.send-notification]
 verify_jwt = false

@@ -254,17 +254,24 @@ async function checkAndGenerateNotifications() {
   const enabledTypes = new Set(settings.filter(s => s.enabled).map(s => s.type));
   if (enabledTypes.size === 0) return;
 
-  // Dedup: find types already notified today (local date range in UTC)
-  const dayStart = new Date(todayStr + 'T00:00:00');
-  const dayEnd   = new Date(dayStart.getTime() + 86400000);
-  const { data: existing } = await DB
-    .from('notifications')
-    .select('type')
-    .eq('user_id', currentUser.id)
-    .gte('created_at', dayStart.toISOString())
-    .lt('created_at', dayEnd.toISOString());
+  // Dedup via localStorage — persists even if user clears notifications from the panel
+  const lsKey = 'vg-notif-gen';
+  function getGeneratedToday() {
+    try {
+      const s = JSON.parse(localStorage.getItem(lsKey) || '{}');
+      return s.date === todayStr ? new Set(s.types || []) : new Set();
+    } catch { return new Set(); }
+  }
+  function markGeneratedToday(type) {
+    try {
+      const s = JSON.parse(localStorage.getItem(lsKey) || '{}');
+      const types = s.date === todayStr ? (s.types || []) : [];
+      if (!types.includes(type)) types.push(type);
+      localStorage.setItem(lsKey, JSON.stringify({ date: todayStr, types }));
+    } catch {}
+  }
 
-  const alreadySentToday = new Set((existing || []).map(n => n.type));
+  const alreadySentToday = getGeneratedToday();
 
   // Insert a notification row directly, then fire Edge Function for email (best-effort)
   async function notify({ type, title, message, link, items, emailBody }) {
@@ -277,6 +284,7 @@ async function checkAndGenerateNotifications() {
       link: link || null,
     });
     if (error) { console.error('[notifications] insert failed:', error); return; }
+    markGeneratedToday(type);
 
     // Email via Edge Function — fire-and-forget, never blocks in-app
     DB.functions.invoke('send-notification', { body: {
