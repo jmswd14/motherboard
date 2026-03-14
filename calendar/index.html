@@ -99,6 +99,18 @@
 
       <hr class="sidebar-divider">
 
+      <div class="sidebar-section">Show</div>
+      <div class="cal-filter-toggles" id="cal-filter-toggles">
+        <div class="cal-filter-toggle active" id="ftoggle-tasks"   onclick="toggleCalFilter('tasks')">Tasks</div>
+        <div class="cal-filter-toggle active" id="ftoggle-events"  onclick="toggleCalFilter('events')">Events</div>
+        <div class="cal-filter-toggle active" id="ftoggle-google"  onclick="toggleCalFilter('google')">Google</div>
+      </div>
+
+      <div class="sidebar-section cal-filter-cat-label" id="cal-filter-cat-label" style="margin-top:4px;">Categories</div>
+      <div id="cal-filter-categories"></div>
+
+      <hr class="sidebar-divider">
+
       <div class="sidebar-section">Integrations</div>
       <div id="gcal-sidebar" class="gcal-sidebar-body">
         <button class="sidebar-gcal-btn" onclick="connectGoogle()">Connect Google Calendar</button>
@@ -294,6 +306,12 @@ let categories         = [];
 let tags               = [];
 let recurringTemplates = [];
 
+// ── FILTER STATE ──
+let filterShowTasks   = true;
+let filterShowEvents  = true;
+let filterShowGoogle  = true;
+let filterCategoryIds = new Set(); // empty = all shown
+
 // ── CALENDAR VIEW STATE ──
 const WEEK_START_DAY = 0;
 const HOUR_HEIGHT    = 64;
@@ -389,7 +407,10 @@ function eventOccursOn(ev, dateStr) {
   return false;
 }
 
-function getEventsForDay(dateStr) { return events.filter(e => eventOccursOn(e, dateStr)); }
+function getEventsForDay(dateStr) {
+  if (!filterShowEvents) return [];
+  return events.filter(e => eventOccursOn(e, dateStr));
+}
 
 function recurringOccursOn(rt, dateStr) {
   const d = new Date(dateStr + 'T00:00:00');
@@ -405,10 +426,20 @@ function recurringOccursOn(rt, dateStr) {
 }
 
 function getTasksForDay(dateStr) {
-  const real = tasks.filter(t => !t.done && t.due === dateStr);
+  if (!filterShowTasks) return [];
+  const catFilter = filterCategoryIds.size > 0;
+  const real = tasks.filter(t => {
+    if (t.done || t.due !== dateStr) return false;
+    if (catFilter && !filterCategoryIds.has(t.category)) return false;
+    return true;
+  });
   const realRtIds = new Set(real.map(t => t.recurringTaskId).filter(Boolean));
   const virtual = recurringTemplates
-    .filter(rt => dateStr >= todayStr && !realRtIds.has(rt.id) && recurringOccursOn(rt, dateStr))
+    .filter(rt => {
+      if (dateStr < todayStr || realRtIds.has(rt.id) || !recurringOccursOn(rt, dateStr)) return false;
+      if (catFilter && !filterCategoryIds.has(rt.list_id || '')) return false;
+      return true;
+    })
     .map(rt => ({
       id:                'rt-virtual-' + rt.id,
       name:              rt.name,
@@ -1344,7 +1375,47 @@ function parseGoogleEvent(item) {
 }
 
 function getGoogleEventsForDay(dateStr) {
+  if (!filterShowGoogle) return [];
   return googleEvents.filter(e => e.date === dateStr);
+}
+
+function toggleCalFilter(type) {
+  if (type === 'tasks')  filterShowTasks  = !filterShowTasks;
+  if (type === 'events') filterShowEvents = !filterShowEvents;
+  if (type === 'google') filterShowGoogle = !filterShowGoogle;
+  document.getElementById('ftoggle-' + type)?.classList.toggle('active',
+    type === 'tasks' ? filterShowTasks : type === 'events' ? filterShowEvents : filterShowGoogle);
+  renderCalendar();
+}
+
+function toggleCalCategoryFilter(cid) {
+  if (filterCategoryIds.size === 0) {
+    // Currently all shown — deselect just this one by selecting all others
+    categories.forEach(c => { if (c.id !== cid) filterCategoryIds.add(c.id); });
+  } else if (filterCategoryIds.has(cid)) {
+    filterCategoryIds.delete(cid);
+    if (filterCategoryIds.size === 0) filterCategoryIds = new Set(); // back to "all"
+  } else {
+    filterCategoryIds.add(cid);
+    if (filterCategoryIds.size === categories.length) filterCategoryIds = new Set(); // all on = reset
+  }
+  renderCalFilterSidebar();
+  renderCalendar();
+}
+
+function renderCalFilterSidebar() {
+  const el = document.getElementById('cal-filter-categories');
+  const labelEl = document.getElementById('cal-filter-cat-label');
+  if (!el) return;
+  if (!categories.length) { el.innerHTML = ''; if (labelEl) labelEl.style.display = 'none'; return; }
+  if (labelEl) labelEl.style.display = '';
+  el.innerHTML = categories.map(c => {
+    const active = filterCategoryIds.size === 0 || filterCategoryIds.has(c.id);
+    return `<div class="cal-filter-cat ${active ? 'active' : ''}" onclick="toggleCalCategoryFilter('${c.id}')">
+      <span class="list-color-dot" style="background:${c.color};width:8px;height:8px;flex-shrink:0;"></span>
+      <span>${c.name}</span>
+    </div>`;
+  }).join('');
 }
 
 function buildGcalEvent(ev) {
@@ -1447,6 +1518,7 @@ async function init() {
 
   console.log('[GCal] Final googleConnected state before render:', googleConnected);
   renderGcalSidebar(); // Always sync sidebar to final state before rendering calendar
+  renderCalFilterSidebar();
   renderCalendar();
 }
 

@@ -870,6 +870,55 @@
   padding: 6px 16px 12px;
 }
 
+/* ── FILTER TOGGLES (Show: Tasks / Events / Google) ── */
+.cal-filter-toggles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 16px 8px;
+}
+
+.cal-filter-toggle {
+  padding: 7px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+  border: 1px solid transparent;
+}
+.cal-filter-toggle:hover { background: var(--surface2); color: var(--text-dim); }
+.cal-filter-toggle.active { color: var(--text); }
+.cal-filter-toggle:not(.active) { opacity: 0.4; }
+
+/* ── CATEGORY FILTER ROWS ── */
+#cal-filter-categories {
+  padding: 0 16px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cal-filter-cat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+.cal-filter-cat:hover { background: var(--surface2); color: var(--text-dim); }
+.cal-filter-cat.active { color: var(--text); }
+.cal-filter-cat:not(.active) { opacity: 0.4; }
+
 /* When right sidebar is collapsed, hide view buttons and gcal body */
-.right-sidebar.rs-collapsed .cal-sidebar-view-btns { display: none; }
-.right-sidebar.rs-collapsed .gcal-sidebar-body      { display: none; }
+.right-sidebar.rs-collapsed .cal-sidebar-view-btns    { display: none; }
+.right-sidebar.rs-collapsed .gcal-sidebar-body        { display: none; }
+.right-sidebar.rs-collapsed .cal-filter-toggles      { display: none; }
+.right-sidebar.rs-collapsed #cal-filter-categories   { display: none; }
+.right-sidebar.rs-collapsed .cal-filter-cat-label    { display: none; }
