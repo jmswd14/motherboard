@@ -4,18 +4,18 @@ let _uid = null;
 
 // ────────── COLORS ──────────
 const TAG_COLORS = [
-  '#7B9EC4', // periwinkle blue
-  '#B87A8A', // dusty rose
-  '#C09A50', // warm amber
-  '#5A9B80', // sage green
-  '#8C7EC0', // muted lavender
-  '#B87856', // terracotta
-  '#4E9BAC', // steel teal
-  '#A87860', // warm sienna
-  '#A89060', // antique gold
-  '#628E92', // muted teal
-  '#9A5872', // wine / mauve
-  '#6A9660', // moss green
+  '#00E676', // phosphor green  (echoes --retro-c1)
+  '#FF6D00', // burnt orange    (echoes --retro-c2)
+  '#00C8C8', // terminal cyan
+  '#EE3333', // terminal red
+  '#AA44EE', // phosphor purple
+  '#EEC900', // amber
+  '#3377DD', // terminal blue
+  '#EE2288', // hot magenta
+  '#00AAAA', // teal
+  '#88CC00', // lime green
+  '#CC5500', // rust / copper
+  '#55AAEE', // ice blue
 ];
 const LIST_COLORS = ['#7C9EFF','#FF8FAB','#FFD166','#06D6A0','#CB9CF2','#FF9F68','#4DD9F0','#F4A261','#E76F51','#A8DADC'];
 
