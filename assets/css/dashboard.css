@@ -1023,3 +1023,33 @@
   transition: border-color 0.15s, color 0.15s;
 }
 .widget-option-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── NEWS FEED ─────────────────────────────────────────────────────────────── */
+
+.news-headline {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 12px;
+  line-height: 1.55;
+  transition: color 0.15s;
+}
+.news-headline:hover { color: var(--accent); }
+.news-headline-lg { font-size: 13px; line-height: 1.5; }
+.news-meta { font-size: 9px; letter-spacing: 0.12em; color: var(--text-muted); opacity: 0.5; margin-bottom: 6px; }
+.news-desc { font-size: 11px; color: var(--text-muted); opacity: 0.55; line-height: 1.55; margin-top: 8px; }
+.news-divider { font-size: 9px; color: var(--border2); letter-spacing: 0.02em; margin: 12px 0; overflow: hidden; white-space: nowrap; }
+.news-item { display: flex; flex-direction: column; }
+
+/* Small (NS1) */
+.news-small { display: flex; flex-direction: column; height: 100%; justify-content: center; }
+
+/* Wide (NW1) */
+.news-wide { display: flex; gap: 0; height: 100%; }
+.news-wide-left  { flex: 0 0 55%; padding: 2px 16px 2px 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; justify-content: center; }
+.news-wide-right { flex: 1; padding: 2px 0 2px 16px; display: flex; flex-direction: column; justify-content: space-around; gap: 8px; }
+
+/* Large (NL1) */
+.news-large { display: flex; flex-direction: column; height: 100%; }
+.news-large-hero { margin-bottom: 4px; }
+.news-large-list { display: flex; flex-direction: column; gap: 10px; }

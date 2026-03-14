@@ -145,6 +145,7 @@ const WIDGET_LABELS = {
   'goals-progress':  'Goals Progress',
   'movie-suggest':   'Movie Pick',
   'history-today':   'On This Day',
+  'news-feed':       'Top Stories',
 };
 
 const WIDGET_CATALOG = [
@@ -158,6 +159,7 @@ const WIDGET_CATALOG = [
   { type: 'goals-progress',  size: 'large', icon: '◎', name: 'Goals Progress',  desc: 'Track long-term goals' },
   { type: 'movie-suggest',   size: 'wide',  icon: '▶', name: 'Movie Pick',       desc: 'Daily film suggestion' },
   { type: 'history-today',   size: 'wide',  icon: '◷', name: 'On This Day',      desc: 'Historical event from today' },
+  { type: 'news-feed',       size: 'wide',  icon: '◈', name: 'Top Stories',      desc: 'Latest headlines' },
 ];
 
 const JOURNAL_PROMPTS = [
@@ -446,6 +448,7 @@ function loadAllWidgetData() {
     'goals-progress':  loadGoalsProgress,
     'movie-suggest':   loadMovieSuggest,
     'history-today':   loadHistoryToday,
+    'news-feed':       loadNewsFeed,
   };
   widgets.forEach(w => {
     if (loaders[w.widget_type]) loaders[w.widget_type](w);
@@ -1580,6 +1583,103 @@ function renderHistoryWidget(el, events, size) {
   }
 }
 
+// ── NEWS FEED ─────────────────────────────────────────────────────────────────
+
+async function loadNewsFeed(widget) {
+  const el = document.getElementById(`wb-${widget.id}`);
+  if (!el) return;
+  const config = widget.config || {};
+  const rssUrl = config.source || 'https://feeds.bbci.co.uk/news/rss.xml';
+
+  const now = new Date();
+  const hourKey = now.toISOString().slice(0, 13); // YYYY-MM-DDTHH
+  const cacheKey = `vg-news-${widget.id}-${hourKey}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) { renderNewsFeed(el, JSON.parse(cached), widget.size); return; }
+
+  try {
+    const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}&count=10`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('rss error');
+    const data = await res.json();
+    const items = (data.items || []).filter(i => i.title && i.link);
+    if (!items.length) throw new Error('no items');
+    const feedTitle = data.feed?.title || '';
+    const payload = { items, feedTitle };
+    localStorage.setItem(cacheKey, JSON.stringify(payload));
+    renderNewsFeed(el, payload, widget.size);
+  } catch(e) {
+    el.innerHTML = `<div class="widget-empty"><div class="widget-empty-text">FEED_ERROR: COULD NOT LOAD</div></div>`;
+  }
+}
+
+function newsRelTime(pubDate) {
+  if (!pubDate) return '';
+  const diff = Date.now() - new Date(pubDate).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 2)  return 'JUST NOW';
+  if (mins < 60) return `${mins}M AGO`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24)  return `${hrs}H AGO`;
+  return `${Math.floor(hrs / 24)}D AGO`;
+}
+
+function renderNewsFeed(el, payload, size) {
+  const { items, feedTitle } = payload;
+  const src = feedTitle ? feedTitle.toUpperCase() : 'NEWS';
+
+  if (size === 'small') {
+    const top = items[0];
+    el.innerHTML = `
+      <div class="news-small">
+        <div class="news-meta">${esc(src)} &middot; ${newsRelTime(top.pubDate)}</div>
+        <a class="news-headline" href="${esc(top.link)}" target="_blank" rel="noopener noreferrer">${esc(top.title)}</a>
+      </div>`;
+
+  } else if (size === 'wide') {
+    const top = items[0];
+    const rest = items.slice(1, 4);
+    el.innerHTML = `
+      <div class="news-wide">
+        <div class="news-wide-left">
+          <div class="news-meta">${esc(src)} &middot; ${newsRelTime(top.pubDate)}</div>
+          <a class="news-headline news-headline-lg" href="${esc(top.link)}" target="_blank" rel="noopener noreferrer">${esc(top.title)}</a>
+        </div>
+        <div class="news-wide-right">
+          ${rest.map(item => `
+            <div class="news-item">
+              <div class="news-meta">${newsRelTime(item.pubDate)}</div>
+              <a class="news-headline" href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a>
+            </div>`).join('')}
+        </div>
+      </div>`;
+
+  } else {
+    // large
+    const top = items[0];
+    const rest = items.slice(1, 5);
+    const desc = top.description
+      ? top.description.replace(/<[^>]+>/g, '').slice(0, 160) + (top.description.length > 160 ? '…' : '')
+      : '';
+    el.innerHTML = `
+      <div class="news-large">
+        <div class="news-large-hero">
+          <div class="news-meta">${esc(src)} &middot; ${newsRelTime(top.pubDate)}</div>
+          <a class="news-headline news-headline-lg" href="${esc(top.link)}" target="_blank" rel="noopener noreferrer">${esc(top.title)}</a>
+          ${desc ? `<div class="news-desc">${esc(desc)}</div>` : ''}
+        </div>
+        <div class="news-divider">────────────────────────────────────</div>
+        <div class="news-large-list">
+          ${rest.map(item => `
+            <div class="news-item">
+              <div class="news-meta">${newsRelTime(item.pubDate)}</div>
+              <a class="news-headline" href="${esc(item.link)}" target="_blank" rel="noopener noreferrer">${esc(item.title)}</a>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  }
+}
+
 // ── WIDGET OPTIONS ────────────────────────────────────────────────────────────
 
 let optionsWidgetId = null;
@@ -1776,6 +1876,19 @@ function buildOptionsForm(widget, config, habits) {
   } else if (type === 'history-today') {
     rows = `<div class="widget-option-row" style="color:var(--text-muted);font-size:12px;">No configuration needed. Data from Wikipedia.</div>`;
 
+  } else if (type === 'news-feed') {
+    rows = `
+      <div class="widget-option-row">
+        <label class="widget-option-label">Source</label>
+        <select class="widget-option-select" id="wo-news-source">
+          <option value="https://feeds.bbci.co.uk/news/rss.xml"          ${(!config.source || config.source.includes('bbc'))       ? 'selected' : ''}>BBC News</option>
+          <option value="https://feeds.npr.org/1001/rss.xml"              ${config.source?.includes('npr')       ? 'selected' : ''}>NPR</option>
+          <option value="https://www.theguardian.com/world/rss"           ${config.source?.includes('guardian')  ? 'selected' : ''}>The Guardian</option>
+          <option value="https://feeds.arstechnica.com/arstechnica/index" ${config.source?.includes('ars')       ? 'selected' : ''}>Ars Technica</option>
+          <option value="https://feeds.reuters.com/reuters/topNews"       ${config.source?.includes('reuters')   ? 'selected' : ''}>Reuters</option>
+        </select>
+      </div>`;
+
   } else if (type === 'movie-suggest') {
     rows = `
       <div class="widget-option-row">
@@ -1862,6 +1975,11 @@ function saveWidgetOptions() {
     newConfig.rotation = getVal('wo-rotation') || 'daily';
   } else if (type === 'goals-progress') {
     newConfig.currency = getVal('wo-currency') || 'USD';
+  } else if (type === 'news-feed') {
+    newConfig.source = getVal('wo-news-source') || 'https://feeds.bbci.co.uk/news/rss.xml';
+    Object.keys(localStorage)
+      .filter(k => k.startsWith(`vg-news-${id}`))
+      .forEach(k => localStorage.removeItem(k));
   } else if (type === 'movie-suggest') {
     newConfig.genre_id   = getVal('wo-movie-genre') || '';
     newConfig.min_rating = parseFloat(getVal('wo-movie-rating')) || 7;
