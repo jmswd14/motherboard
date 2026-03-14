@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Preview — Motherboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Fraunces:ital,wght@1,300;1,400&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #111;
+      font-family: 'Geist', sans-serif;
+      padding: 24px;
+      min-height: 100vh;
+    }
+    h1 {
+      color: #888;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 24px;
+      text-align: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    @media (max-width: 640px) {
+      .grid { grid-template-columns: 1fr; }
+      body { padding: 16px; }
+    }
+
+    /* ── PANEL ── */
+    .panel {
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .panel-label {
+      padding: 10px 16px;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      border-bottom: 1px solid;
+    }
+    .panel-body {
+      display: flex;
+      height: 340px;
+    }
+
+    /* ── SIDEBAR STRIP ── */
+    .sidebar-strip {
+      width: 44px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px 0;
+      gap: 18px;
+      border-right: 1px solid;
+      flex-shrink: 0;
+    }
+    .sb-brand {
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+      font-size: 14px;
+      font-weight: 300;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
+      transform: rotate(180deg);
+      letter-spacing: 0.05em;
+      margin-bottom: 4px;
+    }
+    .sb-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      opacity: 0.35;
+    }
+    .sb-dot.active { opacity: 1; }
+
+    /* ── CONTENT AREA ── */
+    .content-area {
+      flex: 1;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      overflow: hidden;
+    }
+
+    /* ── WIDGET CARD ── */
+    .widget {
+      border-radius: 8px;
+      padding: 14px;
+      border: 1px solid;
+    }
+    .widget-greeting .wg-time {
+      font-size: 22px;
+      font-weight: 300;
+      letter-spacing: -0.02em;
+      margin-bottom: 2px;
+    }
+    .widget-greeting .wg-msg {
+      font-size: 12px;
+      opacity: 0.55;
+      font-family: 'Fraunces', serif;
+      font-style: italic;
+    }
+    .widget-greeting .wg-loc {
+      font-size: 10px;
+      opacity: 0.35;
+      margin-top: 4px;
+      letter-spacing: 0.04em;
+    }
+
+    .widget-tasks .wt-title {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.4;
+      margin-bottom: 10px;
+    }
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 0;
+      border-bottom: 1px solid;
+      font-size: 11px;
+    }
+    .task-row:last-child { border-bottom: none; }
+    .task-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .task-name { opacity: 0.75; }
+
+    .widget-stat {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .ws-label { font-size: 10px; opacity: 0.4; letter-spacing: 0.08em; text-transform: uppercase; }
+    .ws-value { font-size: 24px; font-weight: 300; letter-spacing: -0.02em; }
+    .ws-bar-wrap {
+      height: 3px;
+      border-radius: 2px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    .ws-bar { height: 100%; border-radius: 2px; }
+
+    .accent-tag {
+      display: inline-block;
+      font-size: 9px;
+      padding: 2px 7px;
+      border-radius: 10px;
+      letter-spacing: 0.06em;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <h1>Motherboard — Theme Preview</h1>
+  <div class="grid">
+
+    <!-- ── TERMINAL GREEN ── -->
+    <div class="panel">
+      <div class="panel-label" style="background:#080E08;color:#00FF87;border-color:#1A3A1A;">
+        Terminal Green
+      </div>
+      <div class="panel-body" style="background:#080E08;">
+        <div class="sidebar-strip" style="background:#0D1A0D;border-color:#1A3A1A;">
+          <span class="sb-brand" style="color:#00FF87;">M</span>
+          <div class="sb-dot active" style="background:#00FF87;"></div>
+          <div class="sb-dot" style="background:#A8FF8A;"></div>
+          <div class="sb-dot" style="background:#A8FF8A;"></div>
+          <div class="sb-dot" style="background:#A8FF8A;"></div>
+        </div>
+        <div class="content-area">
+          <div class="widget widget-greeting" style="background:#0D1A0D;border-color:#1A3A1A;color:#A8FF8A;">
+            <div class="wg-time">3:42 PM</div>
+            <div class="wg-msg" style="color:#A8FF8A;">Getting through the day, James.</div>
+            <div class="wg-loc">Nashville, Tennessee</div>
+          </div>
+          <div class="widget widget-tasks" style="background:#0D1A0D;border-color:#1A3A1A;color:#A8FF8A;">
+            <div class="wt-title" style="color:#A8FF8A;">Tasks Today</div>
+            <div class="task-row" style="border-color:#1A3A1A;">
+              <div class="task-dot" style="background:#FF6B6B;"></div>
+              <span class="task-name">Review Q2 budget</span>
+            </div>
+            <div class="task-row" style="border-color:#1A3A1A;">
+              <div class="task-dot" style="background:#FFB347;"></div>
+              <span class="task-name">Call with design team</span>
+            </div>
+            <div class="task-row" style="border-color:#1A3A1A;">
+              <div class="task-dot" style="background:#00FF87;"></div>
+              <span class="task-name">Update project docs</span>
+            </div>
+          </div>
+          <div class="widget widget-stat" style="background:#0D1A0D;border-color:#1A3A1A;color:#A8FF8A;flex-direction:column;align-items:flex-start;">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+              <span class="ws-label">Habit Streak</span>
+              <span class="accent-tag" style="background:rgba(0,255,135,0.12);color:#00FF87;">+3 days</span>
+            </div>
+            <div class="ws-value" style="margin-top:4px;">7 <span style="font-size:12px;opacity:0.4;">days</span></div>
+            <div class="ws-bar-wrap" style="background:#1A3A1A;width:100%;">
+              <div class="ws-bar" style="background:#00FF87;width:70%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── AMBER CRT ── -->
+    <div class="panel">
+      <div class="panel-label" style="background:#0A0800;color:#FFC700;border-color:#2A1F00;">
+        Amber CRT
+      </div>
+      <div class="panel-body" style="background:#0A0800;">
+        <div class="sidebar-strip" style="background:#141000;border-color:#2A1F00;">
+          <span class="sb-brand" style="color:#FFC700;">M</span>
+          <div class="sb-dot active" style="background:#FFC700;"></div>
+          <div class="sb-dot" style="background:#FFB84D;"></div>
+          <div class="sb-dot" style="background:#FFB84D;"></div>
+          <div class="sb-dot" style="background:#FFB84D;"></div>
+        </div>
+        <div class="content-area">
+          <div class="widget widget-greeting" style="background:#141000;border-color:#2A1F00;color:#FFB84D;">
+            <div class="wg-time">3:42 PM</div>
+            <div class="wg-msg" style="color:#FFB84D;">Getting through the day, James.</div>
+            <div class="wg-loc">Nashville, Tennessee</div>
+          </div>
+          <div class="widget widget-tasks" style="background:#141000;border-color:#2A1F00;color:#FFB84D;">
+            <div class="wt-title" style="color:#FFB84D;">Tasks Today</div>
+            <div class="task-row" style="border-color:#2A1F00;">
+              <div class="task-dot" style="background:#FF6B6B;"></div>
+              <span class="task-name">Review Q2 budget</span>
+            </div>
+            <div class="task-row" style="border-color:#2A1F00;">
+              <div class="task-dot" style="background:#FFB347;"></div>
+              <span class="task-name">Call with design team</span>
+            </div>
+            <div class="task-row" style="border-color:#2A1F00;">
+              <div class="task-dot" style="background:#FFC700;"></div>
+              <span class="task-name">Update project docs</span>
+            </div>
+          </div>
+          <div class="widget widget-stat" style="background:#141000;border-color:#2A1F00;color:#FFB84D;flex-direction:column;align-items:flex-start;">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+              <span class="ws-label">Habit Streak</span>
+              <span class="accent-tag" style="background:rgba(255,199,0,0.12);color:#FFC700;">+3 days</span>
+            </div>
+            <div class="ws-value" style="margin-top:4px;">7 <span style="font-size:12px;opacity:0.4;">days</span></div>
+            <div class="ws-bar-wrap" style="background:#2A1F00;width:100%;">
+              <div class="ws-bar" style="background:#FFC700;width:70%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BLUEPRINT ── -->
+    <div class="panel">
+      <div class="panel-label" style="background:#050D1A;color:#4DAAFF;border-color:#0F2A4A;">
+        Blueprint
+      </div>
+      <div class="panel-body" style="background:#050D1A;">
+        <div class="sidebar-strip" style="background:#0A1628;border-color:#0F2A4A;">
+          <span class="sb-brand" style="color:#4DAAFF;">M</span>
+          <div class="sb-dot active" style="background:#4DAAFF;"></div>
+          <div class="sb-dot" style="background:#C8E8FF;"></div>
+          <div class="sb-dot" style="background:#C8E8FF;"></div>
+          <div class="sb-dot" style="background:#C8E8FF;"></div>
+        </div>
+        <div class="content-area">
+          <div class="widget widget-greeting" style="background:#0A1628;border-color:#0F2A4A;color:#C8E8FF;">
+            <div class="wg-time">3:42 PM</div>
+            <div class="wg-msg" style="color:#C8E8FF;">Getting through the day, James.</div>
+            <div class="wg-loc">Nashville, Tennessee</div>
+          </div>
+          <div class="widget widget-tasks" style="background:#0A1628;border-color:#0F2A4A;color:#C8E8FF;">
+            <div class="wt-title" style="color:#C8E8FF;">Tasks Today</div>
+            <div class="task-row" style="border-color:#0F2A4A;">
+              <div class="task-dot" style="background:#FF6B6B;"></div>
+              <span class="task-name">Review Q2 budget</span>
+            </div>
+            <div class="task-row" style="border-color:#0F2A4A;">
+              <div class="task-dot" style="background:#FFB347;"></div>
+              <span class="task-name">Call with design team</span>
+            </div>
+            <div class="task-row" style="border-color:#0F2A4A;">
+              <div class="task-dot" style="background:#4DAAFF;"></div>
+              <span class="task-name">Update project docs</span>
+            </div>
+          </div>
+          <div class="widget widget-stat" style="background:#0A1628;border-color:#0F2A4A;color:#C8E8FF;flex-direction:column;align-items:flex-start;">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+              <span class="ws-label">Habit Streak</span>
+              <span class="accent-tag" style="background:rgba(77,170,255,0.12);color:#4DAAFF;">+3 days</span>
+            </div>
+            <div class="ws-value" style="margin-top:4px;">7 <span style="font-size:12px;opacity:0.4;">days</span></div>
+            <div class="ws-bar-wrap" style="background:#0F2A4A;width:100%;">
+              <div class="ws-bar" style="background:#4DAAFF;width:70%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SEPIA / PRINT ── -->
+    <div class="panel">
+      <div class="panel-label" style="background:#1A1508;color:#C8A84B;border-color:#2E2510;">
+        Sepia / Print
+      </div>
+      <div class="panel-body" style="background:#1A1508;">
+        <div class="sidebar-strip" style="background:#221C0A;border-color:#2E2510;">
+          <span class="sb-brand" style="color:#C8A84B;">M</span>
+          <div class="sb-dot active" style="background:#C8A84B;"></div>
+          <div class="sb-dot" style="background:#E8D9B0;"></div>
+          <div class="sb-dot" style="background:#E8D9B0;"></div>
+          <div class="sb-dot" style="background:#E8D9B0;"></div>
+        </div>
+        <div class="content-area">
+          <div class="widget widget-greeting" style="background:#221C0A;border-color:#2E2510;color:#E8D9B0;">
+            <div class="wg-time">3:42 PM</div>
+            <div class="wg-msg" style="color:#E8D9B0;">Getting through the day, James.</div>
+            <div class="wg-loc">Nashville, Tennessee</div>
+          </div>
+          <div class="widget widget-tasks" style="background:#221C0A;border-color:#2E2510;color:#E8D9B0;">
+            <div class="wt-title" style="color:#E8D9B0;">Tasks Today</div>
+            <div class="task-row" style="border-color:#2E2510;">
+              <div class="task-dot" style="background:#FF6B6B;"></div>
+              <span class="task-name">Review Q2 budget</span>
+            </div>
+            <div class="task-row" style="border-color:#2E2510;">
+              <div class="task-dot" style="background:#FFB347;"></div>
+              <span class="task-name">Call with design team</span>
+            </div>
+            <div class="task-row" style="border-color:#2E2510;">
+              <div class="task-dot" style="background:#C8A84B;"></div>
+              <span class="task-name">Update project docs</span>
+            </div>
+          </div>
+          <div class="widget widget-stat" style="background:#221C0A;border-color:#2E2510;color:#E8D9B0;flex-direction:column;align-items:flex-start;">
+            <div style="display:flex;justify-content:space-between;width:100%;align-items:center;">
+              <span class="ws-label">Habit Streak</span>
+              <span class="accent-tag" style="background:rgba(200,168,75,0.15);color:#C8A84B;">+3 days</span>
+            </div>
+            <div class="ws-value" style="margin-top:4px;">7 <span style="font-size:12px;opacity:0.4;">days</span></div>
+            <div class="ws-bar-wrap" style="background:#2E2510;width:100%;">
+              <div class="ws-bar" style="background:#C8A84B;width:70%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</body>
+</html>
