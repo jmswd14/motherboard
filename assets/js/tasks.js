@@ -647,7 +647,8 @@ async function deleteCategory(cid) {
 // ────────── RECURRING TASKS ──────────
 
 async function loadRecurringTasks() {
-  const { data } = await _sb.from('recurring_tasks').select('*').eq('user_id', _uid).order('created_at', { ascending: true });
+  const { data, error } = await _sb.from('recurring_tasks').select('*').eq('user_id', _uid).order('created_at', { ascending: true });
+  if (error) { console.error('[recurring] loadRecurringTasks error:', error.message, '— has migration 006 been run?'); }
   recurringTasks = data || [];
 }
 
@@ -858,16 +859,45 @@ async function saveRecurringTask() {
   closeModal('add-recurring-modal');
 
   if (editingRecurringId) {
-    await _sb.from('recurring_tasks').update(payload).eq('id', editingRecurringId).eq('user_id', _uid);
+    const { error } = await _sb.from('recurring_tasks').update(payload).eq('id', editingRecurringId).eq('user_id', _uid);
+    if (error) { console.error('[recurring] update error:', error.message); return; }
     const idx = recurringTasks.findIndex(r => r.id === editingRecurringId);
     if (idx !== -1) recurringTasks[idx] = { ...recurringTasks[idx], ...payload };
   } else {
-    const { data } = await _sb.from('recurring_tasks').insert({ ...payload, id: uid() }).select().single();
-    if (data) recurringTasks.push(data);
+    const newRtId = uid();
+    const { data, error } = await _sb.from('recurring_tasks').insert({ ...payload, id: newRtId }).select().single();
+    if (error) { console.error('[recurring] insert error:', error.message, '— has migration 006 been run?'); return; }
+    const rt = data || { ...payload, id: newRtId, last_generated_date: null };
+    recurringTasks.push(rt);
+
+    // Generate an instance for today immediately if this template fires today
+    if (shouldGenerateToday(rt) && !tasks.some(t => t.recurringTaskId === rt.id && t.recurringDate === todayStr)) {
+      const newId  = uid();
+      const minPos = tasks.length ? Math.min(...tasks.map(t => t.order || 0)) : 0;
+      const { data: taskData, error: taskErr } = await _sb.from('tasks').insert({
+        id:                newId,
+        user_id:           _uid,
+        name:              rt.name,
+        category_id:       rt.list_id || null,
+        priority:          rt.priority,
+        due:               todayStr,
+        tags:              rt.tags || [],
+        notes:             rt.notes || '',
+        done:              false,
+        position:          minPos - 1,
+        recurring_task_id: rt.id,
+        recurring_date:    todayStr,
+      }).select().single();
+      if (taskErr) { console.error('[recurring] task insert error:', taskErr.message); }
+      if (taskData) tasks.unshift(fromDbTask(taskData));
+      await _sb.from('recurring_tasks').update({ last_generated_date: todayStr }).eq('id', rt.id);
+      rt.last_generated_date = todayStr;
+    }
   }
 
   if (currentView === 'recurring') renderRecurringView();
   renderSidebar();
+  renderTasks();
 }
 
 async function toggleRecurringActive(id) {
