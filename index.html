@@ -806,7 +806,7 @@ async function loadHabitCheckin(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
   const config = widget.config || {};
-  const limit = config.limit != null ? config.limit : 6;
+  const limit = widget.size === 'large' ? (config.limit ?? 6) : 3;
   const habitIds = config.habit_ids || [];
 
   try {
