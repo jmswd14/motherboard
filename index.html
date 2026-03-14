@@ -236,6 +236,7 @@ const TMDB_API_KEY = '2a9ab8fbca5a5c52399da22ba0a7c7c9';
 
 let dashboardSlots = [];
 let activeSlotIndex = parseInt(localStorage.getItem('vg-active-slot') || '0');
+let saveTimer = null;
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 
@@ -287,6 +288,11 @@ async function loadLayout() {
 
 async function saveLayout() {
   await _persistSlot(activeSlotIndex, widgets);
+}
+
+function debouncedSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => saveLayout(), 1500);
 }
 
 // ── GRID RENDER ───────────────────────────────────────────────────────────────
@@ -345,7 +351,7 @@ function createWidgetEl(widget, idx) {
     dragSrcIdx = null;
     renderGrid();
     loadAllWidgetData();
-    saveLayout();
+    debouncedSave();
   });
 
   return div;
@@ -384,7 +390,7 @@ function toggleEditMode() {
     btn.classList.remove('done');
     addBtn.classList.remove('visible');
     closeAddPanel();
-    saveLayout();
+    debouncedSave();
   }
 
   renderGrid();
@@ -435,7 +441,7 @@ function addWidget(type, size) {
   closeAddPanel();
   renderGrid();
   loadAllWidgetData();
-  saveLayout();
+  debouncedSave();
 }
 
 // ── WIDGET DATA LOADERS ───────────────────────────────────────────────────────
@@ -1994,7 +2000,7 @@ function saveWidgetOptions() {
 
   widget.config = newConfig;
   closeWidgetOptions();
-  saveLayout();
+  debouncedSave();
   renderGrid();
   loadAllWidgetData();
 }
@@ -2045,19 +2051,19 @@ async function _persistSlot(slotIndex, widgetData) {
   }
 }
 
-async function saveSlot(index) {
-  activeSlotIndex = index;
-  localStorage.setItem('vg-active-slot', String(index));
-  await _persistSlot(index, widgets);
-}
-
-function loadSlot(index) {
+async function activateSlot(index) {
+  if (index === activeSlotIndex) return;
+  clearTimeout(saveTimer);
+  await _persistSlot(activeSlotIndex, widgets); // save current before switching
   const slot = dashboardSlots.find(s => s.slot_index === index);
-  if (!slot || !Array.isArray(slot.widgets) || !slot.widgets.length) return;
   activeSlotIndex = index;
   localStorage.setItem('vg-active-slot', String(index));
-  widgets = slot.widgets.map(w => ({ ...w, user_id: currentUser.id }));
-  widgets.forEach((w, i) => { w.position = i; });
+  if (slot && Array.isArray(slot.widgets) && slot.widgets.length > 0) {
+    widgets = slot.widgets.map(w => ({ ...w, user_id: currentUser.id }));
+    widgets.forEach((w, i) => { w.position = i; });
+  } else {
+    widgets = [];
+  }
   renderGrid();
   loadAllWidgetData();
   renderSlotSidebar();
@@ -2068,9 +2074,7 @@ function startRenameSlot(index) {
   if (!wrap) return;
   const slot = dashboardSlots.find(s => s.slot_index === index);
   if (!slot) return;
-  const isActive = index === activeSlotIndex;
   wrap.innerHTML = `
-    ${isActive ? '<span class="slot-active-dot"></span>' : ''}
     <input class="slot-name-input" id="slot-name-input-${index}"
            value="${esc(slot.name)}" maxlength="20"
            onkeydown="if(event.key==='Enter'){this.blur();}if(event.key==='Escape'){renderSlotSidebar();}"
@@ -2107,22 +2111,19 @@ function renderSlotSidebar() {
   if (!list) return;
   list.innerHTML = dashboardSlots.map(slot => {
     const isActive = slot.slot_index === activeSlotIndex;
-    const hasData  = Array.isArray(slot.widgets) && slot.widgets.length > 0;
     const savedStr = slot.updated_at ? formatSlotDate(slot.updated_at) : null;
+    const meta = isActive
+      ? (savedStr ? `Last saved ${savedStr}` : 'Active')
+      : (savedStr ? savedStr : 'Empty');
     return `
-      <div class="slot-card${isActive ? ' active' : ''}" id="slot-card-${slot.slot_index}">
-        <div class="slot-card-header">
-          <div class="slot-card-name-wrap" id="slot-name-wrap-${slot.slot_index}">
-            ${isActive ? '<span class="slot-active-dot"></span>' : ''}
-            <span class="slot-name">${esc(slot.name)}</span>
-            <button class="slot-rename-btn" onclick="startRenameSlot(${slot.slot_index})" title="Rename">✎</button>
-          </div>
+      <div class="slot-card${isActive ? ' active' : ''}"
+           id="slot-card-${slot.slot_index}"
+           onclick="${isActive ? '' : `activateSlot(${slot.slot_index})`}">
+        <div class="slot-card-name-wrap" id="slot-name-wrap-${slot.slot_index}">
+          <span class="slot-name">${esc(slot.name)}</span>
+          <button class="slot-rename-btn" onclick="event.stopPropagation();startRenameSlot(${slot.slot_index})" title="Rename">✎</button>
         </div>
-        <div class="slot-card-meta">${savedStr ? 'Saved ' + savedStr : 'Not saved'}</div>
-        <div class="slot-card-actions">
-          <button class="slot-btn slot-load-btn" onclick="loadSlot(${slot.slot_index})"${!hasData ? ' disabled' : ''}>Load</button>
-          <button class="slot-btn slot-save-btn" onclick="saveSlot(${slot.slot_index})">Save</button>
-        </div>
+        <div class="slot-card-meta">${meta}</div>
       </div>
     `;
   }).join('');

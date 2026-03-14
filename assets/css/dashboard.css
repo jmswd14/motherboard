@@ -1027,30 +1027,29 @@
 
 /* ── DASHBOARD SLOTS (right sidebar) ──────────────────────────────────────── */
 
-.right-sidebar-body#slot-list { padding: 16px 0 24px; }
+.app.rs-collapsed #slot-list { display: none; }
+
+.right-sidebar-body#slot-list { padding: 14px 0; }
 
 .slot-card {
-  margin: 0 12px 8px;
-  padding: 12px;
+  margin: 0 12px 6px;
+  padding: 10px 12px;
   border: 1px solid var(--border);
-  background: var(--surface2);
-  transition: border-color 0.15s;
+  border-left: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
 }
 .slot-card:last-child { margin-bottom: 0; }
+.slot-card:not(.active):hover { background: var(--surface2); border-color: var(--border2); }
 .slot-card.active {
-  border-color: var(--border2);
+  border-color: var(--border);
+  border-left-color: var(--accent);
   background: var(--surface3);
+  cursor: default;
 }
 
-.slot-card-header { margin-bottom: 3px; }
-.slot-card-name-wrap { display: flex; align-items: center; gap: 6px; }
-
-.slot-active-dot {
-  width: 5px; height: 5px;
-  border-radius: 50%;
-  background: var(--accent);
-  flex-shrink: 0;
-}
+.slot-card-name-wrap { display: flex; align-items: center; gap: 5px; margin-bottom: 3px; }
 .slot-name {
   font-size: 12px;
   color: var(--text);
@@ -1065,7 +1064,7 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: 10px;
   padding: 1px 3px;
   opacity: 0;
   transition: opacity 0.15s, color 0.15s;
@@ -1094,28 +1093,7 @@
   color: var(--text-muted);
   letter-spacing: 0.06em;
   opacity: 0.5;
-  margin-bottom: 10px;
-  padding-left: 11px;
 }
-.slot-card.active .slot-card-meta { padding-left: 17px; }
-
-.slot-card-actions { display: flex; gap: 6px; }
-.slot-btn {
-  flex: 1;
-  padding: 5px 8px;
-  font-family: var(--font-sans);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text-muted);
-  transition: border-color 0.15s, color 0.15s;
-}
-.slot-btn:hover:not(:disabled) { border-color: var(--border2); color: var(--text); }
-.slot-btn:disabled { opacity: 0.3; cursor: default; }
-.slot-save-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
 
 /* ── NEWS FEED ─────────────────────────────────────────────────────────────── */
 
