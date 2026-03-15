@@ -215,10 +215,10 @@
     </div>
 
     <div class="form-group">
-      <label>Emoji</label>
+      <label>Icon</label>
       <div class="emoji-dropdown-wrap" id="emoji-dropdown-wrap">
         <button type="button" class="emoji-dropdown-trigger" id="emoji-dropdown-trigger"
-                onclick="toggleEmojiDropdown(event)">
+                onclick="toggleIconDropdown(event)">
           <span id="emoji-display">▷</span>
           <span class="emoji-dropdown-arrow">▼</span>
         </button>
@@ -316,7 +316,7 @@ let openMenuId      = null;
 
 let habitDirection  = 'building';
 let selectedColor   = HABIT_COLORS[0];
-let selectedEmoji   = '▷';
+let selectedIcon   = '▷';
 
 const today    = new Date();
 const todayStr = today.toISOString().split('T')[0];
@@ -962,7 +962,7 @@ function renderChart(habit) {
 function openNewHabit() {
   habitDirection = 'building';
   selectedColor  = HABIT_COLORS[0];
-  selectedEmoji  = '▷';
+  selectedIcon  = '▷';
 
   document.getElementById('habit-modal-title').textContent = 'New Habit';
   document.getElementById('editing-habit-id').value = '';
@@ -977,7 +977,7 @@ function openNewHabit() {
 
   setDirection('building');
   populateCategorySelect('habit-category-input', '');
-  renderEmojiPicker();
+  renderIconPicker();
   renderColorPicker();
   document.getElementById('habit-modal').classList.add('show');
   setTimeout(() => document.getElementById('habit-name-input')?.focus(), 80);
@@ -990,7 +990,7 @@ function openEditHabit(id) {
 
   habitDirection = h.habit_direction || 'building';
   selectedColor  = h.color || HABIT_COLORS[0];
-  selectedEmoji  = h.emoji || '▷';
+  selectedIcon  = h.emoji || '▷';
 
   document.getElementById('habit-modal-title').textContent = 'Edit Habit';
   document.getElementById('editing-habit-id').value = id;
@@ -1005,7 +1005,7 @@ function openEditHabit(id) {
 
   setDirection(habitDirection);
   populateCategorySelect('habit-category-input', h.category_id || '');
-  renderEmojiPicker();
+  renderIconPicker();
   renderColorPicker();
   document.getElementById('habit-modal').classList.add('show');
   setTimeout(() => document.getElementById('habit-name-input')?.focus(), 80);
@@ -1024,34 +1024,34 @@ function onTypeChange() {
   document.getElementById('numeric-fields').style.display = type === 'numeric' ? '' : 'none';
 }
 
-function renderEmojiPicker() {
+function renderIconPicker() {
   const panel = document.getElementById('emoji-dropdown-panel');
   const display = document.getElementById('emoji-display');
-  if (display) display.textContent = selectedEmoji;
+  if (display) display.textContent = selectedIcon;
   if (!panel) return;
   panel.innerHTML = HABIT_ICONS.map(ic =>
-    `<button type="button" class="emoji-btn${ic.s === selectedEmoji ? ' selected' : ''}"
-             title="${ic.label}" onclick="selectEmoji('${ic.s}')">${ic.s}</button>`
+    `<button type="button" class="emoji-btn${ic.s === selectedIcon ? ' selected' : ''}"
+             title="${ic.label}" onclick="selectIcon('${ic.s}')">${ic.s}</button>`
   ).join('');
 }
 
-function toggleEmojiDropdown(e) {
+function toggleIconDropdown(e) {
   e.stopPropagation();
   const panel = document.getElementById('emoji-dropdown-panel');
   const isOpen = panel.classList.contains('open');
   panel.classList.toggle('open', !isOpen);
-  if (!isOpen) renderEmojiPicker();
+  if (!isOpen) renderIconPicker();
 }
 
-function closeEmojiDropdown() {
+function closeIconDropdown() {
   document.getElementById('emoji-dropdown-panel')?.classList.remove('open');
 }
 
-function selectEmoji(e) {
-  selectedEmoji = e;
+function selectIcon(e) {
+  selectedIcon = e;
   document.getElementById('emoji-display').textContent = e;
-  renderEmojiPicker();
-  closeEmojiDropdown();
+  renderIconPicker();
+  closeIconDropdown();
 }
 
 function renderColorPicker() {
@@ -1090,7 +1090,7 @@ async function saveHabit() {
     name, type, habit_direction: habitDirection,
     target_value: target, unit: unit || null,
     category_id: categoryId || null,
-    emoji: selectedEmoji, color: selectedColor, active: true,
+    emoji: selectedIcon, color: selectedColor, active: true,
   };
 
   closeModal('habit-modal');
@@ -1144,7 +1144,7 @@ function closeModal(id) { document.getElementById(id).classList.remove('show'); 
 // ── GLOBAL EVENTS ──
 document.addEventListener('click', e => {
   if (openMenuId && !e.target.closest('.habit-menu-wrap')) closeAllMenus();
-  if (!e.target.closest('#emoji-dropdown-wrap')) closeEmojiDropdown();
+  if (!e.target.closest('#emoji-dropdown-wrap')) closeIconDropdown();
 });
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
