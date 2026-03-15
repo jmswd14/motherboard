@@ -303,6 +303,7 @@
   transition: border-color 0.15s;
 }
 .emoji-dropdown-trigger:hover { border-color: var(--border2); }
+#emoji-display { color: var(--retro-c1, #00FF41); font-size: 16px; line-height: 1; }
 
 .emoji-dropdown-arrow {
   font-size: 10px;
