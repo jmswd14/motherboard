@@ -124,6 +124,22 @@
   </div>
 </div>
 
+<!-- Movie Detail Modal -->
+<div id="movie-modal" onclick="closeMovieModal()">
+  <div class="movie-modal-box" onclick="event.stopPropagation()">
+    <button class="movie-modal-close" onclick="closeMovieModal()">✕</button>
+    <div class="movie-modal-inner">
+      <div id="movie-modal-poster"></div>
+      <div class="movie-modal-info">
+        <div class="movie-modal-title" id="movie-modal-title"></div>
+        <div class="movie-modal-meta" id="movie-modal-meta"></div>
+        <div class="movie-modal-overview" id="movie-modal-overview"></div>
+        <button class="movie-modal-refresh-btn" id="movie-modal-refresh">↻ New Suggestion</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Add Widget Panel -->
 <div class="add-widget-panel" id="add-panel">
   <div class="add-panel-header">
@@ -402,7 +418,17 @@ async function init() {
   loadAllWidgetData();
   renderSlotSidebar();
 
-  clockInterval = setInterval(updateGreetingClocks, 30000);
+  clockInterval = setInterval(() => {
+    updateGreetingClocks();
+    // detect midnight rollover — refresh todayStr and reload widgets
+    const newDate = new Date().toISOString().split('T')[0];
+    if (newDate !== todayStr) {
+      todayStr = newDate;
+      document.getElementById('dash-date').textContent =
+        new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+      loadAllWidgetData();
+    }
+  }, 30000);
   checkAndGenerateNotifications(); // fire-and-forget; don't block dashboard load
 }
 
@@ -1600,9 +1626,11 @@ async function loadMovieSuggest(widget) {
     return;
   }
 
-  const cacheKey = `vg-movie-${widget.id}-${todayStr}`;
+  const localToday = new Date().toISOString().split('T')[0];
+  const salt = parseInt(localStorage.getItem(`vg-movie-${widget.id}-salt-${localToday}`) || '0');
+  const cacheKey = `vg-movie-${widget.id}-${localToday}-${salt}`;
   const cached = localStorage.getItem(cacheKey);
-  if (cached) { renderMovieWidget(el, JSON.parse(cached)); return; }
+  if (cached) { renderMovieWidget(el, JSON.parse(cached), widget.id); return; }
 
   try {
     const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
@@ -1610,9 +1638,9 @@ async function loadMovieSuggest(widget) {
     const minRating = config.min_rating || 7;
     const base = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genre}`;
 
-    // Try a seeded page first; fall back to page 1 if it returns nothing (filtered queries have fewer pages)
+    // Try a seeded page first; fall back to page 1 if it returns nothing
     let results = [];
-    const seededPage = (dayOfYear % 5) + 1;
+    const seededPage = ((dayOfYear + salt) % 5) + 1;
     const r1 = await fetch(`${base}&page=${seededPage}`);
     if (r1.ok) results = (await r1.json()).results || [];
     if (!results.length) {
@@ -1620,17 +1648,17 @@ async function loadMovieSuggest(widget) {
       if (r2.ok) results = (await r2.json()).results || [];
     }
 
-    const movie = results[dayOfYear % results.length];
+    const movie = results[(dayOfYear + salt) % results.length];
     if (!movie) throw new Error('no results');
 
     localStorage.setItem(cacheKey, JSON.stringify(movie));
-    renderMovieWidget(el, movie);
+    renderMovieWidget(el, movie, widget.id);
   } catch (e) {
     el.innerHTML = `<div class="widget-empty"><div class="widget-empty-text">Couldn't load suggestion</div></div>`;
   }
 }
 
-function renderMovieWidget(el, movie) {
+function renderMovieWidget(el, movie, widgetId) {
   const posterBase = 'https://image.tmdb.org/t/p/w300';
   const poster = movie.poster_path
     ? `<img class="movie-poster" src="${posterBase}${movie.poster_path}" alt="">`
@@ -1638,11 +1666,12 @@ function renderMovieWidget(el, movie) {
   const year = (movie.release_date || '').slice(0, 4);
   const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '—';
   const blurb = movie.overview
-    ? movie.overview.slice(0, 180) + (movie.overview.length > 180 ? '…' : '')
+    ? movie.overview.slice(0, 160) + (movie.overview.length > 160 ? '…' : '')
     : '';
 
+  const wid = widgetId ? `data-widget-id="${widgetId}"` : '';
   el.innerHTML = `
-    <div class="movie-wrap">
+    <div class="movie-wrap" style="cursor:pointer;" onclick="openMovieModal('${widgetId}')" ${wid}>
       <div class="movie-poster-col">${poster}</div>
       <div class="movie-info-col">
         <div class="movie-title">${esc(movie.title)}</div>
@@ -1653,9 +1682,44 @@ function renderMovieWidget(el, movie) {
   `;
 }
 
+function openMovieModal(widgetId) {
+  const localToday = new Date().toISOString().split('T')[0];
+  const salt = parseInt(localStorage.getItem(`vg-movie-${widgetId}-salt-${localToday}`) || '0');
+  const cacheKey = `vg-movie-${widgetId}-${localToday}-${salt}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (!cached) return;
+  const movie = JSON.parse(cached);
+
+  const posterBase = 'https://image.tmdb.org/t/p/w342';
+  const poster = movie.poster_path
+    ? `<img class="movie-modal-poster" src="${posterBase}${movie.poster_path}" alt="">`
+    : `<div class="movie-modal-poster-placeholder">▶</div>`;
+  const year = (movie.release_date || '').slice(0, 4);
+  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '—';
+
+  document.getElementById('movie-modal-poster').innerHTML = poster;
+  document.getElementById('movie-modal-title').textContent = movie.title || '';
+  document.getElementById('movie-modal-meta').textContent = [year, `★ ${rating}`].filter(Boolean).join('  ·  ');
+  document.getElementById('movie-modal-overview').textContent = movie.overview || '';
+  document.getElementById('movie-modal-refresh').onclick = () => refreshMovieWidget(widgetId);
+  document.getElementById('movie-modal').classList.add('open');
+}
+
+function closeMovieModal() {
+  document.getElementById('movie-modal').classList.remove('open');
+}
+
 function refreshMovieWidget(widgetId) {
-  Object.keys(localStorage).filter(k => k.startsWith(`vg-movie-${widgetId}`)).forEach(k => localStorage.removeItem(k));
+  closeMovieModal();
   closeWidgetOptions();
+  const localToday = new Date().toISOString().split('T')[0];
+  const saltKey = `vg-movie-${widgetId}-salt-${localToday}`;
+  const newSalt = parseInt(localStorage.getItem(saltKey) || '0') + 1;
+  localStorage.setItem(saltKey, newSalt);
+  // clear old cache for today
+  Object.keys(localStorage)
+    .filter(k => k.startsWith(`vg-movie-${widgetId}-${localToday}`) && !k.includes('-salt-'))
+    .forEach(k => localStorage.removeItem(k));
   const widget = widgets.find(w => w.id === widgetId);
   if (widget) loadMovieSuggest(widget);
 }
@@ -2047,10 +2111,6 @@ function buildOptionsForm(widget, config, habits) {
 
   } else if (type === 'movie-suggest') {
     rows = `
-      <div class="widget-option-row">
-        <label class="widget-option-label">Pick</label>
-        <button class="widget-option-btn" onclick="refreshMovieWidget('${widget.id}')">New suggestion</button>
-      </div>
       <div class="widget-option-row">
         <label class="widget-option-label">Genre</label>
         <select class="widget-option-select" id="wo-movie-genre">
