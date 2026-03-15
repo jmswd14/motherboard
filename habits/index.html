@@ -190,15 +190,6 @@
           <span class="sort-select-arrow">▼</span>
         </div>
       </div>
-      <div class="form-group">
-        <label>Category</label>
-        <div class="sort-select-wrap">
-          <select id="habit-category-input">
-            <option value="">None</option>
-          </select>
-          <span class="sort-select-arrow">▼</span>
-        </div>
-      </div>
     </div>
 
     <div id="numeric-fields" style="display:none;">
@@ -318,7 +309,6 @@ const EMPTY_COLOR   = 'var(--surface3)';
 // ── STATE ──
 let habits          = [];
 let logs            = [];
-let categories      = [];
 let currentView     = 'today';
 let selectedDate    = new Date().toISOString().split('T')[0];
 let progressHabitId = 'all';
@@ -333,7 +323,6 @@ const todayStr = today.toISOString().split('T')[0];
 
 // ── UTILS ──
 function uid()           { return crypto.randomUUID(); }
-function getCategory(id) { return categories.find(c => c.id === id); }
 
 function getLog(habitId, dateStr) {
   return logs.find(l => l.habit_id === habitId && l.date === dateStr);
@@ -478,8 +467,6 @@ function renderToday() {
 function renderHabitRow(habit) {
   const log     = getLog(habit.id, selectedDate);
   const success = isSuccess(habit, log);
-  const cat     = getCategory(habit.category_id);
-  const catDot  = cat ? `<span class="habit-cat-dot" style="background:${cat.color};"></span>` : '';
   const sClass  = log ? (success ? 'success' : 'fail') : 'empty';
 
   let inputHtml = '';
@@ -523,7 +510,6 @@ function renderHabitRow(habit) {
       <div class="habit-info">
         <span class="habit-name">${habit.name}</span>
         ${dirIcon(habit)}
-        ${catDot}
       </div>
     </div>
     <div class="habit-row-right">
@@ -630,13 +616,11 @@ function renderProgress() {
       const streak = currentStreak(h);
       const hColor = h.color || SUCCESS_COLOR;
       const rateColor = rate >= 70 ? hColor : rate >= 40 ? 'var(--p-medium)' : FAIL_COLOR;
-      const cat = getCategory(h.category_id);
       html += `<div class="all-habit-card" onclick="selectProgressHabit('${h.id}')">
         <div class="all-habit-card-top">
           <span class="all-habit-emoji">${h.emoji || '◎'}</span>
           <div class="all-habit-info">
             <span class="all-habit-name">${h.name} ${dirIcon(h)}</span>
-            ${cat ? `<span class="all-habit-cat" style="color:${cat.color};">${cat.name}</span>` : ''}
           </div>
         </div>
         <div class="all-habit-stats">
@@ -986,7 +970,6 @@ function openNewHabit() {
   document.getElementById('habit-modal-actions').style.justifyContent = 'flex-end';
 
   setDirection('building');
-  populateCategorySelect('habit-category-input', '');
   renderIconPicker();
   renderColorPicker();
   document.getElementById('habit-modal').classList.add('show');
@@ -1014,7 +997,6 @@ function openEditHabit(id) {
   document.getElementById('habit-modal-actions').style.justifyContent = 'space-between';
 
   setDirection(habitDirection);
-  populateCategorySelect('habit-category-input', h.category_id || '');
   renderIconPicker();
   renderColorPicker();
   document.getElementById('habit-modal').classList.add('show');
@@ -1077,11 +1059,6 @@ function selectHabitColor(c) {
   renderColorPicker();
 }
 
-function populateCategorySelect(id, currentVal) {
-  const sel = document.getElementById(id);
-  sel.innerHTML = `<option value="">None</option>` +
-    categories.map(c => `<option value="${c.id}"${c.id === currentVal ? ' selected' : ''}>${c.name}</option>`).join('');
-}
 
 async function saveHabit() {
   const name = document.getElementById('habit-name-input').value.trim();
@@ -1091,7 +1068,6 @@ async function saveHabit() {
   }
 
   const type       = document.getElementById('habit-type-input').value;
-  const categoryId = document.getElementById('habit-category-input').value;
   const target     = type === 'numeric' ? parseFloat(document.getElementById('habit-target-input').value) || null : null;
   const unit       = type === 'numeric' ? document.getElementById('habit-unit-input').value.trim() : null;
   const eid        = document.getElementById('editing-habit-id').value;
@@ -1099,7 +1075,6 @@ async function saveHabit() {
   const data = {
     name, type, habit_direction: habitDirection,
     target_value: target, unit: unit || null,
-    category_id: categoryId || null,
     emoji: selectedIcon, color: selectedColor, active: true,
   };
 
@@ -1179,15 +1154,13 @@ async function init() {
   document.getElementById('sidebar-date-label').textContent =
     today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
-  const [hr, lr, lgr] = await Promise.all([
+  const [hr, lgr] = await Promise.all([
     _sb.from('habits').select('*').eq('user_id', _uid).order('created_at'),
-    _sb.from('lists').select('*').eq('user_id', _uid),
     _sb.from('habit_logs').select('*').eq('user_id', _uid),
   ]);
 
-  habits     = hr.data  || [];
-  categories = lr.data  || [];
-  logs       = lgr.data || [];
+  habits = hr.data  || [];
+  logs   = lgr.data || [];
 
   renderToday();
 }
