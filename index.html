@@ -421,8 +421,11 @@ async function init() {
 
 async function loadLayout() {
   const slot = dashboardSlots.find(s => s.slot_index === activeSlotIndex);
-  if (slot && Array.isArray(slot.widgets) && slot.widgets.length > 0) {
-    widgets = slot.widgets.map(w => ({ ...w, user_id: currentUser.id }));
+  if (slot && slot.id) {
+    // slot exists in DB — use it even if empty (respects intentional empty state)
+    widgets = Array.isArray(slot.widgets)
+      ? slot.widgets.map(w => ({ ...w, user_id: currentUser.id }))
+      : [];
     widgets.forEach((w, i) => { w.position = i; });
     return;
   }
