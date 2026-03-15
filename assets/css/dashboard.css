@@ -802,6 +802,26 @@
 .widget-option-select:focus { border-color: var(--border2); }
 .widget-option-select option { background: var(--surface2); }
 
+.widget-option-chips-row { align-items: flex-start; }
+.widget-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.widget-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 4px 10px;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.12s;
+}
+.widget-chip:hover { border-color: var(--border2); color: var(--text); }
+.widget-chip.selected { background: var(--accent); border-color: var(--accent); color: #000; }
+
 .widget-option-toggle-row {
   display: flex;
   align-items: center;

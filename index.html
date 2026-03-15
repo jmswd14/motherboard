@@ -1618,14 +1618,19 @@ async function loadMovieSuggest(widget) {
 
   try {
     const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    const genre    = config.genre_id   ? `&with_genres=${config.genre_id}` : '';
-    const lang     = config.language   ? `&with_original_language=${config.language}` : '';
     const minRating = config.min_rating || 7;
-    const sortBy   = config.sort_by    || 'vote_average.desc';
-    const decadeFrom = config.decade   ? `&primary_release_date.gte=${config.decade}-01-01` : '';
-    const decadeTo   = config.decade   ? `&primary_release_date.lte=${parseInt(config.decade) + 9}-12-31` : '';
-    const voteCount  = sortBy === 'vote_average.desc' ? '&vote_count.gte=500' : '&vote_count.gte=100';
-    const base = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=${sortBy}${voteCount}&vote_average.gte=${minRating}${genre}${lang}${decadeFrom}${decadeTo}`;
+
+    // Multi-select genres (OR logic)
+    const genres = (config.genre_ids || []).filter(Boolean);
+    const genreParam = genres.length ? `&with_genres=${genres.join('|')}` : '';
+
+    // Multi-select decades — use combined range from earliest to latest
+    const decades = (config.decades || []).filter(Boolean).map(Number).sort((a, b) => a - b);
+    const decadeParam = decades.length
+      ? `&primary_release_date.gte=${decades[0]}-01-01&primary_release_date.lte=${decades[decades.length - 1] + 9}-12-31`
+      : '';
+
+    const base = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genreParam}${decadeParam}`;
 
     // Try a seeded page first; fall back to page 1 if it returns nothing
     let results = [];
@@ -2072,61 +2077,28 @@ function buildOptionsForm(widget, config, habits) {
       </div>`;
 
   } else if (type === 'movie-suggest') {
+    const selGenres  = config.genre_ids || [];
+    const selDecades = (config.decades || []).map(String);
+    const GENRES  = [['28','Action'],['35','Comedy'],['18','Drama'],['27','Horror'],['878','Sci-Fi'],['53','Thriller'],['10749','Romance'],['16','Animation'],['99','Documentary'],['10751','Family'],['36','History'],['10402','Music']];
+    const DECADES = [['1960','60s'],['1970','70s'],['1980','80s'],['1990','90s'],['2000','00s'],['2010','10s'],['2020','20s']];
     rows = `
-      <div class="widget-option-row">
-        <label class="widget-option-label">Genre</label>
-        <select class="widget-option-select" id="wo-movie-genre">
-          <option value="">Any</option>
-          <option value="28"    ${config.genre_id==='28'    ?'selected':''}>Action</option>
-          <option value="35"    ${config.genre_id==='35'    ?'selected':''}>Comedy</option>
-          <option value="18"    ${config.genre_id==='18'    ?'selected':''}>Drama</option>
-          <option value="27"    ${config.genre_id==='27'    ?'selected':''}>Horror</option>
-          <option value="878"   ${config.genre_id==='878'   ?'selected':''}>Sci-Fi</option>
-          <option value="53"    ${config.genre_id==='53'    ?'selected':''}>Thriller</option>
-          <option value="10749" ${config.genre_id==='10749' ?'selected':''}>Romance</option>
-          <option value="16"    ${config.genre_id==='16'    ?'selected':''}>Animation</option>
-          <option value="99"    ${config.genre_id==='99'    ?'selected':''}>Documentary</option>
-        </select>
+      <div class="widget-option-row widget-option-chips-row">
+        <label class="widget-option-label">Genres</label>
+        <div class="widget-chips">
+          ${GENRES.map(([v,l]) => `<button type="button" class="widget-chip${selGenres.includes(v)?' selected':''}" data-group="wo-genres" data-val="${v}" onclick="this.classList.toggle('selected')">${l}</button>`).join('')}
+        </div>
       </div>
-      <div class="widget-option-row">
-        <label class="widget-option-label">Decade</label>
-        <select class="widget-option-select" id="wo-movie-decade">
-          <option value="">Any</option>
-          <option value="1960" ${config.decade==='1960'?'selected':''}>1960s</option>
-          <option value="1970" ${config.decade==='1970'?'selected':''}>1970s</option>
-          <option value="1980" ${config.decade==='1980'?'selected':''}>1980s</option>
-          <option value="1990" ${config.decade==='1990'?'selected':''}>1990s</option>
-          <option value="2000" ${config.decade==='2000'?'selected':''}>2000s</option>
-          <option value="2010" ${config.decade==='2010'?'selected':''}>2010s</option>
-          <option value="2020" ${config.decade==='2020'?'selected':''}>2020s</option>
-        </select>
-      </div>
-      <div class="widget-option-row">
-        <label class="widget-option-label">Language</label>
-        <select class="widget-option-select" id="wo-movie-lang">
-          <option value="">Any</option>
-          <option value="en" ${config.language==='en'?'selected':''}>English</option>
-          <option value="ko" ${config.language==='ko'?'selected':''}>Korean</option>
-          <option value="ja" ${config.language==='ja'?'selected':''}>Japanese</option>
-          <option value="fr" ${config.language==='fr'?'selected':''}>French</option>
-          <option value="es" ${config.language==='es'?'selected':''}>Spanish</option>
-          <option value="it" ${config.language==='it'?'selected':''}>Italian</option>
-          <option value="de" ${config.language==='de'?'selected':''}>German</option>
-        </select>
-      </div>
-      <div class="widget-option-row">
-        <label class="widget-option-label">Sort by</label>
-        <select class="widget-option-select" id="wo-movie-sort">
-          <option value="vote_average.desc"  ${!config.sort_by||config.sort_by==='vote_average.desc' ?'selected':''}>Top Rated</option>
-          <option value="popularity.desc"    ${config.sort_by==='popularity.desc'   ?'selected':''}>Most Popular</option>
-          <option value="primary_release_date.desc" ${config.sort_by==='primary_release_date.desc'?'selected':''}>Newest</option>
-        </select>
+      <div class="widget-option-row widget-option-chips-row">
+        <label class="widget-option-label">Decades</label>
+        <div class="widget-chips">
+          ${DECADES.map(([v,l]) => `<button type="button" class="widget-chip${selDecades.includes(v)?' selected':''}" data-group="wo-decades" data-val="${v}" onclick="this.classList.toggle('selected')">${l}</button>`).join('')}
+        </div>
       </div>
       <div class="widget-option-row">
         <label class="widget-option-label">Min rating</label>
         <select class="widget-option-select" id="wo-movie-rating">
           <option value="6"   ${config.min_rating==6   ?'selected':''}>6.0+</option>
-          <option value="7"   ${!config.min_rating||config.min_rating==7   ?'selected':''}>7.0+ (default)</option>
+          <option value="7"   ${!config.min_rating||config.min_rating==7   ?'selected':''}>7.0+</option>
           <option value="7.5" ${config.min_rating==7.5 ?'selected':''}>7.5+</option>
           <option value="8"   ${config.min_rating==8   ?'selected':''}>8.0+</option>
         </select>
@@ -2193,10 +2165,8 @@ function saveWidgetOptions() {
       .filter(k => k.startsWith(`vg-news-${id}`))
       .forEach(k => localStorage.removeItem(k));
   } else if (type === 'movie-suggest') {
-    newConfig.genre_id   = getVal('wo-movie-genre') || '';
-    newConfig.decade     = getVal('wo-movie-decade') || '';
-    newConfig.language   = getVal('wo-movie-lang') || '';
-    newConfig.sort_by    = getVal('wo-movie-sort') || 'vote_average.desc';
+    newConfig.genre_ids  = Array.from(document.querySelectorAll('[data-group="wo-genres"].selected')).map(b => b.dataset.val);
+    newConfig.decades    = Array.from(document.querySelectorAll('[data-group="wo-decades"].selected')).map(b => b.dataset.val);
     newConfig.min_rating = parseFloat(getVal('wo-movie-rating')) || 7;
     Object.keys(localStorage)
       .filter(k => k.startsWith(`vg-movie-${id}`))
