@@ -32,6 +32,19 @@
 }
 .edit-btn:hover { border-color: var(--border2); color: var(--text); }
 .edit-btn.done { background: var(--accent); border-color: var(--accent); color: #0F0F0F; font-weight: 500; }
+.edit-cancel-btn {
+  display: none;
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all 0.15s;
+  align-items: center;
+}
+.edit-cancel-btn:hover { border-color: var(--border2); color: var(--text); }
 
 .add-widget-btn {
   display: none;

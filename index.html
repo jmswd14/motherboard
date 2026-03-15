@@ -88,6 +88,7 @@
       </div>
       <div class="dash-topbar-right">
         <button class="add-widget-btn" id="add-widget-btn" onclick="openAddPanel()">+ Add widget</button>
+        <button class="edit-cancel-btn" id="edit-cancel-btn" onclick="cancelEditMode()">Cancel</button>
         <button class="edit-btn" id="edit-btn" onclick="toggleEditMode()">Customize</button>
       </div>
     </div>
@@ -532,23 +533,48 @@ function esc(str) {
 
 // ── EDIT MODE ─────────────────────────────────────────────────────────────────
 
+let widgetsSnapshot = null;
+
 function toggleEditMode() {
   editMode = !editMode;
-  const btn = document.getElementById('edit-btn');
-  const addBtn = document.getElementById('add-widget-btn');
+  const btn       = document.getElementById('edit-btn');
+  const cancelBtn = document.getElementById('edit-cancel-btn');
+  const addBtn    = document.getElementById('add-widget-btn');
 
   if (editMode) {
-    btn.textContent = 'Done';
+    widgetsSnapshot = JSON.parse(JSON.stringify(widgets)); // snapshot for cancel
+    btn.textContent = 'Save';
     btn.classList.add('done');
+    cancelBtn.style.display = 'inline-flex';
     addBtn.classList.add('visible');
   } else {
+    widgetsSnapshot = null;
     btn.textContent = 'Customize';
     btn.classList.remove('done');
+    cancelBtn.style.display = 'none';
     addBtn.classList.remove('visible');
     closeAddPanel();
     debouncedSave();
   }
 
+  renderGrid();
+  loadAllWidgetData();
+}
+
+function cancelEditMode() {
+  if (widgetsSnapshot) {
+    widgets = widgetsSnapshot;
+    widgetsSnapshot = null;
+  }
+  editMode = false;
+  const btn       = document.getElementById('edit-btn');
+  const cancelBtn = document.getElementById('edit-cancel-btn');
+  const addBtn    = document.getElementById('add-widget-btn');
+  btn.textContent = 'Customize';
+  btn.classList.remove('done');
+  cancelBtn.style.display = 'none';
+  addBtn.classList.remove('visible');
+  closeAddPanel();
   renderGrid();
   loadAllWidgetData();
 }
@@ -2224,14 +2250,13 @@ async function _persistSlot(slotIndex, widgetData) {
 
   const { data, error } = await DB.from('dashboard_slots')
     .upsert(upsertData, { onConflict: 'user_id,slot_index' })
-    .select('id')
-    .single();
+    .select('id');
 
   if (error) {
     console.error('Slot save error:', error);
     showDashToast('Layout save failed: ' + error.message, true);
   } else {
-    if (data?.id && !slot.id) slot.id = data.id; // store id for future upserts
+    if (data?.[0]?.id && !slot.id) slot.id = data[0].id;
     renderSlotSidebar();
   }
 }
