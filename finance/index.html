@@ -1282,19 +1282,8 @@ async function loadMarkets() {
   const el = document.getElementById('markets-body');
   if (!el) return;
 
-  const key = localStorage.getItem('vg-finnhub-key');
-  if (!key) {
-    el.innerHTML = `
-      <div class="market-setup">
-        <p>Enter your free <strong>Finnhub API key</strong> to view live market data.<br>
-        Get one free at <a href="https://finnhub.io" target="_blank" rel="noopener">finnhub.io</a> (no credit card needed).</p>
-        <div style="display:flex;gap:8px;margin-top:12px;">
-          <input type="text" id="finnhub-key-input" placeholder="Paste API key..." style="flex:1;padding:7px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-sans);font-size:13px;">
-          <button class="btn btn-primary" onclick="saveFinnhubKey()">Connect</button>
-        </div>
-      </div>`;
-    return;
-  }
+  const FINNHUB_KEY = 'PASTE_KEY_HERE';
+  const key = FINNHUB_KEY;
 
   const open = isMarketOpen();
   const statusHtml = `<div class="market-status-bar">
@@ -1302,7 +1291,6 @@ async function loadMarkets() {
     <span class="market-status-label">${open ? 'MARKET OPEN' : 'MARKET CLOSED'}</span>
     <span class="market-updated" id="market-updated-time"></span>
     <button class="market-refresh-btn" onclick="loadMarkets()" title="Refresh">↺</button>
-    <button class="market-change-key-btn" onclick="localStorage.removeItem('vg-finnhub-key');loadMarkets()">Change Key</button>
   </div>`;
 
   el.innerHTML = statusHtml + `<div class="markets-table" id="markets-rows"><div class="market-loading">Loading…</div></div>`;
@@ -1343,21 +1331,15 @@ async function loadMarkets() {
   }
 }
 
-function saveFinnhubKey() {
-  const key = document.getElementById('finnhub-key-input')?.value.trim();
-  if (!key) return;
-  localStorage.setItem('vg-finnhub-key', key);
-  loadMarkets();
-}
 
 // ── NEWS ──────────────────────────────────────────────────────────────────────
 
 const NEWS_CATEGORIES = [
-  { id: 'general',    label: 'General Markets',    feed: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml' },
-  { id: 'credit',     label: 'Private Credit',     feed: 'https://www.privateequitywire.co.uk/feed/' },
+  { id: 'general',    label: 'General Markets',    feed: 'https://www.cnbc.com/id/15839135/device/rss/rss.html' },
+  { id: 'credit',     label: 'Private Credit',     feed: 'https://privatedebtinvestor.com/feed/' },
   { id: 'abf',        label: 'Asset-Based Finance', feed: 'https://www.abfjournal.com/feed/' },
   { id: 'macro',      label: 'Macro',              feed: 'https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines' },
-  { id: 'realestate', label: 'Real Estate',        feed: 'https://www.bisnow.com/national/rss' },
+  { id: 'realestate', label: 'Real Estate',        feed: 'https://therealdeal.com/feed/' },
 ];
 
 let activeNewsCategory = 'general';
@@ -1420,7 +1402,8 @@ async function loadNews() {
       const desc = item.description
         ? item.description.replace(/<[^>]*>/g, '').substring(0, 140).trim() + '…'
         : '';
-      const source = item.author || (item.link ? new URL(item.link).hostname.replace('www.','') : '');
+      let source = item.author || '';
+      if (!source && item.link) { try { source = new URL(item.link).hostname.replace('www.',''); } catch(e) {} }
       const when = item.pubDate ? timeAgo(item.pubDate) : '';
       return `<div class="news-article">
         <a class="news-article-title" href="${item.link}" target="_blank" rel="noopener">${item.title}</a>
