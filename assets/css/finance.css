@@ -493,3 +493,181 @@ input[type="number"]::-webkit-inner-spin-button {
   .category-grid { grid-template-columns: 1fr 1fr; }
   .detail-panel { width: 100vw; }
 }
+
+/* ─────────────────────────────────────────
+   MARKETS VIEW
+───────────────────────────────────────── */
+
+.market-setup {
+  max-width: 480px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.7;
+}
+.market-setup a { color: var(--accent); }
+.market-setup input {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  padding: 7px 10px;
+}
+
+.market-status-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.market-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.market-status-dot.open   { background: var(--retro-c1, #00FF41); box-shadow: 0 0 5px var(--retro-c1, #00FF41); }
+.market-status-dot.closed { background: var(--text-muted); }
+.market-status-label { color: var(--text); font-weight: 500; }
+.market-updated { margin-left: auto; }
+.market-refresh-btn, .market-change-key-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 2px 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.market-refresh-btn { font-size: 14px; }
+.market-refresh-btn:hover, .market-change-key-btn:hover { color: var(--text); }
+
+.markets-table {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border: 1px solid var(--border);
+}
+.market-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.market-row:last-child { border-bottom: none; }
+.market-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 130px;
+}
+.market-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.market-name {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.market-numbers {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 140px;
+}
+.market-price {
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--text);
+  font-family: var(--font-sans);
+}
+.market-change {
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+.market-change.up   { color: var(--retro-c1, #00FF41); }
+.market-change.down { color: var(--p-high, #E03030); }
+.market-spark { margin-left: auto; }
+.market-sparkline-svg { display: block; }
+.market-loading {
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+/* ─────────────────────────────────────────
+   NEWS VIEW
+───────────────────────────────────────── */
+
+.news-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.news-chip {
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.news-chip:hover { color: var(--text); border-color: var(--border2); }
+.news-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.news-article {
+  padding: 14px 0;
+}
+.news-article-title {
+  display: block;
+  color: var(--text);
+  font-size: 14px;
+  text-decoration: none;
+  line-height: 1.5;
+  margin-bottom: 4px;
+}
+.news-article-title:hover { color: var(--accent); }
+.news-article-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.news-article-desc {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.news-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0;
+}
+.news-loading {
+  padding: 24px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}

@@ -24,7 +24,7 @@
 
 <!-- Mobile toggles -->
 <button class="hamburger" onclick="openLeftMobile()" title="Menu">☰</button>
-<button class="rs-mobile-btn" onclick="openRightMobile()" title="Views">◈</button>
+<button class="rs-mobile-btn" onclick="openRightMobile()" title="Views">↗</button>
 
 <div class="app dual-sidebar" id="app">
 
@@ -60,7 +60,7 @@
         <span class="left-nav-label">Goals</span>
       </a>
       <a class="left-nav-item active" href="index.html">
-        <span class="left-nav-icon">◈</span>
+        <span class="left-nav-icon">↗</span>
         <span class="left-nav-label">Finance</span>
       </a>
       <a class="left-nav-item" href="#" onclick="toggleNotifPanel(); return false;">
@@ -85,7 +85,7 @@
       <div class="rs-header-text">
         <h2>Finance</h2>
       </div>
-      <span class="rs-header-icon">◈</span>
+      <span class="rs-header-icon">↗</span>
     </div>
 
     <div class="right-sidebar-body">
@@ -104,6 +104,20 @@
           <span class="rs-nav-label">All Assets</span>
         </div>
         <span class="sidebar-count" id="count-assets">0</span>
+      </div>
+
+      <div class="sidebar-item" id="nav-markets" onclick="setView('markets', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">↗</span>
+          <span class="rs-nav-label">Markets</span>
+        </div>
+      </div>
+
+      <div class="sidebar-item" id="nav-news" onclick="setView('news', this)">
+        <div class="sidebar-item-left">
+          <span class="sidebar-icon">▤</span>
+          <span class="rs-nav-label">News</span>
+        </div>
       </div>
 
       <hr class="sidebar-divider">
@@ -177,6 +191,17 @@
         <span class="assets-title" id="assets-type-filter-label">All Assets</span>
       </div>
       <div class="asset-grid" id="asset-grid"></div>
+    </div>
+
+    <!-- MARKETS VIEW -->
+    <div id="view-markets" style="display:none">
+      <div id="markets-body"></div>
+    </div>
+
+    <!-- NEWS VIEW -->
+    <div id="view-news" style="display:none">
+      <div class="news-chips" id="news-chips"></div>
+      <div id="news-body"></div>
     </div>
   </main>
 
@@ -669,17 +694,27 @@ function setView(view, el) {
   currentView = view;
   typeFilter = null;
 
+  stopMarketsRefresh();
+
   document.querySelectorAll('.sidebar-item[id^="nav-"]').forEach(i => i.classList.remove('active'));
   document.querySelectorAll('.sidebar-item[data-type]').forEach(i => i.classList.remove('active'));
   if (el) el.classList.add('active');
 
   document.getElementById('view-overview').style.display = view === 'overview' ? '' : 'none';
-  document.getElementById('view-assets').style.display = view === 'assets' ? '' : 'none';
+  document.getElementById('view-assets').style.display   = view === 'assets'   ? '' : 'none';
+  document.getElementById('view-markets').style.display  = view === 'markets'  ? '' : 'none';
+  document.getElementById('view-news').style.display     = view === 'news'     ? '' : 'none';
 
-  const titles = { overview: 'Overview', assets: 'All Assets' };
+  // Show/hide New Asset button
+  const assetBtn = document.querySelector('.topbar-right .btn-primary');
+  if (assetBtn) assetBtn.style.display = (view === 'markets' || view === 'news') ? 'none' : '';
+
+  const titles = { overview: 'Overview', assets: 'All Assets', markets: 'Markets', news: 'News' };
   document.getElementById('view-title').textContent = titles[view] || view;
 
-  renderAll();
+  if (view === 'markets') { loadMarkets(); startMarketsRefresh(); }
+  if (view === 'news') renderNewsChips();
+  if (view === 'overview' || view === 'assets') renderAll();
   closeMobileMenus();
 }
 
@@ -687,8 +722,11 @@ function filterByType(type, el) {
   typeFilter = type;
   currentView = 'assets';
 
+  stopMarketsRefresh();
   document.getElementById('view-overview').style.display = 'none';
   document.getElementById('view-assets').style.display = '';
+  document.getElementById('view-markets').style.display = 'none';
+  document.getElementById('view-news').style.display = 'none';
   document.getElementById('view-title').textContent = type;
 
   document.querySelectorAll('.sidebar-item[id^="nav-"]').forEach(i => i.classList.remove('active'));
@@ -1161,6 +1199,239 @@ document.addEventListener('keydown', e => {
     }
   }
 });
+
+// ── MARKETS ───────────────────────────────────────────────────────────────────
+
+const INDICES = [
+  { symbol: 'SPY',  label: 'S&P 500',    name: 'SPDR S&P 500 ETF'      },
+  { symbol: 'QQQ',  label: 'NASDAQ 100', name: 'Invesco QQQ ETF'        },
+  { symbol: 'DIA',  label: 'DOW',        name: 'SPDR Dow Jones ETF'     },
+  { symbol: 'IWM',  label: 'RUSSELL 2K', name: 'iShares Russell 2000'   },
+  { symbol: '^VIX', label: 'VIX',        name: 'CBOE Volatility Index'  },
+];
+
+let marketsInterval = null;
+
+function startMarketsRefresh() {
+  stopMarketsRefresh();
+  marketsInterval = setInterval(loadMarkets, 60000);
+}
+function stopMarketsRefresh() {
+  if (marketsInterval) { clearInterval(marketsInterval); marketsInterval = null; }
+}
+
+function isMarketOpen() {
+  const now = new Date();
+  const utcH = now.getUTCHours();
+  const utcM = now.getUTCMinutes();
+  const day   = now.getUTCDay();
+  // ET offset: UTC-4 (EDT) or UTC-5 (EST). Use UTC-4 (EDT) as approximation
+  const etMins = utcH * 60 + utcM - 4 * 60;
+  const openMins  = 9 * 60 + 30;
+  const closeMins = 16 * 60;
+  return day >= 1 && day <= 5 && etMins >= openMins && etMins < closeMins;
+}
+
+function localDateStr() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+async function fetchQuote(symbol, key) {
+  const cacheKey = `vg-mkt-q-${symbol}-${Math.floor(Date.now()/60000)}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) return JSON.parse(cached);
+  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`);
+  const data = await res.json();
+  localStorage.setItem(cacheKey, JSON.stringify(data));
+  return data;
+}
+
+async function fetchCandles(symbol, key) {
+  const date = localDateStr();
+  const cacheKey = `vg-mkt-c-${symbol}-${date}`;
+  const cached = localStorage.getItem(cacheKey);
+  if (cached) return JSON.parse(cached);
+  // Market open = 9:30am ET = 13:30 UTC (EDT). Use start of today ET as approximation.
+  const now = Math.floor(Date.now() / 1000);
+  const todayET = new Date(); todayET.setUTCHours(13, 30, 0, 0);
+  const from = Math.floor(todayET.getTime() / 1000);
+  const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=5&from=${from}&to=${now}&token=${key}`);
+  const data = await res.json();
+  if (data.s === 'ok') localStorage.setItem(cacheKey, JSON.stringify(data));
+  return data;
+}
+
+function buildSparkline(closes, isUp) {
+  if (!closes || closes.length < 2) return '';
+  const w = 72, h = 22;
+  const mn = Math.min(...closes), mx = Math.max(...closes);
+  const range = mx - mn || 1;
+  const pts = closes.map((v, i) => {
+    const x = (i / (closes.length - 1)) * w;
+    const y = h - ((v - mn) / range) * h;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  const color = isUp ? 'var(--retro-c1,#00FF41)' : 'var(--p-high,#E03030)';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" class="market-sparkline-svg">
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+  </svg>`;
+}
+
+async function loadMarkets() {
+  const el = document.getElementById('markets-body');
+  if (!el) return;
+
+  const key = localStorage.getItem('vg-finnhub-key');
+  if (!key) {
+    el.innerHTML = `
+      <div class="market-setup">
+        <p>Enter your free <strong>Finnhub API key</strong> to view live market data.<br>
+        Get one free at <a href="https://finnhub.io" target="_blank" rel="noopener">finnhub.io</a> (no credit card needed).</p>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <input type="text" id="finnhub-key-input" placeholder="Paste API key..." style="flex:1;padding:7px 10px;background:var(--surface2);border:1px solid var(--border2);color:var(--text);font-family:var(--font-sans);font-size:13px;">
+          <button class="btn btn-primary" onclick="saveFinnhubKey()">Connect</button>
+        </div>
+      </div>`;
+    return;
+  }
+
+  const open = isMarketOpen();
+  const statusHtml = `<div class="market-status-bar">
+    <span class="market-status-dot ${open ? 'open' : 'closed'}"></span>
+    <span class="market-status-label">${open ? 'MARKET OPEN' : 'MARKET CLOSED'}</span>
+    <span class="market-updated" id="market-updated-time"></span>
+    <button class="market-refresh-btn" onclick="loadMarkets()" title="Refresh">↺</button>
+    <button class="market-change-key-btn" onclick="localStorage.removeItem('vg-finnhub-key');loadMarkets()">Change Key</button>
+  </div>`;
+
+  el.innerHTML = statusHtml + `<div class="markets-table" id="markets-rows"><div class="market-loading">Loading…</div></div>`;
+
+  try {
+    const results = await Promise.all(INDICES.map(async idx => {
+      const [q, c] = await Promise.all([fetchQuote(idx.symbol, key), fetchCandles(idx.symbol, key)]);
+      return { ...idx, q, c };
+    }));
+
+    document.getElementById('market-updated-time').textContent =
+      'Updated ' + new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+    document.getElementById('markets-rows').innerHTML = results.map(r => {
+      const q = r.q || {};
+      const price   = q.c != null ? q.c.toFixed(2) : '—';
+      const change  = q.d != null ? (q.d >= 0 ? '+' : '') + q.d.toFixed(2) : '—';
+      const pct     = q.dp != null ? (q.dp >= 0 ? '+' : '') + q.dp.toFixed(2) + '%' : '—';
+      const isUp    = (q.d ?? 0) >= 0;
+      const cls     = isUp ? 'up' : 'down';
+      const closes  = (r.c && r.c.s === 'ok') ? r.c.c : null;
+      const sparkline = buildSparkline(closes, isUp);
+      return `<div class="market-row">
+        <div class="market-info">
+          <span class="market-label">${r.label}</span>
+          <span class="market-name">${r.name}</span>
+        </div>
+        <div class="market-numbers">
+          <span class="market-price">$${price}</span>
+          <span class="market-change ${cls}">${change} (${pct})</span>
+        </div>
+        <div class="market-spark">${sparkline}</div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('markets-rows').innerHTML =
+      `<div class="market-loading">Could not load market data. Check your API key.</div>`;
+  }
+}
+
+function saveFinnhubKey() {
+  const key = document.getElementById('finnhub-key-input')?.value.trim();
+  if (!key) return;
+  localStorage.setItem('vg-finnhub-key', key);
+  loadMarkets();
+}
+
+// ── NEWS ──────────────────────────────────────────────────────────────────────
+
+const NEWS_CATEGORIES = [
+  { id: 'general',    label: 'General Markets',    feed: 'https://feeds.a.dj.com/rss/RSSMarketsMain.xml' },
+  { id: 'credit',     label: 'Private Credit',     feed: 'https://www.privateequitywire.co.uk/feed/' },
+  { id: 'abf',        label: 'Asset-Based Finance', feed: 'https://www.abfjournal.com/feed/' },
+  { id: 'macro',      label: 'Macro',              feed: 'https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines' },
+  { id: 'realestate', label: 'Real Estate',        feed: 'https://www.bisnow.com/national/rss' },
+];
+
+let activeNewsCategory = 'general';
+
+function renderNewsChips() {
+  const chips = document.getElementById('news-chips');
+  if (!chips) return;
+  chips.innerHTML = NEWS_CATEGORIES.map(c =>
+    `<button class="news-chip${c.id === activeNewsCategory ? ' active' : ''}"
+             onclick="selectNewsCategory('${c.id}')">${c.label}</button>`
+  ).join('');
+  loadNews();
+}
+
+function selectNewsCategory(id) {
+  activeNewsCategory = id;
+  renderNewsChips();
+}
+
+function timeAgo(dateStr) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+async function loadNews() {
+  const el = document.getElementById('news-body');
+  if (!el) return;
+  el.innerHTML = '<div class="news-loading">Loading…</div>';
+
+  const cat = NEWS_CATEGORIES.find(c => c.id === activeNewsCategory);
+  if (!cat) return;
+
+  const now = new Date();
+  const hourKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}`;
+  const cacheKey = `vg-fin-news-${cat.id}-${hourKey}`;
+  const cached = localStorage.getItem(cacheKey);
+
+  try {
+    let items;
+    if (cached) {
+      items = JSON.parse(cached);
+    } else {
+      const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(cat.feed)}&count=20`;
+      const res = await fetch(url);
+      const data = await res.json();
+      items = (data.items || []).filter(i => i.title && i.link);
+      if (items.length) localStorage.setItem(cacheKey, JSON.stringify(items));
+    }
+
+    if (!items.length) {
+      el.innerHTML = '<div class="news-loading">No articles found.</div>';
+      return;
+    }
+
+    el.innerHTML = items.map(item => {
+      const desc = item.description
+        ? item.description.replace(/<[^>]*>/g, '').substring(0, 140).trim() + '…'
+        : '';
+      const source = item.author || (item.link ? new URL(item.link).hostname.replace('www.','') : '');
+      const when = item.pubDate ? timeAgo(item.pubDate) : '';
+      return `<div class="news-article">
+        <a class="news-article-title" href="${item.link}" target="_blank" rel="noopener">${item.title}</a>
+        <div class="news-article-meta">${source}${when ? ' · ' + when : ''}</div>
+        ${desc ? `<div class="news-article-desc">${desc}</div>` : ''}
+      </div>`;
+    }).join('<hr class="news-divider">');
+  } catch(e) {
+    el.innerHTML = '<div class="news-loading">Could not load news feed.</div>';
+  }
+}
 
 // ── KICK OFF ──────────────────────────────────────────────────────────────────
 init();
