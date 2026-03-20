@@ -395,6 +395,7 @@
       <input type="text" id="txn-notes-input" placeholder="Optional notes...">
     </div>
     <div class="modal-actions">
+      <button class="btn btn-danger" id="txn-delete-btn" onclick="deleteTxnFromModal()" style="display:none;margin-right:auto;">Delete</button>
       <button class="btn" onclick="closeTransactionModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
     </div>
@@ -1216,9 +1217,6 @@ function renderAccountTransactions() {
       <td class="ht-td ht-num">${t.price ? fmtUSD(t.price) : '—'}</td>
       <td class="ht-td ht-num"><span class="${amtClass}">${t.amount ? fmtUSD(Math.abs(t.amount)) : '—'}</span></td>
       <td class="ht-td dim">${t.notes ? esc(t.notes) : ''}</td>
-      <td class="ht-td" onclick="event.stopPropagation()">
-        <button class="txn-delete-btn" onclick="confirmDeleteTransaction('${t.id}', '${esc(typeLabel)}', '${esc(t.date || '')}')" title="Delete">×</button>
-      </td>
     </tr>`;
   }).join('');
 
@@ -1231,7 +1229,6 @@ function renderAccountTransactions() {
       <th class="ht-th">Price</th>
       <th class="ht-th">Amount</th>
       <th class="ht-th">Notes</th>
-      <th class="ht-th"></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -1315,7 +1312,17 @@ function openEditTransaction(id) {
   document.getElementById('txn-price-input').value = t.price || '';
   document.getElementById('txn-amount-input').value = t.amount || '';
   document.getElementById('txn-notes-input').value = t.notes || '';
+  document.getElementById('txn-delete-btn').style.display = '';
   txnTypeChanged();
+}
+
+function deleteTxnFromModal() {
+  const id = document.getElementById('editing-transaction-id').value;
+  if (!id) return;
+  const t = currentTransactions.find(x => x.id === id);
+  const label = t ? `${TXN_LABELS[t.type] || t.type} on ${t.date || '?'}` : 'this transaction';
+  closeTransactionModal();
+  showFinConfirm(`Delete ${label}? This cannot be undone.`, () => deleteTransaction(id));
 }
 
 // ── DETAIL PANEL ──────────────────────────────────────────────────────────────
@@ -2369,6 +2376,7 @@ function openAddTransactionModal() {
   document.getElementById('txn-price-input').value = '';
   document.getElementById('txn-amount-input').value = '';
   document.getElementById('txn-notes-input').value = '';
+  document.getElementById('txn-delete-btn').style.display = 'none';
   txnTypeChanged();
   document.getElementById('add-transaction-modal').classList.add('show');
 }
