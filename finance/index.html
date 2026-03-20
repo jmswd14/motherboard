@@ -652,6 +652,19 @@ async function init() {
 
   buildCycleSelect();
   await loadData();
+
+  // Restore last-viewed account from URL hash
+  const hash = location.hash.slice(1); // e.g. "account/uuid/holdings"
+  const hashParts = hash.split('/');
+  if (hashParts[0] === 'account' && hashParts[1]) {
+    const restoredAsset = assets.find(a => a.id === hashParts[1]);
+    if (restoredAsset) {
+      currentAccountTab = hashParts[2] || 'holdings';
+      openAccount(restoredAsset.id);
+      return;
+    }
+  }
+
   renderAll();
   updateSidebarDate();
   updateTypeSidebarNav();
@@ -974,6 +987,7 @@ function renderAssetsView() {
 function setView(view, el) {
   currentView = view;
   typeFilter = null;
+  location.hash = '';
 
   stopMarketsRefresh();
 
@@ -1091,6 +1105,7 @@ function openAccount(assetId) {
   document.getElementById('view-news').style.display = 'none';
   document.getElementById('view-account').style.display = '';
   currentView = 'account';
+  location.hash = `account/${assetId}/${currentAccountTab}`;
 
   // Deactivate sidebar nav items
   document.querySelectorAll('.sidebar-item[id^="nav-"]').forEach(i => i.classList.remove('active'));
@@ -1153,6 +1168,7 @@ function renderAccountView() {
 
 function setAccountTab(tab) {
   currentAccountTab = tab;
+  if (currentAsset) location.hash = `account/${currentAsset.id}/${tab}`;
   const isLive = isPositionsAccount(currentAsset);
 
   // Hide all panes
