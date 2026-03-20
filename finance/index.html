@@ -1243,6 +1243,21 @@ function renderAccountHoldings() {
     return;
   }
 
+  // Kick off name lookups for any symbol not yet cached
+  positions.forEach(p => {
+    if (!getSecurityName(p.symbol) && FINNHUB_KEY) {
+      fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(p.symbol)}&token=${FINNHUB_KEY}`)
+        .then(r => r.json())
+        .then(data => {
+          const match = (data.result || []).find(r => r.displaySymbol.toUpperCase() === p.symbol);
+          if (match?.description) {
+            saveSecurityName(p.symbol, match.description);
+            if (currentView === 'account' && currentAccountTab === 'holdings') renderAccountHoldings();
+          }
+        }).catch(() => {});
+    }
+  });
+
   // Kick off price fetches for any symbol not yet loaded
   positions.forEach(p => {
     if (!holdingPrices[p.symbol]) {
