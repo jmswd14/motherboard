@@ -203,6 +203,7 @@
         <div class="ac-hero-name" id="ac-name"></div>
         <div class="ac-hero-value" id="ac-value"></div>
         <div class="ac-hero-sub" id="ac-sub"></div>
+        <div class="ac-hero-created" id="ac-created"></div>
         <div class="ac-hero-cash" id="ac-cash-row" style="display:none">
           <span class="ac-cash-item"><span class="ac-cash-label">Holdings</span> <span class="ac-cash-val" id="ac-holdings-val">—</span></span>
           <span class="ac-cash-sep">+</span>
@@ -1054,6 +1055,9 @@ function renderAccountView() {
     document.getElementById('ac-value').textContent = '—';
     document.getElementById('ac-sub').textContent = 'No value logged yet';
   }
+  document.getElementById('ac-created').textContent = asset.created_at
+    ? `Created ${formatDate(asset.created_at.split('T')[0])}`
+    : '';
 
   // Tab bar
   document.getElementById('ac-tab-bar').style.display = isInvestment ? 'flex' : 'none';
