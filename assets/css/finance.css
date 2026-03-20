@@ -419,7 +419,47 @@
 }
 
 /* ── MODAL Z-INDEX — must sit above detail-overlay (2000) ── */
-#add-asset-modal, #log-value-modal { z-index: 3000; }
+#add-asset-modal, #log-value-modal,
+#add-holding-modal, #add-transaction-modal { z-index: 3000; }
+
+/* ── SYMBOL SEARCH AUTOCOMPLETE ── */
+.symbol-search-wrap { position: relative; }
+.symbol-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  z-index: 3100;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+.symbol-dropdown.open { display: block; }
+.symbol-option {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+}
+.symbol-option:last-child { border-bottom: none; }
+.symbol-option:hover { background: var(--surface3); }
+.symbol-option-sym {
+  font-weight: bold;
+  color: var(--retro-c1, #00FF41);
+  min-width: 60px;
+  flex-shrink: 0;
+}
+.symbol-option-name {
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* ── CONFIRM DELETE ── */
 #fin-confirm-delete-modal { z-index: 4000; }

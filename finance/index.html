@@ -265,7 +265,10 @@
     <input type="hidden" id="editing-holding-id">
     <div class="form-group">
       <label>Symbol <span style="color:var(--p-high);">*</span></label>
-      <input type="text" id="holding-symbol-input" placeholder="e.g. AAPL, SPY, BTC" style="text-transform:uppercase">
+      <div class="symbol-search-wrap">
+        <input type="text" id="holding-symbol-input" placeholder="e.g. AAPL, SPY, BTC" style="text-transform:uppercase" autocomplete="off">
+        <div class="symbol-dropdown" id="symbol-dropdown"></div>
+      </div>
     </div>
     <div class="form-group">
       <label>Name <span style="font-size:10px;opacity:0.5;">(optional)</span></label>
@@ -438,6 +441,7 @@
 // ── CONSTANTS ──────────────────────────────────────────────────────────────────
 
 const DB = window.supabaseClient;
+const FINNHUB_KEY = 'd6u94rpr01qp1k9bnib0d6u94rpr01qp1k9bnibg';
 
 const ASSET_TYPES = [
   'Brokerage/Investments','Business Equity','Cash','Checking & Savings',
@@ -1436,7 +1440,6 @@ async function loadMarkets() {
   const el = document.getElementById('markets-body');
   if (!el) return;
 
-  const FINNHUB_KEY = 'd6u94rpr01qp1k9bnib0d6u94rpr01qp1k9bnibg';
   const key = FINNHUB_KEY;
 
   const open = isMarketOpen();
@@ -1666,6 +1669,58 @@ function renderHoldingsTab() {
       <span>${totalValue > 0 ? fmtUSD(totalValue) : '—'}</span>
       <span class="${totalGain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${totalCost > 0 ? `${totalGain >= 0 ? '+' : ''}${fmtUSD(totalGain)} (${totalGainPct >= 0 ? '+' : ''}${totalGainPct.toFixed(1)}%)` : ''}</span>
     </div>`;
+}
+
+// ── SYMBOL SEARCH AUTOCOMPLETE ──
+let symbolSearchTimer = null;
+document.addEventListener('DOMContentLoaded', () => {
+  const inp = document.getElementById('holding-symbol-input');
+  const drop = document.getElementById('symbol-dropdown');
+  if (!inp || !drop) return;
+
+  inp.addEventListener('input', () => {
+    clearTimeout(symbolSearchTimer);
+    const q = inp.value.trim();
+    if (q.length < 1) { drop.classList.remove('open'); drop.innerHTML = ''; return; }
+    symbolSearchTimer = setTimeout(() => fetchSymbolSearch(q), 300);
+  });
+
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { drop.classList.remove('open'); drop.innerHTML = ''; }
+  });
+
+  document.addEventListener('click', e => {
+    if (!inp.contains(e.target) && !drop.contains(e.target)) {
+      drop.classList.remove('open'); drop.innerHTML = '';
+    }
+  });
+});
+
+async function fetchSymbolSearch(q) {
+  const drop = document.getElementById('symbol-dropdown');
+  const key = FINNHUB_KEY;
+  if (!key) return;
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${key}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const results = (data.result || []).filter(r => r.type === 'Common Stock' || r.type === 'ETP' || r.type === 'Crypto' || !r.type).slice(0, 8);
+    if (!results.length) { drop.classList.remove('open'); return; }
+    drop.innerHTML = results.map(r => `
+      <div class="symbol-option" onclick="selectSymbol(${JSON.stringify(r.displaySymbol)}, ${JSON.stringify(r.description)})">
+        <span class="symbol-option-sym">${r.displaySymbol}</span>
+        <span class="symbol-option-name">${r.description}</span>
+      </div>`).join('');
+    drop.classList.add('open');
+  } catch {}
+}
+
+function selectSymbol(sym, name) {
+  document.getElementById('holding-symbol-input').value = sym;
+  const nameInp = document.getElementById('holding-name-input');
+  if (nameInp && !nameInp.value) nameInp.value = name;
+  const drop = document.getElementById('symbol-dropdown');
+  drop.classList.remove('open'); drop.innerHTML = '';
 }
 
 function openAddHoldingModal(id) {
