@@ -1335,13 +1335,12 @@ async function loadMarkets() {
 // ── NEWS ──────────────────────────────────────────────────────────────────────
 
 const NEWS_CATEGORIES = [
-  { id: 'general',    label: 'General Markets',    feed: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-  { id: 'macro',      label: 'Macro',              feed: 'https://www.cnbc.com/id/20910258/device/rss/rss.html' },
+  { id: 'markets',    label: 'Markets & Macro',    feed: 'https://finance.yahoo.com/rss/topstories' },
   { id: 'alts',       label: 'Alternatives',       feed: 'https://www.privateequitywire.co.uk/feed/' },
   { id: 'levine',     label: 'Matt Levine',        feed: 'https://kill-the-newsletter.com/feeds/qbrr56oywthse3k6iroi.xml', proxy: true },
 ];
 
-let activeNewsCategory = 'general';
+let activeNewsCategory = 'markets';
 
 function renderNewsChips() {
   const chips = document.getElementById('news-chips');
