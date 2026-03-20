@@ -603,6 +603,17 @@ let currentAsset   = null; // asset open in detail panel
 let currentAccountTab = 'holdings';
 let holdingSortCol = null; // column id currently sorted
 let holdingSortDir = 1;    // 1 = asc, -1 = desc
+const _priceFetching = new Set(); // symbols currently in-flight
+let _holdingsRenderTimer = null;
+function scheduleHoldingsRender() {
+  clearTimeout(_holdingsRenderTimer);
+  _holdingsRenderTimer = setTimeout(() => {
+    if (currentView === 'account' && currentAccountTab === 'holdings') {
+      renderAccountHoldings();
+      updateAccountHero();
+    }
+  }, 120);
+}
 let currentHoldings = [];
 let currentTransactions = [];
 let holdingPrices = {};
@@ -1070,6 +1081,7 @@ function openAccount(assetId) {
   currentHoldings = [];
   currentTransactions = [];
   holdingPrices = {};
+  _priceFetching.clear();
 
   // Switch main view to account
   stopMarketsRefresh();
@@ -1303,6 +1315,30 @@ document.addEventListener('click', e => {
   }
 });
 
+function loadHoldingPrices(positions) {
+  let delay = 0;
+  for (const p of positions) {
+    if (holdingPrices[p.symbol] || _priceFetching.has(p.symbol)) continue;
+    _priceFetching.add(p.symbol);
+    const sym = p.symbol;
+    const avgCost = p.avgCost;
+    setTimeout(() => {
+      fetchQuote(sym, FINNHUB_KEY).then(q => {
+        _priceFetching.delete(sym);
+        if (q?.c) {
+          holdingPrices[sym] = q;
+        } else if (q !== null) {
+          // Finnhub responded but has no price (e.g. MMF) — use avg cost
+          holdingPrices[sym] = { c: avgCost, d: 0, dp: 0, pc: avgCost, fallback: true };
+        }
+        // q === null = rate-limited/network error — leave unset, user can hit ↺
+        scheduleHoldingsRender();
+      });
+    }, delay);
+    delay += 200;
+  }
+}
+
 function renderAccountHoldings() {
   const el = document.getElementById('ac-holdings-table');
   if (!el) return;
@@ -1323,28 +1359,8 @@ function renderAccountHoldings() {
     }
   }
 
-  // Kick off price fetches for any symbol not yet loaded — staggered to avoid rate limits
-  let fetchDelay = 0;
-  positions.forEach(p => {
-    if (!holdingPrices[p.symbol]) {
-      setTimeout(() => {
-        fetchQuote(p.symbol, FINNHUB_KEY).then(q => {
-          if (q?.c) {
-            holdingPrices[p.symbol] = q;
-          } else if (q !== null) {
-            // Finnhub responded but has no price (e.g. MMF) — fall back to avg cost
-            holdingPrices[p.symbol] = { c: p.avgCost, d: 0, dp: 0, pc: p.avgCost, fallback: true };
-          }
-          // q === null means rate-limited/error — leave unset so it retries on next render
-          if (currentView === 'account' && currentAccountTab === 'holdings') {
-            renderAccountHoldings();
-            updateAccountHero();
-          }
-        });
-      }, fetchDelay);
-      fetchDelay += 200; // 200ms between each fetch
-    }
-  });
+  // Kick off price fetches (separate function to prevent cascade)
+  loadHoldingPrices(positions);
 
   const vis = getVisibleCols();
   const cols = getColOrder().map(id => HOLDING_COL_DEFS.find(c => c.id === id)).filter(c => c && vis.has(c.id));
