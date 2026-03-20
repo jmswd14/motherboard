@@ -365,6 +365,17 @@
   white-space: nowrap;
 }
 
+/* ── TRANSACTION SECURITY NAME ── */
+.txn-security-name {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  min-height: 1em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* ── CONFIRM DELETE ── */
 #fin-confirm-delete-modal { z-index: 4000; }
 

@@ -368,6 +368,7 @@
           <input type="text" id="txn-symbol-input" placeholder="e.g. AAPL" style="text-transform:uppercase" autocomplete="off">
           <div class="symbol-dropdown" id="txn-symbol-dropdown"></div>
         </div>
+        <div class="txn-security-name" id="txn-security-name"></div>
       </div>
       <div class="form-group">
         <label>Quantity</label>
@@ -1357,6 +1358,8 @@ function openEditTransaction(id) {
   document.getElementById('txn-date-input').value = t.date || '';
   document.getElementById('txn-type-input').value = t.type;
   document.getElementById('txn-symbol-input').value = t.symbol || '';
+  document.getElementById('txn-security-name').textContent = '';
+  if (t.symbol) fetchTxnSecurityName(t.symbol.toUpperCase());
   document.getElementById('txn-qty-input').value = t.quantity || '';
   document.getElementById('txn-price-input').value = t.price || '';
   document.getElementById('txn-amount-input').value = t.amount || '';
@@ -2199,7 +2202,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initSymbolAutocomplete('txn-symbol-input', 'txn-symbol-dropdown', (sym, name) => {
     document.getElementById('txn-symbol-input').value = sym;
+    document.getElementById('txn-security-name').textContent = name || '';
     document.getElementById('txn-qty-input').focus();
+  });
+  document.getElementById('txn-symbol-input').addEventListener('input', () => {
+    document.getElementById('txn-security-name').textContent = '';
   });
 });
 
@@ -2323,6 +2330,7 @@ function openAddTransactionModal() {
   document.getElementById('txn-date-input').value = new Date().toISOString().split('T')[0];
   document.getElementById('txn-type-input').value = 'buy';
   document.getElementById('txn-symbol-input').value = '';
+  document.getElementById('txn-security-name').textContent = '';
   document.getElementById('txn-qty-input').value = '';
   document.getElementById('txn-price-input').value = '';
   document.getElementById('txn-amount-input').value = '';
@@ -2391,6 +2399,18 @@ async function deleteTransaction(id) {
     renderAccountHoldings();
     updateAccountHero();
   }
+}
+
+async function fetchTxnSecurityName(symbol) {
+  if (!FINNHUB_KEY || !symbol) return;
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const match = (data.result || []).find(r => r.displaySymbol.toUpperCase() === symbol);
+    const nameEl = document.getElementById('txn-security-name');
+    if (match && nameEl) nameEl.textContent = match.description;
+  } catch {}
 }
 
 // ── LIVE ACCOUNT OVERVIEW WIDGETS ────────────────────────────────────────────
