@@ -1686,11 +1686,11 @@ function openAddHoldingModal(id) {
     document.getElementById('holding-qty-input').value = '';
     document.getElementById('holding-cost-input').value = '';
   }
-  modal.classList.add('open');
+  modal.classList.add('show');
 }
 
 function closeHoldingModal() {
-  document.getElementById('add-holding-modal').classList.remove('open');
+  document.getElementById('add-holding-modal').classList.remove('show');
 }
 
 async function saveHolding() {
@@ -1777,11 +1777,11 @@ function openAddTransactionModal() {
   document.getElementById('txn-amount-input').value = '';
   document.getElementById('txn-notes-input').value = '';
   txnTypeChanged();
-  document.getElementById('add-transaction-modal').classList.add('open');
+  document.getElementById('add-transaction-modal').classList.add('show');
 }
 
 function closeTransactionModal() {
-  document.getElementById('add-transaction-modal').classList.remove('open');
+  document.getElementById('add-transaction-modal').classList.remove('show');
 }
 
 function txnTypeChanged() {
