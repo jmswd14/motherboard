@@ -1243,20 +1243,13 @@ function renderAccountHoldings() {
     return;
   }
 
-  // Kick off name lookups for any symbol not yet cached
-  positions.forEach(p => {
-    if (!getSecurityName(p.symbol) && FINNHUB_KEY) {
-      fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(p.symbol)}&token=${FINNHUB_KEY}`)
-        .then(r => r.json())
-        .then(data => {
-          const match = (data.result || []).find(r => r.displaySymbol.toUpperCase() === p.symbol);
-          if (match?.description) {
-            saveSecurityName(p.symbol, match.description);
-            if (currentView === 'account' && currentAccountTab === 'holdings') renderAccountHoldings();
-          }
-        }).catch(() => {});
+  // Build symbol→name map from stored transaction names (source of truth)
+  const symbolNames = {};
+  for (const t of currentTransactions) {
+    if (t.symbol && t.name && !symbolNames[t.symbol.toUpperCase()]) {
+      symbolNames[t.symbol.toUpperCase()] = t.name;
     }
-  });
+  }
 
   // Kick off price fetches for any symbol not yet loaded
   positions.forEach(p => {
@@ -1304,7 +1297,7 @@ function renderAccountHoldings() {
     const cells = cols.map(c => {
       switch (c.id) {
         case 'symbol':    return `<td class="ht-td ht-sym">${esc(sym)}</td>`;
-        case 'name':      { const n = getSecurityName(sym); return `<td class="ht-td ht-name" title="${esc(n)}">${n ? esc(n) : '<span class="dim">—</span>'}</td>`; }
+        case 'name':      { const n = symbolNames[sym] || getSecurityName(sym); return `<td class="ht-td ht-name" title="${esc(n)}">${n ? esc(n) : '<span class="dim">—</span>'}</td>`; }
         case 'shares':    return `<td class="ht-td ht-num">${qty.toLocaleString(undefined, {maximumFractionDigits:4})}</td>`;
         case 'avgCost':   return `<td class="ht-td ht-num">${fmtUSD(avgCost)}</td>`;
         case 'price':     return `<td class="ht-td ht-num">${price !== null ? (holdingPrices[sym]?.fallback ? `<span class="dim" title="No live price — showing cost basis">${fmtUSD(price)}*</span>` : fmtUSD(price)) : '<span class="holding-price-pending">…</span>'}</td>`;
@@ -1453,8 +1446,7 @@ function openEditTransaction(id) {
   document.getElementById('txn-date-input').value = t.date || '';
   document.getElementById('txn-type-input').value = t.type;
   document.getElementById('txn-symbol-input').value = t.symbol || '';
-  document.getElementById('txn-security-name').textContent = '';
-  if (t.symbol) fetchTxnSecurityName(t.symbol.toUpperCase());
+  document.getElementById('txn-security-name').textContent = t.name || (t.symbol ? getSecurityName(t.symbol.toUpperCase()) : '') || '';
   document.getElementById('txn-qty-input').value = t.quantity || '';
   document.getElementById('txn-price-input').value = t.price || '';
   document.getElementById('txn-amount-input').value = t.amount || '';
@@ -2455,9 +2447,10 @@ async function saveTransaction() {
   const price = parseFloat(document.getElementById('txn-price-input').value) || null;
   const amount = parseFloat(document.getElementById('txn-amount-input').value);
   const notes = document.getElementById('txn-notes-input').value.trim() || null;
+  const name  = document.getElementById('txn-security-name').textContent.trim() || null;
   if (!date || isNaN(amount)) return;
   const editId = document.getElementById('editing-transaction-id').value;
-  const payload = { type, symbol, quantity, price, amount, date, notes };
+  const payload = { type, symbol, quantity, price, amount, date, notes, name };
   if (editId) {
     await DB.from('transactions').update(payload).eq('id', editId).eq('user_id', currentUser.id);
   } else {
@@ -2664,13 +2657,13 @@ async function saveAccountSetup() {
     if (!qty || qty <= 0) { alert(`Quantity is required for ${sym}.`); return; }
     if (isNaN(cost) || cost <= 0) { alert(`Cost basis is required for ${sym}.`); return; }
 
-    const rowName = document.getElementById(`setup-name-${n}`)?.textContent || '';
-    saveSecurityName(sym, rowName);
+    const rowName = document.getElementById(`setup-name-${n}`)?.textContent.trim() || null;
+    if (rowName) saveSecurityName(sym, rowName);
     transactions.push({
       id: crypto.randomUUID(), user_id: currentUser.id, asset_id: assetId,
       type: 'transfer_in', symbol: sym, quantity: qty,
       price: qty > 0 ? cost / qty : null,
-      amount: cost, date, notes: 'Opening position',
+      amount: cost, date, notes: 'Opening position', name: rowName,
     });
   }
 
@@ -2684,11 +2677,12 @@ async function saveAccountSetup() {
     if (!sym && !val) continue;
     if (!sym) { alert('Ticker is required for each cash equivalent.'); return; }
     if (isNaN(val) || val <= 0) { alert(`Value is required for ${sym}.`); return; }
-    saveSecurityName(sym, ceqName);
+    const ceqNameVal = ceqName || null;
+    if (ceqNameVal) saveSecurityName(sym, ceqNameVal);
     transactions.push({
       id: crypto.randomUUID(), user_id: currentUser.id, asset_id: assetId,
       type: 'transfer_in', symbol: sym, quantity: val, price: 1.00,
-      amount: val, date: today, notes: 'Cash equivalent',
+      amount: val, date: today, notes: 'Cash equivalent', name: ceqNameVal,
     });
   }
 
