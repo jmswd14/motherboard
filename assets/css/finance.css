@@ -995,6 +995,12 @@ input[type="number"]::-webkit-inner-spin-button {
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
 }
+.ht-th-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+.ht-th-sortable:hover { color: var(--text-dim); }
+.ht-th-active { color: var(--retro-c1, #00FF41); }
 .ht-td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--border);

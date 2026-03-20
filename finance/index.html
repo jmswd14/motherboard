@@ -601,6 +601,8 @@ let logs           = [];   // array of all log rows
 let currentView    = 'overview';
 let currentAsset   = null; // asset open in detail panel
 let currentAccountTab = 'holdings';
+let holdingSortCol = null; // column id currently sorted
+let holdingSortDir = 1;    // 1 = asc, -1 = desc
 let currentHoldings = [];
 let currentTransactions = [];
 let holdingPrices = {};
@@ -1283,6 +1285,17 @@ function toggleCol(id, checked) {
   renderAccountHoldings();
 }
 
+function sortHoldingCol(id) {
+  if (holdingSortCol === id) {
+    if (holdingSortDir === 1) { holdingSortDir = -1; }
+    else { holdingSortCol = null; holdingSortDir = 1; } // third click clears sort
+  } else {
+    holdingSortCol = id;
+    holdingSortDir = 1;
+  }
+  renderAccountHoldings();
+}
+
 document.addEventListener('click', e => {
   const drop = document.getElementById('col-picker-dropdown');
   if (drop && drop.classList.contains('open')) {
@@ -1351,7 +1364,34 @@ function renderAccountHoldings() {
 
   const totalGainPct = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
 
-  const headerCells = cols.map(c => `<th class="ht-th">${c.label}</th>`).join('');
+  // Sort rowData
+  if (holdingSortCol) {
+    const dir = holdingSortDir;
+    rowData.sort((a, b) => {
+      let av, bv;
+      switch (holdingSortCol) {
+        case 'symbol':  av = a.sym;      bv = b.sym;      break;
+        case 'name':    av = symbolNames[a.sym] || getSecurityName(a.sym) || ''; bv = symbolNames[b.sym] || getSecurityName(b.sym) || ''; break;
+        case 'shares':  av = a.qty;      bv = b.qty;      break;
+        case 'avgCost': av = a.avgCost;  bv = b.avgCost;  break;
+        case 'price':   av = a.price ?? -Infinity; bv = b.price ?? -Infinity; break;
+        case 'value':   av = a.value ?? -Infinity; bv = b.value ?? -Infinity; break;
+        case 'gain':    av = a.gain  ?? -Infinity; bv = b.gain  ?? -Infinity; break;
+        case 'gainPct': av = a.gainPct ?? -Infinity; bv = b.gainPct ?? -Infinity; break;
+        case 'dayChg':  av = a.dayChg  ?? -Infinity; bv = b.dayChg  ?? -Infinity; break;
+        default: return 0;
+      }
+      if (av == null) return 1; if (bv == null) return -1;
+      if (typeof av === 'string') return dir * av.localeCompare(bv);
+      return dir * (av - bv);
+    });
+  }
+
+  const headerCells = cols.map(c => {
+    const isActive = holdingSortCol === c.id;
+    const indicator = isActive ? (holdingSortDir === 1 ? ' ↑' : ' ↓') : '';
+    return `<th class="ht-th ht-th-sortable${isActive ? ' ht-th-active' : ''}" onclick="sortHoldingCol('${c.id}')">${c.label}${indicator}</th>`;
+  }).join('');
   const rows = rowData.map(({ sym, price, qty, cost, avgCost, value, gain, gainPct, dayChg }) => {
     const cells = cols.map(c => {
       switch (c.id) {
