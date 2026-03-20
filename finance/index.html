@@ -217,21 +217,128 @@
       <div class="detail-name" id="dp-name"></div>
       <div class="detail-value" id="dp-value"></div>
       <div class="detail-value-sub" id="dp-value-sub"></div>
+      <div class="dp-tabs" id="dp-tabs" style="display:none">
+        <button class="dp-tab active" id="dp-tab-btn-overview" onclick="setDetailTab('overview')">Overview</button>
+        <button class="dp-tab" id="dp-tab-btn-holdings" onclick="setDetailTab('holdings')">Holdings</button>
+        <button class="dp-tab" id="dp-tab-btn-transactions" onclick="setDetailTab('transactions')">Transactions</button>
+      </div>
     </div>
     <div class="detail-panel-body">
-      <!-- Chart -->
-      <div class="detail-chart-wrap">
-        <div class="detail-section-label">Value History</div>
-        <svg class="detail-chart-svg" id="dp-chart" height="120" viewBox="0 0 400 120" preserveAspectRatio="none"></svg>
+      <!-- Overview tab -->
+      <div id="dp-tab-overview">
+        <div class="detail-chart-wrap">
+          <div class="detail-section-label">Value History</div>
+          <svg class="detail-chart-svg" id="dp-chart" height="120" viewBox="0 0 400 120" preserveAspectRatio="none"></svg>
+        </div>
+        <div class="detail-section-label">Log Entries</div>
+        <div class="detail-log-list" id="dp-log-list"></div>
       </div>
-      <!-- Log history -->
-      <div class="detail-section-label">Log Entries</div>
-      <div class="detail-log-list" id="dp-log-list"></div>
+      <!-- Holdings tab -->
+      <div id="dp-tab-holdings" style="display:none">
+        <div class="dp-tab-toolbar">
+          <span class="detail-section-label" style="margin:0">Holdings</span>
+          <button class="btn btn-primary" style="font-size:11px;padding:5px 12px;" onclick="openAddHoldingModal()">+ Add</button>
+        </div>
+        <div id="dp-holdings-list"></div>
+      </div>
+      <!-- Transactions tab -->
+      <div id="dp-tab-transactions" style="display:none">
+        <div class="dp-tab-toolbar">
+          <span class="detail-section-label" style="margin:0">Transactions</span>
+          <button class="btn btn-primary" style="font-size:11px;padding:5px 12px;" onclick="openAddTransactionModal()">+ Add</button>
+        </div>
+        <div id="dp-transactions-list"></div>
+      </div>
     </div>
-    <div class="detail-panel-footer">
+    <div class="detail-panel-footer" id="dp-footer">
       <button class="btn btn-primary" onclick="openLogModal()">+ Log Value</button>
       <button class="btn" onclick="openEditAsset()">Edit</button>
       <button class="btn btn-danger" onclick="confirmDeleteAsset()" style="margin-left:auto;">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD HOLDING MODAL -->
+<div class="modal-backdrop" id="add-holding-modal">
+  <div class="modal finance-modal">
+    <div class="modal-title" id="holding-modal-title">Add Holding</div>
+    <input type="hidden" id="editing-holding-id">
+    <div class="form-group">
+      <label>Symbol <span style="color:var(--p-high);">*</span></label>
+      <input type="text" id="holding-symbol-input" placeholder="e.g. AAPL, SPY, BTC" style="text-transform:uppercase">
+    </div>
+    <div class="form-group">
+      <label>Name <span style="font-size:10px;opacity:0.5;">(optional)</span></label>
+      <input type="text" id="holding-name-input" placeholder="e.g. Apple Inc.">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Quantity <span style="color:var(--p-high);">*</span></label>
+        <input type="number" id="holding-qty-input" placeholder="0.00" step="0.0001" min="0">
+      </div>
+      <div class="form-group">
+        <label>Total Cost Basis <span style="color:var(--p-high);">*</span></label>
+        <div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" id="holding-cost-input" placeholder="0.00" step="0.01" min="0"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeHoldingModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveHolding()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TRANSACTION MODAL -->
+<div class="modal-backdrop" id="add-transaction-modal">
+  <div class="modal finance-modal">
+    <div class="modal-title">Add Transaction</div>
+    <input type="hidden" id="editing-transaction-id">
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date <span style="color:var(--p-high);">*</span></label>
+        <input type="date" id="txn-date-input">
+      </div>
+      <div class="form-group">
+        <label>Type <span style="color:var(--p-high);">*</span></label>
+        <select id="txn-type-input" onchange="txnTypeChanged()">
+          <option value="buy">Buy</option>
+          <option value="sell">Sell</option>
+          <option value="dividend">Dividend</option>
+          <option value="deposit">Deposit</option>
+          <option value="withdrawal">Withdrawal</option>
+          <option value="interest">Interest</option>
+          <option value="split">Split</option>
+          <option value="transfer">Transfer</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row" id="txn-symbol-row">
+      <div class="form-group">
+        <label>Symbol</label>
+        <input type="text" id="txn-symbol-input" placeholder="e.g. AAPL" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label>Quantity</label>
+        <input type="number" id="txn-qty-input" placeholder="0.00" step="0.0001" min="0">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group" id="txn-price-group">
+        <label>Price / Share</label>
+        <div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" id="txn-price-input" placeholder="0.00" step="0.01" min="0"></div>
+      </div>
+      <div class="form-group">
+        <label>Total Amount <span style="color:var(--p-high);">*</span></label>
+        <div class="input-prefix-wrap"><span class="input-prefix">$</span><input type="number" id="txn-amount-input" placeholder="0.00" step="0.01"></div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Notes</label>
+      <input type="text" id="txn-notes-input" placeholder="Optional notes...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeTransactionModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
     </div>
   </div>
 </div>
@@ -357,6 +464,11 @@ let assets         = [];   // array of asset rows
 let logs           = [];   // array of all log rows
 let currentView    = 'overview';
 let currentAsset   = null; // asset open in detail panel
+let currentDetailTab = 'overview';
+let currentHoldings = [];
+let currentTransactions = [];
+let holdingPrices = {};
+const INVESTMENT_TYPES = new Set(['Brokerage/Investments','Retirement','Health Savings Account (HSA)','Crypto','Business Equity']);
 let typeFilter     = null; // string or null — filter assets view by type
 let chartTimeFilter = '1Y'; // active time filter for net worth chart
 let activeCatTypes  = null; // Set of active category types (null = all)
@@ -771,9 +883,17 @@ function updateAssetCount() {
 function openDetail(assetId) {
   currentAsset = assets.find(a => a.id === assetId);
   if (!currentAsset) return;
+  currentDetailTab = 'overview';
+  currentHoldings = [];
+  currentTransactions = [];
+  holdingPrices = {};
   renderDetailPanel();
   document.getElementById('detail-overlay').classList.add('open');
   document.body.style.overflow = 'hidden';
+  if (INVESTMENT_TYPES.has(currentAsset.type)) {
+    loadHoldings();
+    loadTransactions();
+  }
 }
 
 function closeDetail() {
@@ -798,8 +918,44 @@ function renderDetailPanel() {
     document.getElementById('dp-value-sub').textContent = 'No logs yet';
   }
 
-  renderDetailChart();
-  renderDetailLogs();
+  const isInvestment = INVESTMENT_TYPES.has(asset.type);
+  document.getElementById('dp-tabs').style.display = isInvestment ? 'flex' : 'none';
+
+  setDetailTab(currentDetailTab, true);
+}
+
+function setDetailTab(tab, skipRerender) {
+  currentDetailTab = tab;
+  ['overview','holdings','transactions'].forEach(t => {
+    document.getElementById(`dp-tab-overview`) && (document.getElementById(`dp-tab-${t}`).style.display = t === tab ? '' : 'none');
+    const btn = document.getElementById(`dp-tab-btn-${t}`);
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+
+  const footer = document.getElementById('dp-footer');
+  if (tab === 'overview') {
+    footer.innerHTML = `
+      <button class="btn btn-primary" onclick="openLogModal()">+ Log Value</button>
+      <button class="btn" onclick="openEditAsset()">Edit</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAsset()" style="margin-left:auto;">Delete</button>`;
+  } else if (tab === 'holdings') {
+    footer.innerHTML = `
+      <button class="btn" onclick="openEditAsset()">Edit</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAsset()" style="margin-left:auto;">Delete</button>`;
+  } else {
+    footer.innerHTML = `
+      <button class="btn" onclick="openEditAsset()">Edit</button>
+      <button class="btn btn-danger" onclick="confirmDeleteAsset()" style="margin-left:auto;">Delete</button>`;
+  }
+
+  if (!skipRerender) {
+    if (tab === 'overview') { renderDetailChart(); renderDetailLogs(); }
+    else if (tab === 'holdings') renderHoldingsTab();
+    else if (tab === 'transactions') renderTransactionsTab();
+  } else {
+    renderDetailChart();
+    renderDetailLogs();
+  }
 }
 
 function renderDetailChart() {
@@ -1439,6 +1595,224 @@ async function loadNews() {
   } catch(e) {
     el.innerHTML = `<div class="news-loading">Could not load news feed: ${e.message}</div>`;
   }
+}
+
+// ── HOLDINGS ──────────────────────────────────────────────────────────────────
+
+async function loadHoldings() {
+  if (!currentAsset) return;
+  const { data } = await DB.from('holdings').select('*')
+    .eq('asset_id', currentAsset.id).eq('user_id', currentUser.id)
+    .order('symbol');
+  currentHoldings = data || [];
+  if (currentDetailTab === 'holdings') renderHoldingsTab();
+  // Fetch live prices for all symbols
+  const symbols = [...new Set(currentHoldings.map(h => h.symbol.toUpperCase()))];
+  for (const sym of symbols) {
+    fetchQuote(sym).then(q => {
+      if (q?.c) {
+        holdingPrices[sym] = q.c;
+        if (currentDetailTab === 'holdings') renderHoldingsTab();
+      }
+    });
+  }
+}
+
+function renderHoldingsTab() {
+  const el = document.getElementById('dp-holdings-list');
+  if (!el) return;
+  if (!currentHoldings.length) {
+    el.innerHTML = '<div class="detail-empty-logs">No holdings yet. Add your first position.</div>';
+    return;
+  }
+  let totalValue = 0, totalCost = 0;
+  const rows = currentHoldings.map(h => {
+    const sym = h.symbol.toUpperCase();
+    const price = holdingPrices[sym] || null;
+    const qty = parseFloat(h.quantity) || 0;
+    const cost = parseFloat(h.cost_basis) || 0;
+    const costPerShare = qty > 0 ? cost / qty : 0;
+    const value = price ? price * qty : null;
+    const gain = value !== null ? value - cost : null;
+    const gainPct = cost > 0 && gain !== null ? (gain / cost) * 100 : null;
+    if (value !== null) totalValue += value;
+    totalCost += cost;
+    const gainHtml = gain !== null
+      ? `<span class="${gain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gain >= 0 ? '+' : ''}${fmtUSD(gain)} (${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(1)}%)</span>`
+      : `<span class="holding-price-pending">—</span>`;
+    return `
+      <div class="holding-row">
+        <div class="holding-sym-wrap">
+          <span class="holding-sym">${esc(sym)}</span>
+          ${h.name ? `<span class="holding-name">${esc(h.name)}</span>` : ''}
+        </div>
+        <div class="holding-nums">
+          <div class="holding-qty">${qty % 1 === 0 ? qty.toFixed(0) : qty.toFixed(4)} shares</div>
+          <div class="holding-cost-basis">Basis: ${fmtUSD(cost)} (${fmtUSD(costPerShare)}/sh)</div>
+        </div>
+        <div class="holding-right">
+          <div class="holding-value">${value !== null ? fmtUSD(value) : '<span class="holding-price-pending">Loading…</span>'}</div>
+          <div class="holding-gain">${gainHtml}</div>
+        </div>
+        <button class="holding-delete-btn" onclick="deleteHolding('${h.id}')" title="Delete">×</button>
+      </div>`;
+  }).join('');
+
+  const totalGain = totalValue - totalCost;
+  const totalGainPct = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+  el.innerHTML = rows + `
+    <div class="holdings-total-row">
+      <span>Total</span>
+      <span>${totalValue > 0 ? fmtUSD(totalValue) : '—'}</span>
+      <span class="${totalGain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${totalCost > 0 ? `${totalGain >= 0 ? '+' : ''}${fmtUSD(totalGain)} (${totalGainPct >= 0 ? '+' : ''}${totalGainPct.toFixed(1)}%)` : ''}</span>
+    </div>`;
+}
+
+function openAddHoldingModal(id) {
+  const modal = document.getElementById('add-holding-modal');
+  document.getElementById('editing-holding-id').value = id || '';
+  document.getElementById('holding-modal-title').textContent = id ? 'Edit Holding' : 'Add Holding';
+  if (id) {
+    const h = currentHoldings.find(x => x.id === id);
+    if (h) {
+      document.getElementById('holding-symbol-input').value = h.symbol;
+      document.getElementById('holding-name-input').value = h.name || '';
+      document.getElementById('holding-qty-input').value = h.quantity;
+      document.getElementById('holding-cost-input').value = h.cost_basis;
+    }
+  } else {
+    document.getElementById('holding-symbol-input').value = '';
+    document.getElementById('holding-name-input').value = '';
+    document.getElementById('holding-qty-input').value = '';
+    document.getElementById('holding-cost-input').value = '';
+  }
+  modal.classList.add('open');
+}
+
+function closeHoldingModal() {
+  document.getElementById('add-holding-modal').classList.remove('open');
+}
+
+async function saveHolding() {
+  const symbol = document.getElementById('holding-symbol-input').value.trim().toUpperCase();
+  const name = document.getElementById('holding-name-input').value.trim();
+  const quantity = parseFloat(document.getElementById('holding-qty-input').value);
+  const cost_basis = parseFloat(document.getElementById('holding-cost-input').value);
+  if (!symbol || isNaN(quantity) || isNaN(cost_basis)) return;
+  const editId = document.getElementById('editing-holding-id').value;
+  const payload = { symbol, name: name || null, quantity, cost_basis, updated_at: new Date().toISOString() };
+  if (editId) {
+    await DB.from('holdings').update(payload).eq('id', editId).eq('user_id', currentUser.id);
+  } else {
+    await DB.from('holdings').insert({ id: crypto.randomUUID(), user_id: currentUser.id, asset_id: currentAsset.id, ...payload });
+  }
+  closeHoldingModal();
+  await loadHoldings();
+}
+
+async function deleteHolding(id) {
+  await DB.from('holdings').delete().eq('id', id).eq('user_id', currentUser.id);
+  currentHoldings = currentHoldings.filter(h => h.id !== id);
+  renderHoldingsTab();
+}
+
+// ── TRANSACTIONS ───────────────────────────────────────────────────────────────
+
+async function loadTransactions() {
+  if (!currentAsset) return;
+  const { data } = await DB.from('transactions').select('*')
+    .eq('asset_id', currentAsset.id).eq('user_id', currentUser.id)
+    .order('date', { ascending: false });
+  currentTransactions = data || [];
+  if (currentDetailTab === 'transactions') renderTransactionsTab();
+}
+
+const TXN_LABELS = {
+  buy: 'BUY', sell: 'SELL', dividend: 'DIV', deposit: 'DEP',
+  withdrawal: 'WITH', interest: 'INT', split: 'SPLIT', transfer: 'XFER',
+};
+const TXN_COLORS = {
+  buy: 'var(--retro-c1,#00FF41)', sell: '#E03030', dividend: '#EEC900',
+  deposit: 'var(--retro-c1,#00FF41)', withdrawal: '#E03030',
+  interest: '#EEC900', split: 'var(--text-muted)', transfer: 'var(--text-muted)',
+};
+
+function renderTransactionsTab() {
+  const el = document.getElementById('dp-transactions-list');
+  if (!el) return;
+  if (!currentTransactions.length) {
+    el.innerHTML = '<div class="detail-empty-logs">No transactions yet. Log your first activity.</div>';
+    return;
+  }
+  el.innerHTML = currentTransactions.map(t => {
+    const label = TXN_LABELS[t.type] || t.type.toUpperCase();
+    const color = TXN_COLORS[t.type] || 'var(--text-muted)';
+    const isBuySell = ['buy','sell'].includes(t.type);
+    const amt = parseFloat(t.amount) || 0;
+    const amtStr = t.type === 'withdrawal' || t.type === 'sell' ? `-${fmtUSD(amt)}` : `+${fmtUSD(amt)}`;
+    return `
+      <div class="txn-row">
+        <span class="txn-badge" style="color:${color};border-color:${color};">${label}</span>
+        <div class="txn-info">
+          ${t.symbol ? `<span class="txn-symbol">${esc(t.symbol.toUpperCase())}</span>` : ''}
+          ${isBuySell && t.quantity ? `<span class="txn-detail">${parseFloat(t.quantity)} sh${t.price ? ` @ ${fmtUSD(parseFloat(t.price))}` : ''}</span>` : ''}
+          ${t.notes ? `<span class="txn-notes">${esc(t.notes)}</span>` : ''}
+        </div>
+        <div class="txn-right">
+          <span class="txn-amount ${t.type === 'withdrawal' || t.type === 'sell' ? 'txn-neg' : 'txn-pos'}">${amtStr}</span>
+          <span class="txn-date">${formatDate(t.date)}</span>
+        </div>
+        <button class="holding-delete-btn" onclick="deleteTransaction('${t.id}')" title="Delete">×</button>
+      </div>`;
+  }).join('');
+}
+
+function openAddTransactionModal() {
+  document.getElementById('editing-transaction-id').value = '';
+  document.getElementById('txn-date-input').value = new Date().toISOString().split('T')[0];
+  document.getElementById('txn-type-input').value = 'buy';
+  document.getElementById('txn-symbol-input').value = '';
+  document.getElementById('txn-qty-input').value = '';
+  document.getElementById('txn-price-input').value = '';
+  document.getElementById('txn-amount-input').value = '';
+  document.getElementById('txn-notes-input').value = '';
+  txnTypeChanged();
+  document.getElementById('add-transaction-modal').classList.add('open');
+}
+
+function closeTransactionModal() {
+  document.getElementById('add-transaction-modal').classList.remove('open');
+}
+
+function txnTypeChanged() {
+  const type = document.getElementById('txn-type-input').value;
+  const showSymbol = ['buy','sell','dividend','split'].includes(type);
+  const showPrice = ['buy','sell'].includes(type);
+  document.getElementById('txn-symbol-row').style.display = showSymbol ? '' : 'none';
+  document.getElementById('txn-price-group').style.display = showPrice ? '' : 'none';
+}
+
+async function saveTransaction() {
+  const date = document.getElementById('txn-date-input').value;
+  const type = document.getElementById('txn-type-input').value;
+  const symbol = document.getElementById('txn-symbol-input').value.trim().toUpperCase() || null;
+  const quantity = parseFloat(document.getElementById('txn-qty-input').value) || null;
+  const price = parseFloat(document.getElementById('txn-price-input').value) || null;
+  const amount = parseFloat(document.getElementById('txn-amount-input').value);
+  const notes = document.getElementById('txn-notes-input').value.trim() || null;
+  if (!date || isNaN(amount)) return;
+  await DB.from('transactions').insert({
+    id: crypto.randomUUID(), user_id: currentUser.id, asset_id: currentAsset.id,
+    type, symbol, quantity, price, amount, date, notes,
+  });
+  closeTransactionModal();
+  await loadTransactions();
+}
+
+async function deleteTransaction(id) {
+  await DB.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id);
+  currentTransactions = currentTransactions.filter(t => t.id !== id);
+  renderTransactionsTab();
 }
 
 // ── KICK OFF ──────────────────────────────────────────────────────────────────
