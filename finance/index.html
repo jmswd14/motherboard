@@ -249,10 +249,10 @@
       </div>
       <!-- Overview pane (live / positions accounts) -->
       <div id="act-pane-overview-live" style="display:none">
-        <div class="ac-overview-customize">
-          <button class="btn" style="font-size:11px;padding:5px 12px;" onclick="toggleOverviewCustomize()">Customize</button>
+        <div class="fin-overview-topbar">
+          <button class="edit-cancel-btn" id="fin-widget-cancel-btn" onclick="cancelWidgetEditMode()" style="display:none">Cancel</button>
+          <button class="edit-btn" id="fin-widget-edit-btn" onclick="toggleWidgetEditMode()">Customize</button>
         </div>
-        <div class="fin-widget-customizer" id="fin-widget-customizer" style="display:none"></div>
         <div class="fin-widget-grid" id="fin-widget-grid"></div>
       </div>
       <!-- Preferences pane -->
@@ -2858,13 +2858,9 @@ const FIN_WIDGET_DEFS = [
   { id: 'costbasis',  label: 'Cost Basis vs Market Value' },
 ];
 
-function getWidgetVisibility() {
-  try {
-    const saved = JSON.parse(localStorage.getItem('vg-fin-overview-widgets') || 'null');
-    if (Array.isArray(saved)) return new Set(saved);
-  } catch {}
-  return new Set(FIN_WIDGET_DEFS.map(w => w.id));
-}
+let finWidgetEditMode = false;
+let finWidgetSnapshot = null;
+let _finWidgetDragSrc = null;
 
 function getWidgetOrder() {
   const allIds = FIN_WIDGET_DEFS.map(w => w.id);
@@ -2882,100 +2878,49 @@ function saveWidgetOrder(arr) {
   localStorage.setItem('vg-fin-widget-order', JSON.stringify(arr));
 }
 
-function toggleOverviewCustomize() {
-  const customizer = document.getElementById('fin-widget-customizer');
-  if (!customizer) return;
-  if (customizer.style.display !== 'none') { customizer.style.display = 'none'; return; }
-  renderOverviewCustomizer();
-  customizer.style.display = 'flex';
+function toggleWidgetEditMode() {
+  finWidgetEditMode = !finWidgetEditMode;
+  const btn       = document.getElementById('fin-widget-edit-btn');
+  const cancelBtn = document.getElementById('fin-widget-cancel-btn');
+  if (finWidgetEditMode) {
+    finWidgetSnapshot = getWidgetOrder().slice();
+    btn.textContent = 'Save';
+    btn.classList.add('done');
+    cancelBtn.style.display = 'inline-flex';
+  } else {
+    finWidgetSnapshot = null;
+    btn.textContent = 'Customize';
+    btn.classList.remove('done');
+    cancelBtn.style.display = 'none';
+  }
+  renderLiveOverviewWidgets();
 }
 
-function renderOverviewCustomizer() {
-  const customizer = document.getElementById('fin-widget-customizer');
-  if (!customizer) return;
-  const vis = getWidgetVisibility();
-  const order = getWidgetOrder();
-  customizer.innerHTML = order.map(id => {
-    const w = FIN_WIDGET_DEFS.find(x => x.id === id);
-    if (!w) return '';
-    return `<div class="col-picker-item" draggable="true"
-      ondragstart="widgetPickerDragStart(event,'${id}')"
-      ondragover="widgetPickerDragOver(event)"
-      ondragleave="colDragLeave(event)"
-      ondrop="widgetPickerDrop(event,'${id}')"
-      ondragend="colDragEnd()">
-      <span class="col-drag-handle">⠿</span>
-      <label style="display:flex;align-items:center;gap:6px;cursor:pointer;flex:1;margin:0">
-        <input type="checkbox" ${vis.has(id) ? 'checked' : ''} onchange="toggleOverviewWidget('${id}', this.checked)">
-        ${w.label}
-      </label>
-    </div>`;
-  }).join('');
+function cancelWidgetEditMode() {
+  if (finWidgetSnapshot) saveWidgetOrder(finWidgetSnapshot);
+  finWidgetSnapshot = null;
+  finWidgetEditMode = false;
+  const btn       = document.getElementById('fin-widget-edit-btn');
+  const cancelBtn = document.getElementById('fin-widget-cancel-btn');
+  btn.textContent = 'Customize';
+  btn.classList.remove('done');
+  cancelBtn.style.display = 'none';
+  renderLiveOverviewWidgets();
 }
 
-let _widgetPickerDragSrc = null;
-function widgetPickerDragStart(e, id) { _widgetPickerDragSrc = id; e.dataTransfer.effectAllowed = 'move'; }
-function widgetPickerDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('col-drag-over'); }
-function widgetPickerDrop(e, targetId) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('col-drag-over');
-  if (!_widgetPickerDragSrc || _widgetPickerDragSrc === targetId) return;
-  const order = getWidgetOrder();
-  const from = order.indexOf(_widgetPickerDragSrc);
-  const to   = order.indexOf(targetId);
-  if (from < 0 || to < 0) return;
-  order.splice(from, 1);
-  order.splice(to, 0, _widgetPickerDragSrc);
+function removeFinWidget(id) {
+  const order = getWidgetOrder().filter(x => x !== id);
   saveWidgetOrder(order);
-  renderOverviewCustomizer();
-  renderLiveOverviewWidgets();
-}
-
-// Drag on the grid cards themselves
-let _gridWidgetDragSrc = null;
-function gridWidgetDragStart(e, id) {
-  _gridWidgetDragSrc = id;
-  e.dataTransfer.effectAllowed = 'move';
-  e.currentTarget.classList.add('fin-widget-dragging');
-}
-function gridWidgetDragOver(e) { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; e.currentTarget.classList.add('fin-widget-drag-over'); }
-function gridWidgetDragLeave(e) { e.currentTarget.classList.remove('fin-widget-drag-over'); }
-function gridWidgetDrop(e, targetId) {
-  e.preventDefault();
-  e.currentTarget.classList.remove('fin-widget-drag-over');
-  if (!_gridWidgetDragSrc || _gridWidgetDragSrc === targetId) return;
-  const vis = getWidgetVisibility();
-  const order = getWidgetOrder();
-  const visOrder = order.filter(id => vis.has(id));
-  const from = visOrder.indexOf(_gridWidgetDragSrc);
-  const to   = visOrder.indexOf(targetId);
-  if (from < 0 || to < 0) return;
-  visOrder.splice(from, 1);
-  visOrder.splice(to, 0, _gridWidgetDragSrc);
-  // Reinsert visible slots in new order, keep hidden slots in place
-  let vi = 0;
-  const newOrder = order.map(id => vis.has(id) ? visOrder[vi++] : id);
-  saveWidgetOrder(newOrder);
-  renderLiveOverviewWidgets();
-  renderOverviewCustomizer();
-}
-function gridWidgetDragEnd(e) {
-  _gridWidgetDragSrc = null;
-  document.querySelectorAll('.fin-widget').forEach(el => el.classList.remove('fin-widget-dragging', 'fin-widget-drag-over'));
-}
-
-function toggleOverviewWidget(id, checked) {
-  const vis = getWidgetVisibility();
-  if (checked) vis.add(id); else vis.delete(id);
-  localStorage.setItem('vg-fin-overview-widgets', JSON.stringify([...vis]));
   renderLiveOverviewWidgets();
 }
 
 function renderLiveOverviewWidgets() {
   const grid = document.getElementById('fin-widget-grid');
   if (!grid) return;
-  const vis = getWidgetVisibility();
   const order = getWidgetOrder();
+  if (finWidgetEditMode) grid.classList.add('fin-edit-mode');
+  else grid.classList.remove('fin-edit-mode');
+
   const positions = computePositions(currentTransactions);
   const cash = computeCash(currentTransactions);
   const holdingsMV = positions.reduce((s, p) => {
@@ -2984,26 +2929,51 @@ function renderLiveOverviewWidgets() {
   }, 0);
   const totalPortfolio = holdingsMV + cash;
 
-  grid.innerHTML = order.filter(id => vis.has(id)).map(id => {
+  grid.innerHTML = order.map((id, idx) => {
     const w = FIN_WIDGET_DEFS.find(x => x.id === id);
     if (!w) return '';
     let content = '';
     if (w.id === 'allocation') content = renderAllocationWidget(positions, cash, totalPortfolio);
     else if (w.id === 'movers') content = renderMoversWidget(positions);
     else if (w.id === 'costbasis') content = renderCostBasisWidget(positions);
-    return `<div class="fin-widget" id="fin-widget-${w.id}" draggable="true"
-      ondragstart="gridWidgetDragStart(event,'${w.id}')"
-      ondragover="gridWidgetDragOver(event)"
-      ondragleave="gridWidgetDragLeave(event)"
-      ondrop="gridWidgetDrop(event,'${w.id}')"
-      ondragend="gridWidgetDragEnd(event)">
+    return `<div class="fin-widget" id="fin-widget-${w.id}" data-idx="${idx}">
       <div class="fin-widget-header">
-        <span class="fin-widget-drag-handle" title="Drag to reorder">⠿</span>
         <span class="fin-widget-label">${w.label}</span>
+        <button class="fin-widget-remove" onclick="removeFinWidget('${w.id}')" title="Remove">✕</button>
       </div>
       ${content}
     </div>`;
   }).join('');
+
+  // Attach drag listeners
+  grid.querySelectorAll('.fin-widget').forEach((el, idx) => {
+    el.draggable = finWidgetEditMode;
+    el.addEventListener('dragstart', e => {
+      if (!finWidgetEditMode) { e.preventDefault(); return; }
+      _finWidgetDragSrc = idx;
+      e.dataTransfer.effectAllowed = 'move';
+      setTimeout(() => el.style.opacity = '0.4', 0);
+    });
+    el.addEventListener('dragend', () => {
+      el.style.opacity = '';
+      grid.querySelectorAll('.fin-widget.drag-over').forEach(x => x.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragenter', e => { e.preventDefault(); el.classList.add('drag-over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('dragover', e => e.preventDefault());
+    el.addEventListener('drop', e => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      const dropIdx = parseInt(el.dataset.idx);
+      if (_finWidgetDragSrc === null || _finWidgetDragSrc === dropIdx) return;
+      const order = getWidgetOrder();
+      const moved = order.splice(_finWidgetDragSrc, 1)[0];
+      order.splice(dropIdx, 0, moved);
+      _finWidgetDragSrc = null;
+      saveWidgetOrder(order);
+      renderLiveOverviewWidgets();
+    });
+  });
 }
 
 const WIDGET_COLORS = [

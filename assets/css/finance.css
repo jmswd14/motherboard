@@ -1096,16 +1096,12 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 
 /* ── LIVE OVERVIEW WIDGETS ── */
-.ac-overview-customize { margin-bottom: 12px; }
-.fin-widget-customizer {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 8px 0;
-  margin-bottom: 14px;
+.fin-overview-topbar {
   display: flex;
-  flex-direction: column;
-  gap: 0;
-  max-width: 320px;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
 }
 .fin-widget-grid {
   display: grid;
@@ -1116,29 +1112,52 @@ input[type="number"]::-webkit-inner-spin-button {
   background: var(--surface);
   border: 1px solid var(--border);
   padding: 18px 20px;
-  cursor: default;
 }
-.fin-widget-drag-over { border-color: var(--retro-c1, #00FF41); }
-.fin-widget-dragging { opacity: 0.5; }
 .fin-widget-header {
   display: flex;
   align-items: center;
-  gap: 8px;
   margin-bottom: 14px;
 }
-.fin-widget-drag-handle {
-  cursor: grab;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1;
-  flex-shrink: 0;
-}
-.fin-widget-drag-handle:active { cursor: grabbing; }
 .fin-widget-label {
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   color: var(--text-muted);
+  flex: 1;
+}
+.fin-widget-remove {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0 2px;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Edit mode */
+.fin-widget-grid.fin-edit-mode .fin-widget {
+  animation: fin-jiggle 0.22s ease-in-out infinite alternate;
+  cursor: grab;
+  border-color: var(--border2);
+  user-select: none;
+}
+.fin-widget-grid.fin-edit-mode .fin-widget:nth-child(even) {
+  animation-direction: alternate-reverse;
+  animation-delay: 0.06s;
+}
+.fin-widget-grid.fin-edit-mode .fin-widget:active { cursor: grabbing; }
+.fin-widget-grid.fin-edit-mode .fin-widget-remove {
+  opacity: 1;
+  pointer-events: auto;
+}
+.fin-widget-grid.fin-edit-mode .fin-widget.drag-over {
+  border-color: var(--accent);
+  animation: none;
+}
+@keyframes fin-jiggle {
+  from { transform: rotate(-0.4deg) translateY(0px); }
+  to   { transform: rotate(0.4deg) translateY(-1px); }
 }
 .fin-widget-empty { font-size: 12px; color: var(--text-muted); padding: 8px 0; }
 
