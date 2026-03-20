@@ -943,6 +943,19 @@ input[type="number"]::-webkit-inner-spin-button {
 }
 .ht-row { cursor: pointer; }
 .ht-row:hover td { background: var(--surface2); }
+.txn-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 6px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+}
+.ht-row:hover .txn-delete-btn { opacity: 1; }
+.txn-delete-btn:hover { color: var(--p-high, #FF5555); }
 .ht-num { text-align: right; font-family: var(--font-sans); }
 .ht-sym { font-weight: bold; color: var(--text); }
 .ht-name { color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

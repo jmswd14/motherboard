@@ -1206,16 +1206,19 @@ function renderAccountTransactions() {
     return;
   }
   const rows = currentTransactions.map(t => {
-    const typeLabel = t.type.charAt(0).toUpperCase() + t.type.slice(1);
-    const amtClass = ['buy','withdrawal'].includes(t.type) ? 'holding-gain-neg' : 'holding-gain-pos';
+    const typeLabel = TXN_LABELS[t.type] || t.type.toUpperCase();
+    const amtClass = TXN_CASH_NEGATIVE.has(t.type) ? 'holding-gain-neg' : 'holding-gain-pos';
     return `<tr class="ht-row" onclick="openEditTransaction('${t.id}')">
       <td class="ht-td">${t.date || '—'}</td>
       <td class="ht-td"><span class="txn-type-badge txn-${t.type}">${typeLabel}</span></td>
       <td class="ht-td ht-sym">${t.symbol ? esc(t.symbol) : '—'}</td>
-      <td class="ht-td ht-num">${t.quantity ? t.quantity.toLocaleString(undefined, {maximumFractionDigits:4}) : '—'}</td>
+      <td class="ht-td ht-num">${t.quantity ? parseFloat(t.quantity).toLocaleString(undefined, {maximumFractionDigits:4}) : '—'}</td>
       <td class="ht-td ht-num">${t.price ? fmtUSD(t.price) : '—'}</td>
       <td class="ht-td ht-num"><span class="${amtClass}">${t.amount ? fmtUSD(Math.abs(t.amount)) : '—'}</span></td>
       <td class="ht-td dim">${t.notes ? esc(t.notes) : ''}</td>
+      <td class="ht-td" onclick="event.stopPropagation()">
+        <button class="txn-delete-btn" onclick="confirmDeleteTransaction('${t.id}', '${esc(typeLabel)}', '${esc(t.date || '')}')" title="Delete">×</button>
+      </td>
     </tr>`;
   }).join('');
 
@@ -1228,6 +1231,7 @@ function renderAccountTransactions() {
       <th class="ht-th">Price</th>
       <th class="ht-th">Amount</th>
       <th class="ht-th">Notes</th>
+      <th class="ht-th"></th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
@@ -1621,6 +1625,13 @@ async function saveLog() {
 }
 
 // ── DELETE ────────────────────────────────────────────────────────────────────
+
+function showFinConfirm(message, onConfirm) {
+  document.getElementById('fin-confirm-delete-msg').textContent = message;
+  const btn = document.getElementById('fin-confirm-delete-btn');
+  btn.onclick = () => { closeModal('fin-confirm-delete-modal'); onConfirm(); };
+  openModal('fin-confirm-delete-modal');
+}
 
 function confirmDeleteAsset() {
   if (!currentAsset) return;
@@ -2406,11 +2417,22 @@ async function saveTransaction() {
   await loadTransactions();
 }
 
+function confirmDeleteTransaction(id, typeLabel, date) {
+  const label = `${typeLabel}${date ? ' on ' + date : ''}`;
+  showFinConfirm(`Delete transaction: ${label}?`, async () => {
+    await deleteTransaction(id);
+  });
+}
+
 async function deleteTransaction(id) {
   await DB.from('transactions').delete().eq('id', id).eq('user_id', currentUser.id);
   currentTransactions = currentTransactions.filter(t => t.id !== id);
   renderTransactionsTab();
-  if (currentView === 'account') renderAccountTransactions();
+  if (currentView === 'account') {
+    renderAccountTransactions();
+    renderAccountHoldings();
+    updateAccountHero();
+  }
 }
 
 // ── KICK OFF ──────────────────────────────────────────────────────────────────
