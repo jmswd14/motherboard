@@ -642,7 +642,7 @@
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'apikey': session.access_token,
+          'apikey': window.SUPABASE_ANON_KEY,
         },
         body: JSON.stringify({ messages: apiMessages, include_history: _includeHistory }),
       });
