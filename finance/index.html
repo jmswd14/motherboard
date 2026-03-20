@@ -1546,19 +1546,16 @@ async function saveAsset() {
       notes,
       created_at: new Date().toISOString(),
     };
-    const { error } = await DB.from('assets').insert(asset);
-    if (error) { console.error(error); return; }
-    assets.push(asset);
 
     if (trackingMode === 'positions') {
-      // Close account modal and open the setup wizard
+      // Defer DB insert until setup wizard completes
       closeModal('add-asset-modal');
-      renderAll();
-      updateTypeSidebarNav();
-      updateAssetCount();
       openAccountSetupModal(asset);
       return;
     } else {
+      const { error } = await DB.from('assets').insert(asset);
+      if (error) { console.error(error); return; }
+      assets.push(asset);
       // Balance mode → optional initial log entry
       if (!isNaN(initialVal) && initialVal > 0) {
         const log = {
@@ -1782,9 +1779,10 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.querySelector('.modal-backdrop.show')) {
       document.querySelectorAll('.modal-backdrop.show').forEach(m => {
-        // Don't close confirm if another modal is waiting
         m.classList.remove('show');
       });
+      // If setup wizard was closed without completing, discard pending account
+      pendingAsset = null;
     }
   }
 });
@@ -2453,10 +2451,12 @@ async function deleteTransaction(id) {
 let setupRowIdx = 0;
 
 let ceqRowIdx = 0;
+let pendingAsset = null; // held here until setup wizard completes
 
 function openAccountSetupModal(asset) {
   setupRowIdx = 0;
   ceqRowIdx = 0;
+  pendingAsset = asset;
   document.getElementById('setup-asset-id').value = asset.id;
   document.getElementById('setup-account-name').textContent = asset.name;
   document.getElementById('setup-cash-input').value = '';
@@ -2464,6 +2464,18 @@ function openAccountSetupModal(asset) {
   document.getElementById('setup-ceq-container').innerHTML = '';
   addSetupRow(); // start with one empty holdings row
   document.getElementById('account-setup-modal').classList.add('show');
+}
+
+async function commitPendingAsset() {
+  if (!pendingAsset) return true;
+  const { error } = await DB.from('assets').insert(pendingAsset);
+  if (error) { console.error(error); alert('Error saving account. Please try again.'); return false; }
+  assets.push(pendingAsset);
+  renderAll();
+  updateTypeSidebarNav();
+  updateAssetCount();
+  pendingAsset = null;
+  return true;
 }
 
 function addCeqRow() {
@@ -2559,8 +2571,9 @@ function updateSetupPerShare(n) {
   if (el) el.textContent = (qty > 0 && cost > 0) ? fmtUSD(cost / qty) : '—';
 }
 
-function startEmptyAccount() {
+async function startEmptyAccount() {
   const assetId = document.getElementById('setup-asset-id').value;
+  if (!await commitPendingAsset()) return;
   document.getElementById('account-setup-modal').classList.remove('show');
   openAccount(assetId);
 }
@@ -2621,7 +2634,10 @@ async function saveAccountSetup() {
     });
   }
 
-  // Save all at once
+  // Commit the account first (deferred from account creation modal)
+  if (!await commitPendingAsset()) return;
+
+  // Save all transactions at once
   if (transactions.length > 0) {
     const { error } = await DB.from('transactions').insert(transactions);
     if (error) { console.error(error); alert('Error saving setup. Please try again.'); return; }
