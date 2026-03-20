@@ -1181,11 +1181,17 @@ const HOLDING_COL_DEFS = [
 ];
 
 function getVisibleCols() {
+  const defaults = new Set(HOLDING_COL_DEFS.filter(c => c.def).map(c => c.id));
   try {
     const saved = JSON.parse(localStorage.getItem('vg-fin-holding-cols') || 'null');
-    if (saved) return new Set(saved);
+    if (saved) {
+      // Merge: keep saved prefs but always include new default columns
+      const merged = new Set(saved);
+      defaults.forEach(id => merged.add(id));
+      return merged;
+    }
   } catch {}
-  return new Set(HOLDING_COL_DEFS.filter(c => c.def).map(c => c.id));
+  return defaults;
 }
 
 function saveVisibleCols(set) {
