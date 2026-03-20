@@ -604,6 +604,24 @@ let currentAccountTab = 'holdings';
 let currentHoldings = [];
 let currentTransactions = [];
 let holdingPrices = {};
+
+// ── SECURITY NAME CACHE ───────────────────────────────────────────────────────
+// Persists symbol → name so holdings table can show names without a live lookup.
+function saveSecurityName(symbol, name) {
+  if (!symbol || !name) return;
+  try {
+    const cache = JSON.parse(localStorage.getItem('vg-security-names') || '{}');
+    cache[symbol.toUpperCase()] = name;
+    localStorage.setItem('vg-security-names', JSON.stringify(cache));
+  } catch {}
+}
+function getSecurityName(symbol) {
+  if (!symbol) return '';
+  try {
+    const cache = JSON.parse(localStorage.getItem('vg-security-names') || '{}');
+    return cache[symbol.toUpperCase()] || '';
+  } catch { return ''; }
+}
 const INVESTMENT_TYPES = new Set(['Brokerage/Investments','Retirement','Health Savings Account (HSA)','Crypto']);
 // Types that can use Track Positions (have tradeable securities with live prices)
 const POSITIONS_ELIGIBLE_TYPES = new Set(['Brokerage/Investments','Retirement','Health Savings Account (HSA)','Crypto']);
@@ -1265,7 +1283,7 @@ function renderAccountHoldings() {
     const cells = cols.map(c => {
       switch (c.id) {
         case 'symbol':    return `<td class="ht-td ht-sym">${esc(sym)}</td>`;
-        case 'name':      return `<td class="ht-td ht-name"><span class="dim">—</span></td>`;
+        case 'name':      { const n = getSecurityName(sym); return `<td class="ht-td ht-name" title="${esc(n)}">${n ? esc(n) : '<span class="dim">—</span>'}</td>`; }
         case 'shares':    return `<td class="ht-td ht-num">${qty.toLocaleString(undefined, {maximumFractionDigits:4})}</td>`;
         case 'avgCost':   return `<td class="ht-td ht-num">${fmtUSD(avgCost)}</td>`;
         case 'price':     return `<td class="ht-td ht-num">${price !== null ? (holdingPrices[sym]?.fallback ? `<span class="dim" title="No live price — showing cost basis">${fmtUSD(price)}*</span>` : fmtUSD(price)) : '<span class="holding-price-pending">…</span>'}</td>`;
@@ -2248,6 +2266,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initSymbolAutocomplete('txn-symbol-input', 'txn-symbol-dropdown', (sym, name) => {
     document.getElementById('txn-symbol-input').value = sym;
     document.getElementById('txn-security-name').textContent = name || '';
+    saveSecurityName(sym, name);
     document.getElementById('txn-qty-input').focus();
   });
   document.getElementById('txn-symbol-input').addEventListener('input', () => {
@@ -2566,6 +2585,7 @@ function addSetupRow(sym, name, date, qty, cost, afterRowId) {
     const nameEl = document.getElementById(`setup-name-${n}`);
     nameEl.textContent = nm || '';
     nameEl.title = nm || '';
+    saveSecurityName(s, nm);
   });
   // Clear name on manual type
   document.getElementById(`setup-sym-${n}`).addEventListener('input', () => {
@@ -2623,6 +2643,8 @@ async function saveAccountSetup() {
     if (!qty || qty <= 0) { alert(`Quantity is required for ${sym}.`); return; }
     if (isNaN(cost) || cost <= 0) { alert(`Cost basis is required for ${sym}.`); return; }
 
+    const rowName = document.getElementById(`setup-name-${n}`)?.textContent || '';
+    saveSecurityName(sym, rowName);
     transactions.push({
       id: crypto.randomUUID(), user_id: currentUser.id, asset_id: assetId,
       type: 'transfer_in', symbol: sym, quantity: qty,
@@ -2636,10 +2658,12 @@ async function saveAccountSetup() {
   for (const row of ceqRows) {
     const n   = row.id.replace('setup-ceq-row-', '');
     const sym = document.getElementById(`setup-ceq-sym-${n}`)?.value.trim().toUpperCase();
+    const ceqName = document.getElementById(`setup-ceq-name-${n}`)?.value.trim();
     const val = parseFloat(document.getElementById(`setup-ceq-val-${n}`)?.value);
     if (!sym && !val) continue;
     if (!sym) { alert('Ticker is required for each cash equivalent.'); return; }
     if (isNaN(val) || val <= 0) { alert(`Value is required for ${sym}.`); return; }
+    saveSecurityName(sym, ceqName);
     transactions.push({
       id: crypto.randomUUID(), user_id: currentUser.id, asset_id: assetId,
       type: 'transfer_in', symbol: sym, quantity: val, price: 1.00,
@@ -2677,7 +2701,10 @@ async function fetchTxnSecurityName(symbol) {
     const data = await res.json();
     const match = (data.result || []).find(r => r.displaySymbol.toUpperCase() === symbol);
     const nameEl = document.getElementById('txn-security-name');
-    if (match && nameEl) nameEl.textContent = match.description;
+    if (match && nameEl) {
+      nameEl.textContent = match.description;
+      saveSecurityName(symbol, match.description);
+    }
   } catch {}
 }
 
