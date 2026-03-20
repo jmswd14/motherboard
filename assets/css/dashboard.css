@@ -1148,6 +1148,39 @@
   opacity: 0.5;
 }
 
+.slot-delete-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 14px;
+  padding: 1px 3px;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+  font-family: var(--font-sans);
+  line-height: 1;
+}
+.slot-card:hover .slot-delete-btn { opacity: 1; }
+.slot-delete-btn:hover { color: #E03030; }
+
+.slot-add-btn {
+  display: block;
+  width: calc(100% - 24px);
+  margin: 10px 12px 4px;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px dashed var(--border2);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  text-align: center;
+  letter-spacing: 0.05em;
+  transition: border-color 0.15s, color 0.15s;
+}
+.slot-add-btn:hover { border-color: var(--accent); color: var(--accent); }
+
 /* ── NEWS FEED ─────────────────────────────────────────────────────────────── */
 
 .news-headline {
