@@ -1336,7 +1336,7 @@ async function loadMarkets() {
 
 const NEWS_CATEGORIES = [
   { id: 'general',    label: 'General Markets',    feed: 'https://www.cnbc.com/id/100003114/device/rss/rss.html' },
-  { id: 'macro',      label: 'Macro',              feed: 'https://feeds.reuters.com/reuters/businessNews' },
+  { id: 'macro',      label: 'Macro',              feed: 'https://www.cnbc.com/id/20910258/device/rss/rss.html' },
   { id: 'alts',       label: 'Alternatives',       feed: 'https://www.privateequitywire.co.uk/feed/' },
   { id: 'levine',     label: 'Matt Levine',        feed: 'https://kill-the-newsletter.com/feeds/qbrr56oywthse3k6iroi.xml', proxy: true },
 ];
@@ -1377,7 +1377,8 @@ async function loadNews() {
 
   const now = new Date();
   const hourKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}T${String(now.getHours()).padStart(2,'0')}`;
-  const cacheKey = `vg-fin-news-${cat.id}-${hourKey}`;
+  const feedHash = cat.feed.slice(-12);
+  const cacheKey = `vg-fin-news-${cat.id}-${feedHash}-${hourKey}`;
   const cached = localStorage.getItem(cacheKey);
 
   try {
