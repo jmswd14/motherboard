@@ -2502,7 +2502,7 @@ function removeCeqRow(n) {
   if (row) row.remove();
 }
 
-function addSetupRow(sym, name, date, qty, cost) {
+function addSetupRow(sym, name, date, qty, cost, afterRowId) {
   const n = setupRowIdx++;
   const today = todayISO();
   const container = document.getElementById('setup-rows-container');
@@ -2537,31 +2537,53 @@ function addSetupRow(sym, name, date, qty, cost) {
     <div class="sh-col-ps">
       <span class="setup-pershare" id="setup-pershare-${n}">—</span>
     </div>
-    <div class="sh-col-del">
+    <div class="sh-col-actions">
+      <button class="setup-add-lot" onclick="addSetupLot(${n})" title="Add another lot for this position">＋</button>
       <button class="setup-row-del" onclick="removeSetupRow(${n})" title="Remove">×</button>
     </div>`;
-  container.appendChild(row);
+
+  if (afterRowId) {
+    const afterEl = document.getElementById(afterRowId);
+    if (afterEl) { afterEl.insertAdjacentElement('afterend', row); }
+    else container.appendChild(row);
+  } else {
+    container.appendChild(row);
+  }
 
   // Pre-fill if values passed
   if (sym) document.getElementById(`setup-sym-${n}`).value = sym;
-  if (name) document.getElementById(`setup-name-${n}`).textContent = name;
+  if (name) {
+    const el = document.getElementById(`setup-name-${n}`);
+    el.textContent = name;
+    el.title = name;
+  }
   if (qty) { document.getElementById(`setup-qty-${n}`).value = qty; }
   if (cost) { document.getElementById(`setup-cost-${n}`).value = cost; updateSetupPerShare(n); }
 
   // Init autocomplete for this row
   initSymbolAutocomplete(`setup-sym-${n}`, `setup-drop-${n}`, (s, nm) => {
     document.getElementById(`setup-sym-${n}`).value = s;
-    document.getElementById(`setup-name-${n}`).textContent = nm || '';
+    const nameEl = document.getElementById(`setup-name-${n}`);
+    nameEl.textContent = nm || '';
+    nameEl.title = nm || '';
   });
   // Clear name on manual type
   document.getElementById(`setup-sym-${n}`).addEventListener('input', () => {
-    document.getElementById(`setup-name-${n}`).textContent = '';
+    const nameEl = document.getElementById(`setup-name-${n}`);
+    nameEl.textContent = '';
+    nameEl.title = '';
   });
 }
 
 function removeSetupRow(n) {
   const row = document.getElementById(`setup-row-${n}`);
   if (row) row.remove();
+}
+
+function addSetupLot(n) {
+  const sym  = document.getElementById(`setup-sym-${n}`)?.value || '';
+  const name = document.getElementById(`setup-name-${n}`)?.textContent || '';
+  addSetupRow(sym, name, '', '', '', `setup-row-${n}`);
 }
 
 function updateSetupPerShare(n) {

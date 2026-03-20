@@ -349,7 +349,7 @@
 .setup-holdings-head,
 .setup-row {
   display: grid;
-  grid-template-columns: 90px 1fr 120px 80px 130px 72px 28px;
+  grid-template-columns: 90px 1fr 120px 80px 130px 72px 50px;
   gap: 8px;
   align-items: center;
 }
@@ -367,6 +367,7 @@
   border-bottom: 1px solid var(--border);
 }
 .setup-row:last-child { border-bottom: none; }
+.sh-col-name { min-width: 0; }
 .setup-name-display {
   font-size: 12px;
   color: var(--text-muted);
@@ -381,17 +382,24 @@
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.setup-row-del {
+.sh-col-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.setup-row-del,
+.setup-add-lot {
   background: none;
   border: none;
-  color: var(--text-muted);
   cursor: pointer;
-  font-size: 18px;
   padding: 0;
   line-height: 1;
   opacity: 0.5;
 }
+.setup-row-del { color: var(--text-muted); font-size: 18px; }
+.setup-add-lot { color: var(--retro-c1, #00FF41); font-size: 14px; font-weight: bold; }
 .setup-row-del:hover { color: var(--p-high); opacity: 1; }
+.setup-add-lot:hover { opacity: 1; }
 .setup-row input[type="text"],
 .setup-row input[type="date"],
 .setup-row input[type="number"] {
