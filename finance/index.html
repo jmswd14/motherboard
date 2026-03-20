@@ -1323,21 +1323,26 @@ function renderAccountHoldings() {
     }
   }
 
-  // Kick off price fetches for any symbol not yet loaded
+  // Kick off price fetches for any symbol not yet loaded — staggered to avoid rate limits
+  let fetchDelay = 0;
   positions.forEach(p => {
     if (!holdingPrices[p.symbol]) {
-      fetchQuote(p.symbol, FINNHUB_KEY).then(q => {
-        if (q?.c) {
-          holdingPrices[p.symbol] = q;
-        } else {
-          // Finnhub has no price (e.g. MMF) — fall back to avg cost as price
-          holdingPrices[p.symbol] = { c: p.avgCost, d: 0, dp: 0, pc: p.avgCost, fallback: true };
-        }
-        if (currentView === 'account' && currentAccountTab === 'holdings') {
-          renderAccountHoldings();
-          updateAccountHero();
-        }
-      });
+      setTimeout(() => {
+        fetchQuote(p.symbol, FINNHUB_KEY).then(q => {
+          if (q?.c) {
+            holdingPrices[p.symbol] = q;
+          } else if (q !== null) {
+            // Finnhub responded but has no price (e.g. MMF) — fall back to avg cost
+            holdingPrices[p.symbol] = { c: p.avgCost, d: 0, dp: 0, pc: p.avgCost, fallback: true };
+          }
+          // q === null means rate-limited/error — leave unset so it retries on next render
+          if (currentView === 'account' && currentAccountTab === 'holdings') {
+            renderAccountHoldings();
+            updateAccountHero();
+          }
+        });
+      }, fetchDelay);
+      fetchDelay += 200; // 200ms between each fetch
     }
   });
 
@@ -1955,11 +1960,18 @@ function localDateStr() {
 async function fetchQuote(symbol, key) {
   const cacheKey = `vg-mkt-q-${symbol}-${Math.floor(Date.now()/60000)}`;
   const cached = localStorage.getItem(cacheKey);
-  if (cached) return JSON.parse(cached);
-  const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`);
-  const data = await res.json();
-  localStorage.setItem(cacheKey, JSON.stringify(data));
-  return data;
+  if (cached) {
+    const p = JSON.parse(cached);
+    if (p?.c) return p; // only use cache if it has a real price
+    localStorage.removeItem(cacheKey); // discard cached zero/error responses
+  }
+  try {
+    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`);
+    if (!res.ok) return null; // rate-limited or error — don't cache
+    const data = await res.json();
+    if (data?.c) localStorage.setItem(cacheKey, JSON.stringify(data)); // only cache valid prices
+    return data;
+  } catch { return null; }
 }
 
 async function fetchCandles(symbol, key) {
