@@ -3210,6 +3210,8 @@ function computePortfolioTimeSeries(transactions, symbolCandles, fromDate, toDat
   const end = new Date(toDate   + 'T12:00:00Z');
 
   while (cur <= end) {
+    const dow = cur.getUTCDay(); // 0=Sun, 6=Sat
+    if (dow === 0 || dow === 6) { cur.setUTCDate(cur.getUTCDate() + 1); continue; }
     const dayStr = cur.toISOString().slice(0,10);
     const txnsUpToDay = sortedTxns.filter(t => entryDate(t) && entryDate(t) <= dayStr);
     const positions   = computePositions(txnsUpToDay);
@@ -3354,6 +3356,8 @@ function liveTodayValue(transactions) {
 // Append today's live value if the snapshot series doesn't include today
 function appendTodayIfMissing(series, todayValue) {
   const today = todayISO();
+  const dow = new Date().getDay(); // 0=Sun, 6=Sat
+  if (dow === 0 || dow === 6) return; // skip weekends
   if (!series.length || series[series.length - 1].date < today) {
     series.push({ date: today, value: todayValue });
   }
