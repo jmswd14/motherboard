@@ -861,24 +861,44 @@
 .quit-since-btn.active { background: var(--surface2); color: var(--retro-c1, #00FF41); }
 .quit-since-btn:hover:not(.active) { color: var(--text-dim); }
 
-/* ── QUIT TRACKER SELECTS ── */
-.quit-modal-select-wrap { position: relative; display: inline-flex; align-items: center; width: 100%; }
-.quit-modal-select-wrap select {
+/* ── CUSTOM SELECT (quit tracker) ── */
+.cust-sel { position: relative; }
+.cust-sel-trigger {
   width: 100%;
-  padding: 8px 30px 8px 12px;
-  border: 1px solid var(--border2);
-  border-radius: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
   background: var(--surface2);
+  border: 1px solid var(--border2);
   color: var(--text);
-  font-size: 13px;
   font-family: var(--font-sans);
+  font-size: 13px;
   cursor: pointer;
-  outline: none;
-  appearance: none;
-  -webkit-appearance: none;
+  text-align: left;
   transition: border-color 0.15s;
 }
-.quit-modal-select-wrap select:hover,
-.quit-modal-select-wrap select:focus { border-color: var(--retro-c1, #00FF41); }
-.quit-modal-select-wrap select option { background: var(--surface2); color: var(--text); }
-.quit-modal-select-arrow { position: absolute; right: 10px; font-size: 9px; color: var(--text-muted); pointer-events: none; }
+.cust-sel-trigger:hover,
+.cust-sel.open .cust-sel-trigger { border-color: var(--retro-c1, #00FF41); color: var(--text); }
+.cust-sel-arrow { font-size: 9px; color: var(--text-muted); margin-left: 8px; transition: transform 0.15s; }
+.cust-sel.open .cust-sel-arrow { transform: rotate(180deg); }
+.cust-sel-menu {
+  display: none;
+  position: absolute;
+  top: 100%; left: 0; right: 0;
+  background: var(--surface2);
+  border: 1px solid var(--retro-c1, #00FF41);
+  border-top: none;
+  z-index: 200;
+}
+.cust-sel.open .cust-sel-menu { display: block; }
+.cust-sel-opt {
+  padding: 8px 12px;
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+}
+.cust-sel-opt:hover { background: var(--surface3); color: var(--text); }
+.cust-sel-opt.active { color: var(--retro-c1, #00FF41); }
