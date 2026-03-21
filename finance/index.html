@@ -605,7 +605,7 @@
 // ── CONSTANTS ──────────────────────────────────────────────────────────────────
 
 const DB = window.supabaseClient;
-const FINNHUB_KEY = 'd6u94rpr01qp1k9bnib0d6u94rpr01qp1k9bnibg';
+const FINNHUB_PROXY = 'https://znhwyzgccojbjaivzllp.supabase.co/functions/v1/finnhub-proxy';
 
 const ASSET_TYPES = [
   'Brokerage/Investments','Business Equity','Cash','Checking & Savings',
@@ -1399,7 +1399,7 @@ function loadHoldingPrices(positions) {
     _priceFetching.add(sym);
     const avgCost = p.avgCost;
     setTimeout(() => {
-      fetchQuote(sym, FINNHUB_KEY).then(q => {
+      fetchQuote(sym).then(q => {
         _priceFetching.delete(sym);
         if (q?.c) {
           holdingPrices[sym] = q;
@@ -2203,7 +2203,7 @@ function localDateStr() {
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 }
 
-async function fetchQuote(symbol, key) {
+async function fetchQuote(symbol) {
   const cacheKey = `vg-mkt-q-${symbol}-${Math.floor(Date.now()/60000)}`;
   const cached = localStorage.getItem(cacheKey);
   if (cached) {
@@ -2212,7 +2212,7 @@ async function fetchQuote(symbol, key) {
     localStorage.removeItem(cacheKey); // discard cached zero/error responses
   }
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(symbol)}&token=${key}`);
+    const res = await fetch(`${FINNHUB_PROXY}?endpoint=quote&symbol=${encodeURIComponent(symbol)}`);
     if (!res.ok) return null; // rate-limited or error — don't cache
     const data = await res.json();
     if (data?.c) localStorage.setItem(cacheKey, JSON.stringify(data)); // only cache valid prices
@@ -2220,7 +2220,7 @@ async function fetchQuote(symbol, key) {
   } catch { return null; }
 }
 
-async function fetchCandles(symbol, key) {
+async function fetchCandles(symbol) {
   const date = localDateStr();
   const cacheKey = `vg-mkt-c-${symbol}-${date}`;
   const cached = localStorage.getItem(cacheKey);
@@ -2229,7 +2229,7 @@ async function fetchCandles(symbol, key) {
   const now = Math.floor(Date.now() / 1000);
   const todayET = new Date(); todayET.setUTCHours(13, 30, 0, 0);
   const from = Math.floor(todayET.getTime() / 1000);
-  const res = await fetch(`https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=5&from=${from}&to=${now}&token=${key}`);
+  const res = await fetch(`${FINNHUB_PROXY}?endpoint=stock%2Fcandle&symbol=${encodeURIComponent(symbol)}&resolution=5&from=${from}&to=${now}`);
   const data = await res.json();
   if (data.s === 'ok') localStorage.setItem(cacheKey, JSON.stringify(data));
   return data;
@@ -2255,8 +2255,6 @@ async function loadMarkets() {
   const el = document.getElementById('markets-body');
   if (!el) return;
 
-  const key = FINNHUB_KEY;
-
   const open = isMarketOpen();
   const statusHtml = `<div class="market-status-bar">
     <span class="market-status-dot ${open ? 'open' : 'closed'}"></span>
@@ -2269,7 +2267,7 @@ async function loadMarkets() {
 
   try {
     const results = await Promise.all(INDICES.map(async idx => {
-      const [q, c] = await Promise.all([fetchQuote(idx.symbol, key), fetchCandles(idx.symbol, key)]);
+      const [q, c] = await Promise.all([fetchQuote(idx.symbol), fetchCandles(idx.symbol)]);
       return { ...idx, q, c };
     }));
 
@@ -2508,7 +2506,7 @@ async function loadHoldings() {
   // Fetch live prices for all symbols
   const symbols = [...new Set(currentHoldings.map(h => h.symbol.toUpperCase()))];
   for (const sym of symbols) {
-    fetchQuote(sym, FINNHUB_KEY).then(q => {
+    fetchQuote(sym).then(q => {
       if (q?.c) {
         holdingPrices[sym] = q;
         if (currentView === 'account') { renderAccountHoldings(); updateAccountHero(); }
@@ -2594,9 +2592,8 @@ function initSymbolAutocomplete(inputId, dropdownId, onSelect) {
 }
 
 async function fetchSymbolSearch(q, drop, onSelect) {
-  if (!FINNHUB_KEY) return;
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(q)}&token=${FINNHUB_KEY}`);
+    const res = await fetch(`${FINNHUB_PROXY}?endpoint=search&q=${encodeURIComponent(q)}`);
     if (!res.ok) return;
     const data = await res.json();
     const results = (data.result || [])
@@ -3069,9 +3066,9 @@ async function saveAccountSetup() {
 }
 
 async function fetchTxnSecurityName(symbol) {
-  if (!FINNHUB_KEY || !symbol) return;
+  if (!symbol) return;
   try {
-    const res = await fetch(`https://finnhub.io/api/v1/search?q=${encodeURIComponent(symbol)}&token=${FINNHUB_KEY}`);
+    const res = await fetch(`${FINNHUB_PROXY}?endpoint=search&q=${encodeURIComponent(symbol)}`);
     if (!res.ok) return;
     const data = await res.json();
     const match = (data.result || []).find(r => r.displaySymbol.toUpperCase() === symbol);
@@ -3348,7 +3345,7 @@ async function fetchDailyCandles(symbol) {
   const fromUnix = Math.floor(fromD.getTime() / 1000);
   try {
     const res = await fetch(
-      `https://finnhub.io/api/v1/stock/candle?symbol=${encodeURIComponent(symbol)}&resolution=D&from=${fromUnix}&to=${toUnix}&token=${FINNHUB_KEY}`
+      `${FINNHUB_PROXY}?endpoint=stock%2Fcandle&symbol=${encodeURIComponent(symbol)}&resolution=D&from=${fromUnix}&to=${toUnix}`
     );
     if (!res.ok) return null;
     const data = await res.json();

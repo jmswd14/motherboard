@@ -233,7 +233,7 @@ const dashSelectedTags = {};   // { widgetId: string[] }
 const dashInlineTagColor = {}; // { widgetId: string }
 const greetingSolarData  = {}; // { widgetId: { sunrise: Date, sunset: Date, isFallback: boolean } }
 let greetingsCache = null;    // fetched once from Supabase greetings table
-const TMDB_API_KEY = '2a9ab8fbca5a5c52399da22ba0a7c7c9';
+const TMDB_PROXY = 'https://znhwyzgccojbjaivzllp.supabase.co/functions/v1/tmdb-proxy';
 
 let dashboardSlots = [];
 let activeSlotIndex = parseInt(localStorage.getItem('vg-active-slot') || '0');
@@ -1629,15 +1629,6 @@ async function loadMovieSuggest(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
   const config = widget.config || {};
-  const apiKey = TMDB_API_KEY;
-
-  if (!apiKey) {
-    el.innerHTML = `<div class="widget-empty">
-      <div class="widget-empty-icon">▶</div>
-      <div class="widget-empty-text">ADD TMDB KEY IN SETTINGS &gt; INTEGRATIONS</div>
-    </div>`;
-    return;
-  }
 
   const localToday = (() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; })();
   const salt = parseInt(localStorage.getItem(`vg-movie-${widget.id}-salt-${localToday}`) || '0');
@@ -1659,7 +1650,7 @@ async function loadMovieSuggest(widget) {
       ? `&primary_release_date.gte=${decades[0]}-01-01&primary_release_date.lte=${decades[decades.length - 1] + 9}-12-31`
       : '';
 
-    const base = `https://api.themoviedb.org/3/discover/movie?api_key=${apiKey}&sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genreParam}${decadeParam}`;
+    const base = `${TMDB_PROXY}?sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genreParam}${decadeParam}`;
 
     // Try a seeded page first; fall back to page 1 if it returns nothing
     let results = [];
