@@ -1024,9 +1024,65 @@ input[type="number"]::-webkit-inner-spin-button {
 .txn-delete-btn:hover { color: var(--p-high, #FF5555); }
 .ht-num { text-align: right; font-family: var(--font-sans); }
 .ht-sym { font-weight: bold; color: var(--text); }
-.ht-name { color: var(--text-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ht-total-row td { border-top: 1px solid var(--border2); border-bottom: none; background: var(--surface2); }
+.ht-name {
+  position: relative;
+  color: var(--text-muted);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ht-name[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 4px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.1s;
+}
+.ht-name[data-tooltip]:hover::after { opacity: 1; }
+.ht-total-row td { border-top: 2px solid var(--border2); border-bottom: none; background: var(--surface2); }
 .ht-total-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+/* Holdings subtotal + cash section */
+.ht-subtotal-row td { border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); background: var(--surface); }
+.ht-subtotal-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-muted); }
+.ht-section-header td, .ht-section-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--retro-c1, #00FF41);
+  padding: 8px 12px 4px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.ht-cash-row td { background: var(--surface); }
+/* Lot modal */
+.lot-modal-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.lot-modal-name-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.lot-modal-name-input {
+  flex: 1;
+  min-width: 0;
+}
+.lot-modal-table-wrap { max-height: 360px; overflow-y: auto; margin-bottom: 4px; }
 .dim { color: var(--text-muted); }
 
 /* ── COLUMN PICKER ── */

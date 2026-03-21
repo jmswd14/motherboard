@@ -573,6 +573,22 @@
   </div>
 </div>
 
+<!-- LOT DETAIL MODAL -->
+<div class="modal-backdrop" id="lot-modal">
+  <div class="modal finance-modal" style="max-width:720px;width:95%;">
+    <div class="modal-title" id="lot-modal-title">Lots</div>
+    <div class="lot-modal-name-row">
+      <label class="lot-modal-name-label">Security Name</label>
+      <input type="text" id="lot-modal-name-input" class="lot-modal-name-input" placeholder="Enter name…">
+      <button class="btn btn-primary" onclick="saveLotModalName()">Save</button>
+    </div>
+    <div id="lot-modal-table" class="lot-modal-table-wrap"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('lot-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- CONFIRM DELETE -->
 <div class="modal-backdrop" id="fin-confirm-delete-modal">
   <div class="modal" style="max-width:380px;">
@@ -626,6 +642,8 @@ let currentAsset   = null; // asset open in detail panel
 let currentAccountTab = 'holdings';
 let holdingSortCol = null; // column id currently sorted
 let holdingSortDir = 1;    // 1 = asc, -1 = desc
+let _holdingSymbolNames = {}; // sym → name, kept in sync by renderAccountHoldings
+let _lotModalSym = null;
 const _priceFetching = new Set(); // symbols currently in-flight
 let _holdingsRenderTimer = null;
 function scheduleHoldingsRender() {
@@ -1339,13 +1357,16 @@ function toggleCol(id, checked) {
   renderAccountHoldings();
 }
 
+const _TEXT_SORT_COLS = new Set(['symbol', 'name']);
 function sortHoldingCol(id) {
+  const defaultDir = _TEXT_SORT_COLS.has(id) ? 1 : -1;  // text: A→Z, numbers: high→low
+  const reverseDir = _TEXT_SORT_COLS.has(id) ? -1 : 1;
   if (holdingSortCol === id) {
-    if (holdingSortDir === 1) { holdingSortDir = -1; }
+    if (holdingSortDir === defaultDir) { holdingSortDir = reverseDir; }
     else { holdingSortCol = null; holdingSortDir = 1; } // third click clears sort
   } else {
     holdingSortCol = id;
-    holdingSortDir = 1;
+    holdingSortDir = defaultDir;
   }
   renderAccountHoldings();
 }
@@ -1385,7 +1406,6 @@ function renderAccountHoldings() {
   const el = document.getElementById('ac-holdings-table');
   if (!el) return;
 
-  // Compute positions from transactions (source of truth)
   const positions = computePositions(currentTransactions);
 
   if (!positions.length) {
@@ -1393,53 +1413,58 @@ function renderAccountHoldings() {
     return;
   }
 
-  // Build symbol→name map from stored transaction names (source of truth)
-  const symbolNames = {};
+  // Build symbol→name map (module-level so lot modal can access it)
+  _holdingSymbolNames = {};
   for (const t of currentTransactions) {
-    if (t.symbol && t.name && !symbolNames[t.symbol.toUpperCase()]) {
-      symbolNames[t.symbol.toUpperCase()] = t.name;
+    if (t.symbol && t.name && !_holdingSymbolNames[t.symbol.toUpperCase()]) {
+      _holdingSymbolNames[t.symbol.toUpperCase()] = t.name;
     }
   }
 
-  // Kick off price fetches (separate function to prevent cascade)
   loadHoldingPrices(positions);
 
-  const vis = getVisibleCols();
+  const vis  = getVisibleCols();
   const cols = getColOrder().map(id => HOLDING_COL_DEFS.find(c => c.id === id)).filter(c => c && vis.has(c.id));
 
-  let totalValue = 0, totalCost = 0, totalGain = 0;
-  const rowData = positions.map(p => {
-    const sym = p.symbol;
-    const q = holdingPrices[sym] || null;
-    const price = q?.c || null;
-    const qty = p.quantity;
-    const cost = p.totalCost;
-    const avgCost = p.avgCost;
-    const value = price !== null ? price * qty : null;
-    const gain = value !== null ? value - cost : null;
-    const gainPct = cost > 0 && gain !== null ? (gain / cost) * 100 : null;
-    const dayChg = q?.dp ?? null;
-    if (value !== null) totalValue += value;
-    totalCost += cost;
-    if (gain !== null) totalGain += gain;
-    return { sym, price, qty, cost, avgCost, value, gain, gainPct, dayChg };
-  });
+  // Identify cash equivalent symbols (any txn with notes='Cash equivalent')
+  const ceqSymbols = new Set();
+  for (const t of currentTransactions) {
+    if (t.symbol && t.notes === 'Cash equivalent') ceqSymbols.add(t.symbol.toUpperCase());
+  }
 
-  const totalGainPct = totalCost > 0 ? (totalGain / totalCost) * 100 : 0;
+  const equityPos = positions.filter(p => !ceqSymbols.has(p.symbol));
+  const ceqPos    = positions.filter(p =>  ceqSymbols.has(p.symbol));
+  const cash      = computeCash(currentTransactions);
 
-  // Sort rowData
-  if (holdingSortCol) {
+  function buildRowData(posArr) {
+    return posArr.map(p => {
+      const sym = p.symbol;
+      const q = holdingPrices[sym] || null;
+      const price = q?.c || null;
+      const qty = p.quantity;
+      const cost = p.totalCost;
+      const avgCost = p.avgCost;
+      const value = price !== null ? price * qty : null;
+      const gain = value !== null ? value - cost : null;
+      const gainPct = cost > 0 && gain !== null ? (gain / cost) * 100 : null;
+      const dayChg = q?.dp ?? null;
+      return { sym, price, qty, cost, avgCost, value, gain, gainPct, dayChg };
+    });
+  }
+
+  function sortRows(rows) {
+    if (!holdingSortCol) return rows;
     const dir = holdingSortDir;
-    rowData.sort((a, b) => {
+    return [...rows].sort((a, b) => {
       let av, bv;
       switch (holdingSortCol) {
         case 'symbol':  av = a.sym;      bv = b.sym;      break;
-        case 'name':    av = symbolNames[a.sym] || getSecurityName(a.sym) || ''; bv = symbolNames[b.sym] || getSecurityName(b.sym) || ''; break;
+        case 'name':    av = _holdingSymbolNames[a.sym] || getSecurityName(a.sym) || ''; bv = _holdingSymbolNames[b.sym] || getSecurityName(b.sym) || ''; break;
         case 'shares':  av = a.qty;      bv = b.qty;      break;
         case 'avgCost': av = a.avgCost;  bv = b.avgCost;  break;
-        case 'price':   av = a.price ?? -Infinity; bv = b.price ?? -Infinity; break;
-        case 'value':   av = a.value ?? -Infinity; bv = b.value ?? -Infinity; break;
-        case 'gain':    av = a.gain  ?? -Infinity; bv = b.gain  ?? -Infinity; break;
+        case 'price':   av = a.price   ?? -Infinity; bv = b.price   ?? -Infinity; break;
+        case 'value':   av = a.value   ?? -Infinity; bv = b.value   ?? -Infinity; break;
+        case 'gain':    av = a.gain    ?? -Infinity; bv = b.gain    ?? -Infinity; break;
         case 'gainPct': av = a.gainPct ?? -Infinity; bv = b.gainPct ?? -Infinity; break;
         case 'dayChg':  av = a.dayChg  ?? -Infinity; bv = b.dayChg  ?? -Infinity; break;
         default: return 0;
@@ -1450,45 +1475,120 @@ function renderAccountHoldings() {
     });
   }
 
+  function renderDataRow({ sym, price, qty, cost, avgCost, value, gain, gainPct, dayChg }) {
+    const n = _holdingSymbolNames[sym] || getSecurityName(sym);
+    const cells = cols.map(c => {
+      switch (c.id) {
+        case 'symbol':    return `<td class="ht-td ht-sym">${esc(sym)}</td>`;
+        case 'name':      return `<td class="ht-td ht-name"${n ? ` data-tooltip="${esc(n)}"` : ''}>${n ? esc(n) : '<span class="dim">—</span>'}</td>`;
+        case 'shares':    return `<td class="ht-td ht-num">${qty.toLocaleString(undefined, {maximumFractionDigits:4})}</td>`;
+        case 'avgCost':   return `<td class="ht-td ht-num">${fmtUSD(avgCost)}</td>`;
+        case 'price':     return `<td class="ht-td ht-num">${price !== null ? (holdingPrices[sym]?.fallback ? `<span class="dim">${fmtUSD(price)}*</span>` : fmtUSD(price)) : '<span class="holding-price-pending">…</span>'}</td>`;
+        case 'value':     return `<td class="ht-td ht-num">${value !== null ? fmtUSD(value) : '—'}</td>`;
+        case 'gain':      return `<td class="ht-td ht-num">${gain  !== null ? `<span class="${gain  >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gain  >= 0 ? '+' : ''}${fmtUSD(gain)}</span>`  : '—'}</td>`;
+        case 'gainPct':   return `<td class="ht-td ht-num">${gainPct !== null ? `<span class="${gainPct >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%</span>` : '—'}</td>`;
+        case 'dayChg':    return `<td class="ht-td ht-num">${dayChg  !== null ? `<span class="${dayChg  >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${dayChg  >= 0 ? '+' : ''}${dayChg.toFixed(2)}%</span>`  : '—'}</td>`;
+        case 'purchDate': return `<td class="ht-td dim">—</td>`;
+        default: return '<td class="ht-td">—</td>';
+      }
+    }).join('');
+    return `<tr class="ht-row" onclick="openLotModal('${esc(sym)}')">${cells}</tr>`;
+  }
+
+  const eqRows  = sortRows(buildRowData(equityPos));
+  const ceqRows = sortRows(buildRowData(ceqPos));
+
+  // Equity totals
+  let eqValue = 0, eqCost = 0, eqGain = 0;
+  for (const r of eqRows) {
+    if (r.value !== null) eqValue += r.value;
+    eqCost += r.cost;
+    if (r.gain !== null) eqGain += r.gain;
+  }
+  const eqGainPct = eqCost > 0 ? (eqGain / eqCost) * 100 : 0;
+
+  // Cash section totals
+  let ceqMVTotal = 0;
+  for (const r of ceqRows) { if (r.value !== null) ceqMVTotal += r.value; }
+  const cashSectionTotal = ceqMVTotal + cash;
+  const grandTotal = eqValue + cashSectionTotal;
+
+  // Header
   const headerCells = cols.map(c => {
     const isActive = holdingSortCol === c.id;
     const indicator = isActive ? (holdingSortDir === 1 ? ' ↑' : ' ↓') : '';
     return `<th class="ht-th ht-th-sortable${isActive ? ' ht-th-active' : ''}" onclick="sortHoldingCol('${c.id}')">${c.label}${indicator}</th>`;
   }).join('');
-  const rows = rowData.map(({ sym, price, qty, cost, avgCost, value, gain, gainPct, dayChg }) => {
-    const cells = cols.map(c => {
+
+  const hasCashSection = ceqRows.length > 0 || cash > 0;
+  const nc = cols.length;
+
+  if (!hasCashSection) {
+    // Simple: equity rows + single total
+    const totalCells = cols.map(c => {
       switch (c.id) {
-        case 'symbol':    return `<td class="ht-td ht-sym">${esc(sym)}</td>`;
-        case 'name':      { const n = symbolNames[sym] || getSecurityName(sym); return `<td class="ht-td ht-name" title="${esc(n)}">${n ? esc(n) : '<span class="dim">—</span>'}</td>`; }
-        case 'shares':    return `<td class="ht-td ht-num">${qty.toLocaleString(undefined, {maximumFractionDigits:4})}</td>`;
-        case 'avgCost':   return `<td class="ht-td ht-num">${fmtUSD(avgCost)}</td>`;
-        case 'price':     return `<td class="ht-td ht-num">${price !== null ? (holdingPrices[sym]?.fallback ? `<span class="dim" title="No live price — showing cost basis">${fmtUSD(price)}*</span>` : fmtUSD(price)) : '<span class="holding-price-pending">…</span>'}</td>`;
-        case 'value':     return `<td class="ht-td ht-num">${value !== null ? fmtUSD(value) : '—'}</td>`;
-        case 'gain':      return `<td class="ht-td ht-num">${gain !== null ? `<span class="${gain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gain >= 0 ? '+' : ''}${fmtUSD(gain)}</span>` : '—'}</td>`;
-        case 'gainPct':   return `<td class="ht-td ht-num">${gainPct !== null ? `<span class="${gainPct >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gainPct >= 0 ? '+' : ''}${gainPct.toFixed(2)}%</span>` : '—'}</td>`;
-        case 'dayChg':    return `<td class="ht-td ht-num">${dayChg !== null ? `<span class="${dayChg >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${dayChg >= 0 ? '+' : ''}${dayChg.toFixed(2)}%</span>` : '—'}</td>`;
-        case 'purchDate': return `<td class="ht-td dim">—</td>`;
-        default: return '<td class="ht-td">—</td>';
+        case 'symbol':  return `<td class="ht-td ht-total-label">TOTAL</td>`;
+        case 'value':   return `<td class="ht-td ht-num">${eqValue > 0 ? fmtUSD(eqValue) : '—'}</td>`;
+        case 'gain':    return `<td class="ht-td ht-num"><span class="${eqGain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${eqGain >= 0 ? '+' : ''}${fmtUSD(eqGain)}</span></td>`;
+        case 'gainPct': return `<td class="ht-td ht-num"><span class="${eqGainPct >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${eqGainPct >= 0 ? '+' : ''}${eqGainPct.toFixed(2)}%</span></td>`;
+        default:        return '<td class="ht-td"></td>';
       }
     }).join('');
-    return `<tr class="ht-row">${cells}</tr>`;
+    el.innerHTML = `<div class="ht-wrap"><table class="ht-table">
+      <thead><tr>${headerCells}</tr></thead>
+      <tbody>${eqRows.map(renderDataRow).join('')}</tbody>
+      <tfoot><tr class="ht-total-row">${totalCells}</tr></tfoot>
+    </table></div>`;
+    return;
+  }
+
+  // With cash section: equity subtotal + cash section + grand total
+  const eqSubCells = cols.map(c => {
+    switch (c.id) {
+      case 'symbol':  return `<td class="ht-td ht-subtotal-label">HOLDINGS</td>`;
+      case 'value':   return `<td class="ht-td ht-num">${fmtUSD(eqValue)}</td>`;
+      case 'gain':    return `<td class="ht-td ht-num"><span class="${eqGain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${eqGain >= 0 ? '+' : ''}${fmtUSD(eqGain)}</span></td>`;
+      case 'gainPct': return `<td class="ht-td ht-num"><span class="${eqGainPct >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${eqGainPct >= 0 ? '+' : ''}${eqGainPct.toFixed(2)}%</span></td>`;
+      default:        return '<td class="ht-td"></td>';
+    }
   }).join('');
 
-  // Total row
-  const totalCells = cols.map(c => {
+  const cashRowCells = cols.map(c => {
     switch (c.id) {
-      case 'symbol':  return `<td class="ht-td ht-total-label">TOTAL</td>`;
-      case 'value':   return `<td class="ht-td ht-num">${totalValue > 0 ? fmtUSD(totalValue) : '—'}</td>`;
-      case 'gain':    return `<td class="ht-td ht-num"><span class="${totalGain >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${totalGain >= 0 ? '+' : ''}${fmtUSD(totalGain)}</span></td>`;
-      case 'gainPct': return `<td class="ht-td ht-num"><span class="${totalGainPct >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${totalGainPct >= 0 ? '+' : ''}${totalGainPct.toFixed(2)}%</span></td>`;
-      default:        return '<td class="ht-td"></td>';
+      case 'symbol': return `<td class="ht-td ht-sym">CASH</td>`;
+      case 'name':   return `<td class="ht-td ht-name dim">Uninvested Cash</td>`;
+      case 'value':  return `<td class="ht-td ht-num">${fmtUSD(cash)}</td>`;
+      default:       return '<td class="ht-td">—</td>';
+    }
+  }).join('');
+
+  const ceqSubCells = cols.map(c => {
+    switch (c.id) {
+      case 'symbol': return `<td class="ht-td ht-subtotal-label">SUBTOTAL</td>`;
+      case 'value':  return `<td class="ht-td ht-num">${fmtUSD(cashSectionTotal)}</td>`;
+      default:       return '<td class="ht-td"></td>';
+    }
+  }).join('');
+
+  const grandTotalCells = cols.map(c => {
+    switch (c.id) {
+      case 'symbol': return `<td class="ht-td ht-total-label">TOTAL</td>`;
+      case 'value':  return `<td class="ht-td ht-num">${fmtUSD(grandTotal)}</td>`;
+      default:       return '<td class="ht-td"></td>';
     }
   }).join('');
 
   el.innerHTML = `<div class="ht-wrap"><table class="ht-table">
     <thead><tr>${headerCells}</tr></thead>
-    <tbody>${rows}</tbody>
-    <tfoot><tr class="ht-total-row">${totalCells}</tr></tfoot>
+    <tbody>${eqRows.map(renderDataRow).join('')}</tbody>
+    <tbody>
+      <tr class="ht-subtotal-row">${eqSubCells}</tr>
+      <tr class="ht-section-header"><td class="ht-section-label" colspan="${nc}">CASH &amp; EQUIVALENTS</td></tr>
+      ${ceqRows.map(renderDataRow).join('')}
+      <tr class="ht-cash-row">${cashRowCells}</tr>
+      <tr class="ht-subtotal-row">${ceqSubCells}</tr>
+    </tbody>
+    <tfoot><tr class="ht-total-row">${grandTotalCells}</tr></tfoot>
   </table></div>`;
 }
 
@@ -1497,6 +1597,76 @@ function refreshHoldingPrices() {
   // Clear any cached quotes so they re-fetch fresh
   Object.keys(localStorage).filter(k => k.startsWith('vg-mkt-q-')).forEach(k => localStorage.removeItem(k));
   loadHoldings();
+}
+
+function openLotModal(sym) {
+  _lotModalSym = sym;
+  document.getElementById('lot-modal-title').textContent = sym + ' — Lots';
+  const existing = _holdingSymbolNames[sym] || getSecurityName(sym) || '';
+  document.getElementById('lot-modal-name-input').value = existing;
+
+  // Lots = buy / transfer_in / dividend_reinvested transactions for this symbol
+  const lots = currentTransactions
+    .filter(t => t.symbol?.toUpperCase() === sym && ['buy','transfer_in','dividend_reinvested'].includes(t.type))
+    .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+
+  const price = holdingPrices[sym]?.c || null;
+
+  const LOT_TYPE_LABELS = { buy: 'BUY', transfer_in: 'TRANSFER IN', dividend_reinvested: 'DIV REINVESTED' };
+
+  let lotTotalCost = 0, lotTotalValue = 0, lotTotalGL = 0, lotTotalQty = 0;
+  const rowsHtml = lots.map(lot => {
+    const qty        = parseFloat(lot.quantity) || 0;
+    const cost       = parseFloat(lot.amount)   || 0;
+    const perShare   = parseFloat(lot.price)    || (qty > 0 ? cost / qty : 0);
+    const curValue   = price !== null ? price * qty : null;
+    const gl         = curValue !== null ? curValue - cost : null;
+    lotTotalCost  += cost;
+    lotTotalQty   += qty;
+    if (curValue !== null) lotTotalValue += curValue;
+    if (gl       !== null) lotTotalGL    += gl;
+    return `<tr class="ht-row">
+      <td class="ht-td">${lot.date || '—'}</td>
+      <td class="ht-td"><span class="txn-type-badge txn-${lot.type}">${LOT_TYPE_LABELS[lot.type] || lot.type}</span></td>
+      <td class="ht-td ht-num">${qty.toLocaleString(undefined,{maximumFractionDigits:4})}</td>
+      <td class="ht-td ht-num">${fmtUSD(perShare)}</td>
+      <td class="ht-td ht-num">${fmtUSD(cost)}</td>
+      <td class="ht-td ht-num">${curValue !== null ? fmtUSD(curValue) : '—'}</td>
+      <td class="ht-td ht-num">${gl !== null ? `<span class="${gl >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${gl >= 0 ? '+' : ''}${fmtUSD(gl)}</span>` : '—'}</td>
+    </tr>`;
+  }).join('');
+
+  const totalHtml = `<tr class="ht-total-row">
+    <td class="ht-td ht-total-label" colspan="2">TOTAL</td>
+    <td class="ht-td ht-num">${lotTotalQty.toLocaleString(undefined,{maximumFractionDigits:4})}</td>
+    <td class="ht-td">—</td>
+    <td class="ht-td ht-num">${fmtUSD(lotTotalCost)}</td>
+    <td class="ht-td ht-num">${price !== null ? fmtUSD(lotTotalValue) : '—'}</td>
+    <td class="ht-td ht-num">${price !== null ? `<span class="${lotTotalGL >= 0 ? 'holding-gain-pos' : 'holding-gain-neg'}">${lotTotalGL >= 0 ? '+' : ''}${fmtUSD(lotTotalGL)}</span>` : '—'}</td>
+  </tr>`;
+
+  document.getElementById('lot-modal-table').innerHTML = lots.length ? `<div class="ht-wrap"><table class="ht-table">
+    <thead><tr>
+      <th class="ht-th">Date</th><th class="ht-th">Type</th>
+      <th class="ht-th ht-num">Shares</th><th class="ht-th ht-num">Price/Share</th>
+      <th class="ht-th ht-num">Total Cost</th><th class="ht-th ht-num">Cur Value</th>
+      <th class="ht-th ht-num">Unrealized G/L</th>
+    </tr></thead>
+    <tbody>${rowsHtml}</tbody>
+    <tfoot>${totalHtml}</tfoot>
+  </table></div>` : '<div class="detail-empty-logs">No lots found.</div>';
+
+  document.getElementById('lot-modal').classList.add('show');
+}
+
+function saveLotModalName() {
+  const sym  = _lotModalSym;
+  const name = document.getElementById('lot-modal-name-input').value.trim();
+  if (!sym || !name) return;
+  saveSecurityName(sym, name);
+  _holdingSymbolNames[sym] = name;
+  closeModal('lot-modal');
+  renderAccountHoldings();
 }
 
 function renderAccountTransactions() {
