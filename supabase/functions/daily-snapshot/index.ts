@@ -7,7 +7,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const SUPABASE_URL              = Deno.env.get('SUPABASE_URL')!
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-const FINNHUB_KEY               = Deno.env.get('FINNHUB_KEY') ?? 'd6u94rpr01qp1k9bnib0d6u94rpr01qp1k9bnibg'
+const FINNHUB_KEY               = Deno.env.get('FINNHUB_KEY')!
 
 const POSITIONS_TYPES = new Set([
   'Brokerage/Investments', 'Retirement', 'Health Savings Account (HSA)', 'Crypto'
