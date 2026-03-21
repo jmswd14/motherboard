@@ -1412,16 +1412,12 @@ function openSlipModal(id) {
 
 async function saveSlip() {
   const trackerId = document.getElementById('quit-slip-tracker-id').value;
-  const nowActive = document.getElementById('quit-slip-now-btn').classList.contains('active');
-  const cusActive = document.getElementById('quit-slip-custom-btn').classList.contains('active');
-  if (!nowActive && !cusActive) { alert('Please select when you slipped.'); return; }
   let occurred_at;
-  if (nowActive) {
+  if (_slipTimeMode === 'now') {
     occurred_at = new Date().toISOString();
   } else {
     const val = document.getElementById('quit-slip-time-input').value;
     if (!val) { alert('Please enter a date and time.'); return; }
-    // datetime-local gives local time without tz — new Date() correctly treats it as local
     occurred_at = new Date(val).toISOString();
   }
   const note = document.getElementById('quit-slip-note-input').value.trim() || null;
@@ -1444,11 +1440,8 @@ function openNewQuitTracker() {
 async function saveQuitTracker() {
   const name = document.getElementById('quit-name-input').value.trim();
   if (!name) { alert('Name is required.'); return; }
-  const nowActive = document.getElementById('quit-since-now-btn').classList.contains('active');
-  const cusActive = document.getElementById('quit-since-custom-btn').classList.contains('active');
-  if (!nowActive && !cusActive) { alert('Please select when you quit.'); return; }
   let started_at;
-  if (nowActive) {
+  if (_quitSinceMode === 'now') {
     started_at = new Date().toISOString();
   } else {
     const val = document.getElementById('quit-since-input').value;
@@ -1480,15 +1473,26 @@ function confirmDeleteQuit() {
   document.getElementById('confirm-delete-modal').classList.add('show');
 }
 
+let _quitSinceMode = 'now';
+let _slipTimeMode  = 'now';
+
+function _styleToggleBtn(btn, isActive) {
+  const green = getComputedStyle(document.documentElement).getPropertyValue('--retro-c1').trim() || '#00FF41';
+  btn.style.color      = isActive ? green : '';
+  btn.style.background = isActive ? 'var(--surface2)' : '';
+}
+
 function setQuitSinceMode(mode) {
-  document.getElementById('quit-since-now-btn').classList.toggle('active', mode === 'now');
-  document.getElementById('quit-since-custom-btn').classList.toggle('active', mode === 'custom');
+  _quitSinceMode = mode;
+  _styleToggleBtn(document.getElementById('quit-since-now-btn'),    mode === 'now');
+  _styleToggleBtn(document.getElementById('quit-since-custom-btn'), mode === 'custom');
   document.getElementById('quit-since-input').style.display = mode === 'custom' ? '' : 'none';
 }
 
 function setSlipTimeMode(mode) {
-  document.getElementById('quit-slip-now-btn').classList.toggle('active', mode === 'now');
-  document.getElementById('quit-slip-custom-btn').classList.toggle('active', mode === 'custom');
+  _slipTimeMode = mode;
+  _styleToggleBtn(document.getElementById('quit-slip-now-btn'),    mode === 'now');
+  _styleToggleBtn(document.getElementById('quit-slip-custom-btn'), mode === 'custom');
   document.getElementById('quit-slip-time-input').style.display = mode === 'custom' ? '' : 'none';
 }
 
