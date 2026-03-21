@@ -1379,11 +1379,24 @@ document.addEventListener('click', e => {
 });
 
 function loadHoldingPrices(positions) {
+  // Identify cash equivalent symbols (always $1.00, no Finnhub needed)
+  const ceqSyms = new Set();
+  for (const t of currentTransactions) {
+    if (t.symbol && t.notes === 'Cash equivalent') ceqSyms.add(t.symbol.toUpperCase());
+  }
+
   let delay = 0;
   for (const p of positions) {
     if (holdingPrices[p.symbol] || _priceFetching.has(p.symbol)) continue;
-    _priceFetching.add(p.symbol);
     const sym = p.symbol;
+
+    // MMFs are always $1.00 — skip Finnhub
+    if (ceqSyms.has(sym)) {
+      holdingPrices[sym] = { c: 1.00, d: 0, dp: 0, pc: 1.00, fallback: true };
+      continue;
+    }
+
+    _priceFetching.add(sym);
     const avgCost = p.avgCost;
     setTimeout(() => {
       fetchQuote(sym, FINNHUB_KEY).then(q => {
@@ -1391,10 +1404,8 @@ function loadHoldingPrices(positions) {
         if (q?.c) {
           holdingPrices[sym] = q;
         } else if (q !== null) {
-          // Finnhub responded but has no price (e.g. MMF) — use avg cost
           holdingPrices[sym] = { c: avgCost, d: 0, dp: 0, pc: avgCost, fallback: true };
         }
-        // q === null = rate-limited/network error — leave unset, user can hit ↺
         scheduleHoldingsRender();
       });
     }, delay);
@@ -1612,7 +1623,6 @@ function openLotModal(sym) {
 
   const price = holdingPrices[sym]?.c || null;
 
-  const LOT_TYPE_LABELS = { buy: 'BUY', transfer_in: 'TRANSFER IN', dividend_reinvested: 'DIV REINVESTED' };
   const today = new Date(); today.setHours(0,0,0,0);
   function lotTerm(dateStr) {
     if (!dateStr) return '—';
@@ -1634,7 +1644,6 @@ function openLotModal(sym) {
     if (gl       !== null) lotTotalGL    += gl;
     return `<tr class="ht-row">
       <td class="ht-td">${lot.date || '—'}</td>
-      <td class="ht-td"><span class="txn-type-badge txn-${lot.type}">${LOT_TYPE_LABELS[lot.type] || lot.type}</span></td>
       <td class="ht-td ht-num">${qty.toLocaleString(undefined,{maximumFractionDigits:4})}</td>
       <td class="ht-td ht-num">${fmtUSD(perShare)}</td>
       <td class="ht-td ht-num">${fmtUSD(cost)}</td>
@@ -1645,7 +1654,7 @@ function openLotModal(sym) {
   }).join('');
 
   const totalHtml = `<tr class="ht-total-row">
-    <td class="ht-td ht-total-label" colspan="2">TOTAL</td>
+    <td class="ht-td ht-total-label">TOTAL</td>
     <td class="ht-td ht-num">${lotTotalQty.toLocaleString(undefined,{maximumFractionDigits:4})}</td>
     <td class="ht-td">—</td>
     <td class="ht-td ht-num">${fmtUSD(lotTotalCost)}</td>
@@ -1656,7 +1665,7 @@ function openLotModal(sym) {
 
   document.getElementById('lot-modal-table').innerHTML = lots.length ? `<div class="ht-wrap"><table class="ht-table">
     <thead><tr>
-      <th class="ht-th">Date</th><th class="ht-th">Type</th>
+      <th class="ht-th">Date</th>
       <th class="ht-th ht-num">Shares</th><th class="ht-th ht-num">Price/Share</th>
       <th class="ht-th ht-num">Total Cost</th><th class="ht-th ht-num">Cur Value</th>
       <th class="ht-th ht-num">Unrealized G/L</th><th class="ht-th">Term</th>
