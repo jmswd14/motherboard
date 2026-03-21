@@ -1412,13 +1412,16 @@ function openSlipModal(id) {
 
 async function saveSlip() {
   const trackerId = document.getElementById('quit-slip-tracker-id').value;
-  const mode      = document.getElementById('quit-slip-now-btn').classList.contains('active') ? 'now' : 'custom';
-  let   occurred_at;
-  if (mode === 'now') {
+  const nowActive = document.getElementById('quit-slip-now-btn').classList.contains('active');
+  const cusActive = document.getElementById('quit-slip-custom-btn').classList.contains('active');
+  if (!nowActive && !cusActive) { alert('Please select when you slipped.'); return; }
+  let occurred_at;
+  if (nowActive) {
     occurred_at = new Date().toISOString();
   } else {
     const val = document.getElementById('quit-slip-time-input').value;
     if (!val) { alert('Please enter a date and time.'); return; }
+    // datetime-local gives local time without tz — new Date() correctly treats it as local
     occurred_at = new Date(val).toISOString();
   }
   const note = document.getElementById('quit-slip-note-input').value.trim() || null;
@@ -1441,9 +1444,11 @@ function openNewQuitTracker() {
 async function saveQuitTracker() {
   const name = document.getElementById('quit-name-input').value.trim();
   if (!name) { alert('Name is required.'); return; }
-  const mode = document.getElementById('quit-since-now-btn').classList.contains('active') ? 'now' : 'custom';
+  const nowActive = document.getElementById('quit-since-now-btn').classList.contains('active');
+  const cusActive = document.getElementById('quit-since-custom-btn').classList.contains('active');
+  if (!nowActive && !cusActive) { alert('Please select when you quit.'); return; }
   let started_at;
-  if (mode === 'now') {
+  if (nowActive) {
     started_at = new Date().toISOString();
   } else {
     const val = document.getElementById('quit-since-input').value;

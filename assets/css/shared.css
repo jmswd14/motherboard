@@ -326,7 +326,7 @@ label {
   margin-bottom: 6px;
 }
 
-input[type="text"], input[type="date"], textarea, select {
+input[type="text"], input[type="date"], input[type="datetime-local"], textarea, select {
   width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--border);
@@ -339,6 +339,7 @@ input[type="text"], input[type="date"], textarea, select {
   transition: border-color 0.15s;
 }
 input:focus, textarea:focus, select:focus { border-color: var(--border2); }
+input[type="datetime-local"] { color-scheme: dark; }
 textarea { resize: vertical; min-height: 80px; }
 select option { background: var(--surface2); }
 .tag-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
