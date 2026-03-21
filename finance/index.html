@@ -3173,7 +3173,8 @@ async function fetchDailyCandles(symbol) {
 function getPerfDateRange(period, transactions) {
   const today = todayISO();
   const now = new Date();
-  const firstTxnDate = transactions.map(t => t.date).filter(Boolean).sort()[0] || today;
+  // Use created_at (day entered into system), not t.date (historical purchase date)
+  const firstTxnDate = transactions.map(t => (t.created_at || '').slice(0,10)).filter(Boolean).sort()[0] || today;
   let fromDate;
   switch (period) {
     case '1W':  { const d = new Date(now); d.setDate(d.getDate() - 7);        fromDate = d.toISOString().slice(0,10); break; }
@@ -3190,7 +3191,9 @@ function getPerfDateRange(period, transactions) {
 
 // Build a daily { date, value } series from transactions + candle data
 function computePortfolioTimeSeries(transactions, symbolCandles, fromDate, toDate) {
-  const sortedTxns = [...transactions].sort((a,b) => (a.date||'').localeCompare(b.date||''));
+  // Sort and filter by created_at (day entered), not the historical transaction date
+  const entryDate = t => (t.created_at || '').slice(0,10);
+  const sortedTxns = [...transactions].sort((a,b) => entryDate(a).localeCompare(entryDate(b)));
 
   // Build per-symbol sorted date→price array from candles
   const symbolPriceMap = {};
@@ -3208,7 +3211,7 @@ function computePortfolioTimeSeries(transactions, symbolCandles, fromDate, toDat
 
   while (cur <= end) {
     const dayStr = cur.toISOString().slice(0,10);
-    const txnsUpToDay = sortedTxns.filter(t => t.date && t.date <= dayStr);
+    const txnsUpToDay = sortedTxns.filter(t => entryDate(t) && entryDate(t) <= dayStr);
     const positions   = computePositions(txnsUpToDay);
     const cash        = computeCash(txnsUpToDay);
 
