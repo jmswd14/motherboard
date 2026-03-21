@@ -3340,6 +3340,60 @@ function renderPerfChart(containerId, timeSeries) {
   });
 }
 
+// Compute today's live value for an account from in-memory prices
+function liveTodayValue(transactions) {
+  const positions = computePositions(transactions);
+  const cash      = computeCash(transactions);
+  const mv = positions.reduce((s, p) => {
+    const price = holdingPrices[p.symbol]?.c || p.avgCost || 0;
+    return s + price * p.quantity;
+  }, 0);
+  return mv + cash;
+}
+
+// Append today's live value if the snapshot series doesn't include today
+function appendTodayIfMissing(series, todayValue) {
+  const today = todayISO();
+  if (!series.length || series[series.length - 1].date < today) {
+    series.push({ date: today, value: todayValue });
+  }
+}
+
+// Build time series from Supabase snapshots, falling back to Finnhub if none exist
+async function buildSeriesFromSnapshots(assetIds, transactions, fromDate, toDate) {
+  const { data: snapshots } = await DB
+    .from('portfolio_snapshots')
+    .select('date, value')
+    .in('asset_id', assetIds)
+    .gte('date', fromDate)
+    .lte('date', toDate)
+    .order('date', { ascending: true });
+
+  if (snapshots && snapshots.length > 0) {
+    // Sum by date (covers multi-account overview)
+    const byDate = {};
+    for (const s of snapshots) {
+      byDate[s.date] = (byDate[s.date] || 0) + parseFloat(s.value);
+    }
+    return Object.entries(byDate)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, value]) => ({ date, value }));
+  }
+
+  // No snapshots yet — fall back to Finnhub candle computation
+  const symbols = [...new Set(transactions.map(t => t.symbol?.toUpperCase()).filter(Boolean))];
+  const symbolCandles = {};
+  let delay = 0;
+  await Promise.all(symbols.map(sym => new Promise(resolve => {
+    setTimeout(async () => {
+      symbolCandles[sym] = await fetchDailyCandles(sym);
+      resolve();
+    }, delay);
+    delay += 200;
+  })));
+  return computePortfolioTimeSeries(transactions, symbolCandles, fromDate, toDate);
+}
+
 // Per-account performance chart
 async function loadPerfChart(period) {
   if (!currentAsset || !isPositionsAccount(currentAsset)) return;
@@ -3353,19 +3407,10 @@ async function loadPerfChart(period) {
   container.innerHTML = '<div class="perf-chart-loading">Loading…</div>';
 
   const { fromDate, toDate } = getPerfDateRange(_currentPerfPeriod, currentTransactions);
-  const symbols = [...new Set(currentTransactions.map(t => t.symbol?.toUpperCase()).filter(Boolean))];
-
-  const symbolCandles = {};
-  let delay = 0;
-  await Promise.all(symbols.map(sym => new Promise(resolve => {
-    setTimeout(async () => {
-      symbolCandles[sym] = await fetchDailyCandles(sym);
-      resolve();
-    }, delay);
-    delay += 200;
-  })));
-
-  const series = computePortfolioTimeSeries(currentTransactions, symbolCandles, fromDate, toDate);
+  const series = await buildSeriesFromSnapshots(
+    [currentAsset.id], currentTransactions, fromDate, toDate
+  );
+  appendTodayIfMissing(series, liveTodayValue(currentTransactions));
   renderPerfChart('perf-chart-container', series);
 }
 
@@ -3386,10 +3431,10 @@ async function loadOverviewPerfChart(period) {
     return;
   }
 
+  // Load all transactions for live value + fallback computation
   const allTxnsArrays = await Promise.all(posAccounts.map(async a => {
     const { data } = await DB.from('transactions').select('*')
-      .eq('asset_id', a.id).eq('user_id', currentUser.id)
-      .order('date', { ascending: true });
+      .eq('asset_id', a.id).eq('user_id', currentUser.id);
     return data || [];
   }));
   const allTxns = allTxnsArrays.flat();
@@ -3400,19 +3445,17 @@ async function loadOverviewPerfChart(period) {
   }
 
   const { fromDate, toDate } = getPerfDateRange(_overviewPerfPeriod, allTxns);
-  const symbols = [...new Set(allTxns.map(t => t.symbol?.toUpperCase()).filter(Boolean))];
+  const series = await buildSeriesFromSnapshots(
+    posAccounts.map(a => a.id), allTxns, fromDate, toDate
+  );
 
-  const symbolCandles = {};
-  let delay = 0;
-  await Promise.all(symbols.map(sym => new Promise(resolve => {
-    setTimeout(async () => {
-      symbolCandles[sym] = await fetchDailyCandles(sym);
-      resolve();
-    }, delay);
-    delay += 200;
-  })));
+  // Append today's live value (sum across all accounts)
+  const todayTotal = posAccounts.reduce((sum, a) => {
+    const txns = allTxnsArrays[posAccounts.indexOf(a)];
+    return sum + liveTodayValue(txns);
+  }, 0);
+  appendTodayIfMissing(series, todayTotal);
 
-  const series = computePortfolioTimeSeries(allTxns, symbolCandles, fromDate, toDate);
   renderPerfChart('overview-perf-chart-container', series);
 }
 
