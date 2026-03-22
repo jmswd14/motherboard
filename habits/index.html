@@ -272,7 +272,28 @@
           <div class="cust-sel-opt" data-value="custom" onclick="pickCustSel('quit-since-sel','custom','Custom date &amp; time')">Custom date &amp; time</div>
         </div>
       </div>
-      <input type="text" id="quit-since-input" placeholder="YYYY-MM-DD HH:MM" style="display:none;margin-top:8px;">
+      <div class="quit-datetime-wrap" id="quit-since-datetime" style="display:none;margin-top:8px;">
+        <div class="quit-dt-row">
+          <div class="cust-cal-wrap">
+            <div class="cust-cal-field">
+              <input type="text" id="quit-since-date" class="cust-cal-input" placeholder="Select date" readonly onclick="toggleCal('quit-since-cal')">
+              <button class="cust-cal-btn" onclick="toggleCal('quit-since-cal')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </button>
+            </div>
+            <div class="cust-cal-panel" id="quit-since-cal" style="display:none;">
+              <div class="cust-cal-header">
+                <button class="cust-cal-nav" onclick="calNav('quit-since-cal',-1)">‹</button>
+                <span class="cust-cal-month-label" id="quit-since-cal-label"></span>
+                <button class="cust-cal-nav" onclick="calNav('quit-since-cal',1)">›</button>
+              </div>
+              <div class="cust-cal-dow"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+              <div class="cust-cal-grid" id="quit-since-cal-grid"></div>
+            </div>
+          </div>
+          <input type="text" id="quit-since-time" class="quit-time-input" placeholder="HH:MM">
+        </div>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn" onclick="closeModal('quit-new-modal')">Cancel</button>
@@ -298,7 +319,28 @@
           <div class="cust-sel-opt" data-value="custom" onclick="pickCustSel('quit-slip-sel','custom','Custom date &amp; time')">Custom date &amp; time</div>
         </div>
       </div>
-      <input type="text" id="quit-slip-time-input" placeholder="YYYY-MM-DD HH:MM" style="display:none;margin-top:8px;">
+      <div class="quit-datetime-wrap" id="quit-slip-datetime" style="display:none;margin-top:8px;">
+        <div class="quit-dt-row">
+          <div class="cust-cal-wrap">
+            <div class="cust-cal-field">
+              <input type="text" id="quit-slip-date" class="cust-cal-input" placeholder="Select date" readonly onclick="toggleCal('quit-slip-cal')">
+              <button class="cust-cal-btn" onclick="toggleCal('quit-slip-cal')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </button>
+            </div>
+            <div class="cust-cal-panel" id="quit-slip-cal" style="display:none;">
+              <div class="cust-cal-header">
+                <button class="cust-cal-nav" onclick="calNav('quit-slip-cal',-1)">‹</button>
+                <span class="cust-cal-month-label" id="quit-slip-cal-label"></span>
+                <button class="cust-cal-nav" onclick="calNav('quit-slip-cal',1)">›</button>
+              </div>
+              <div class="cust-cal-dow"><span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span></div>
+              <div class="cust-cal-grid" id="quit-slip-cal-grid"></div>
+            </div>
+          </div>
+          <input type="text" id="quit-slip-time" class="quit-time-input" placeholder="HH:MM">
+        </div>
+      </div>
     </div>
     <div class="form-group">
       <label>Note <span class="dim" style="font-size:11px;">(optional)</span></label>
@@ -1414,12 +1456,13 @@ function openSlipFromDetail() {
 
 function openSlipModal(id) {
   const t = quitTrackers.find(x => x.id === id);
-  document.getElementById('quit-slip-tracker-id').value   = id;
-  document.getElementById('quit-slip-title').textContent  = 'Log a Slip — ' + t.name;
-  document.getElementById('quit-slip-note-input').value    = '';
-  document.getElementById('quit-slip-time-input').value   = '';
+  document.getElementById('quit-slip-tracker-id').value  = id;
+  document.getElementById('quit-slip-title').textContent = 'Log a Slip — ' + t.name;
+  document.getElementById('quit-slip-note-input').value  = '';
+  document.getElementById('quit-slip-date').value        = '';
+  document.getElementById('quit-slip-time').value        = '';
+  document.getElementById('quit-slip-datetime').style.display = 'none';
   resetCustSel('quit-slip-sel');
-  document.getElementById('quit-slip-time-input').style.display = 'none';
   document.getElementById('quit-slip-modal').classList.add('show');
 }
 
@@ -1430,10 +1473,11 @@ async function saveSlip() {
   if (mode === 'now') {
     occurred_at = new Date().toISOString();
   } else {
-    const val = document.getElementById('quit-slip-time-input').value.trim();
-    if (!val) { alert('Please enter a date and time.'); return; }
-    const d = new Date(val);
-    if (isNaN(d)) { alert('Invalid format. Use YYYY-MM-DD HH:MM'); return; }
+    const date = document.getElementById('quit-slip-date').value.trim();
+    const time = document.getElementById('quit-slip-time').value.trim() || '00:00';
+    if (!date) { alert('Please select a date.'); return; }
+    const d = new Date(`${date}T${time}`);
+    if (isNaN(d)) { alert('Invalid time. Use HH:MM'); return; }
     occurred_at = d.toISOString();
   }
   const note = document.getElementById('quit-slip-note-input').value.trim() || null;
@@ -1445,6 +1489,78 @@ async function saveSlip() {
   await loadQuitData();
   renderQuitView();
 }
+
+// ── CUSTOM CALENDAR ──────────────────────────────────────────────────────────
+const _calState = {}; // calId → { year, month, inputId }
+const _MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function initCal(calId, inputId) {
+  const now = new Date();
+  _calState[calId] = { year: now.getFullYear(), month: now.getMonth(), inputId };
+  renderCal(calId);
+}
+
+function toggleCal(calId) {
+  const panel = document.getElementById(calId);
+  const isOpen = panel.style.display !== 'none';
+  // close all calendars
+  document.querySelectorAll('.cust-cal-panel').forEach(p => p.style.display = 'none');
+  if (!isOpen) { panel.style.display = ''; renderCal(calId); }
+}
+
+function calNav(calId, dir) {
+  const s = _calState[calId]; if (!s) return;
+  s.month += dir;
+  if (s.month > 11) { s.month = 0; s.year++; }
+  if (s.month < 0)  { s.month = 11; s.year--; }
+  renderCal(calId);
+}
+
+function renderCal(calId) {
+  const s = _calState[calId]; if (!s) return;
+  document.getElementById(calId + '-label').textContent = `${_MONTHS[s.month]} ${s.year}`;
+  const grid = document.getElementById(calId + '-grid');
+  const today = new Date(); today.setHours(0,0,0,0);
+  const selectedVal = document.getElementById(s.inputId)?.value;
+  const firstDay = new Date(s.year, s.month, 1).getDay();
+  const daysInMonth = new Date(s.year, s.month + 1, 0).getDate();
+  const daysInPrev  = new Date(s.year, s.month, 0).getDate();
+  let html = '';
+  // leading days from prev month
+  for (let i = firstDay - 1; i >= 0; i--) {
+    html += `<div class="cust-cal-day other-month">${daysInPrev - i}</div>`;
+  }
+  // current month days
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dt = new Date(s.year, s.month, d);
+    const dateStr = `${s.year}-${String(s.month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday    = dt.getTime() === today.getTime();
+    const isSelected = dateStr === selectedVal;
+    const cls = ['cust-cal-day', isToday ? 'today' : '', isSelected ? 'selected' : ''].filter(Boolean).join(' ');
+    html += `<div class="${cls}" onclick="calPickDay('${calId}','${dateStr}')">${d}</div>`;
+  }
+  // trailing days
+  const total = firstDay + daysInMonth;
+  const trailing = total % 7 === 0 ? 0 : 7 - (total % 7);
+  for (let d = 1; d <= trailing; d++) {
+    html += `<div class="cust-cal-day other-month">${d}</div>`;
+  }
+  grid.innerHTML = html;
+}
+
+function calPickDay(calId, dateStr) {
+  const s = _calState[calId]; if (!s) return;
+  const input = document.getElementById(s.inputId);
+  if (input) input.value = dateStr;
+  document.getElementById(calId).style.display = 'none';
+  renderCal(calId); // re-render to show selected state
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.cust-cal-wrap')) {
+    document.querySelectorAll('.cust-cal-panel').forEach(p => p.style.display = 'none');
+  }
+});
 
 function toggleCustSel(id) {
   const el = document.getElementById(id);
@@ -1458,8 +1574,8 @@ function pickCustSel(id, value, label) {
   el.querySelectorAll('.cust-sel-opt').forEach(o => o.classList.toggle('active', o.dataset.value === value));
   el.dataset.value = value;
   el.classList.remove('open');
-  if (id === 'quit-since-sel') document.getElementById('quit-since-input').style.display = value === 'custom' ? '' : 'none';
-  if (id === 'quit-slip-sel')  document.getElementById('quit-slip-time-input').style.display = value === 'custom' ? '' : 'none';
+  if (id === 'quit-since-sel') { document.getElementById('quit-since-datetime').style.display = value === 'custom' ? '' : 'none'; if (value === 'custom') initCal('quit-since-cal', 'quit-since-date'); }
+  if (id === 'quit-slip-sel')  { document.getElementById('quit-slip-datetime').style.display  = value === 'custom' ? '' : 'none'; if (value === 'custom') initCal('quit-slip-cal',  'quit-slip-date');  }
 }
 function getCustSelVal(id) { return document.getElementById(id).dataset.value || 'now'; }
 function resetCustSel(id) { pickCustSel(id, 'now', 'Right now'); }
@@ -1468,10 +1584,11 @@ document.addEventListener('click', e => {
 });
 
 function openNewQuitTracker() {
-  document.getElementById('quit-name-input').value    = '';
-  document.getElementById('quit-since-input').value  = '';
+  document.getElementById('quit-name-input').value         = '';
+  document.getElementById('quit-since-date').value         = '';
+  document.getElementById('quit-since-time').value         = '';
+  document.getElementById('quit-since-datetime').style.display = 'none';
   resetCustSel('quit-since-sel');
-  document.getElementById('quit-since-input').style.display = 'none';
   document.getElementById('quit-new-modal').classList.add('show');
 }
 
@@ -1483,10 +1600,11 @@ async function saveQuitTracker() {
   if (mode === 'now') {
     started_at = new Date().toISOString();
   } else {
-    const val = document.getElementById('quit-since-input').value.trim();
-    if (!val) { alert('Please enter a start date.'); return; }
-    const d = new Date(val);
-    if (isNaN(d)) { alert('Invalid format. Use YYYY-MM-DD HH:MM'); return; }
+    const date = document.getElementById('quit-since-date').value.trim();
+    const time = document.getElementById('quit-since-time').value.trim() || '00:00';
+    if (!date) { alert('Please select a date.'); return; }
+    const d = new Date(`${date}T${time}`);
+    if (isNaN(d)) { alert('Invalid time. Use HH:MM'); return; }
     started_at = d.toISOString();
   }
   const { error } = await _sb.from('quit_trackers').insert({
