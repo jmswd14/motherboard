@@ -657,6 +657,7 @@ function scheduleHoldingsRender() {
 }
 let currentHoldings = [];
 let currentTransactions = [];
+let latestSnapshots = {}; // asset_id → most recent snapshot value
 let holdingPrices = {};
 
 // ── SECURITY NAME CACHE ───────────────────────────────────────────────────────
@@ -713,14 +714,20 @@ async function init() {
 }
 
 async function loadData() {
-  const [assetsRes, logsRes] = await Promise.all([
+  const [assetsRes, logsRes, snapshotsRes] = await Promise.all([
     DB.from('assets').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: true }),
     DB.from('asset_logs').select('*').eq('user_id', currentUser.id).order('logged_at', { ascending: true }),
+    DB.from('portfolio_snapshots').select('asset_id, value, date').eq('user_id', currentUser.id).order('date', { ascending: false }),
   ]);
   if (assetsRes.error) console.error('Assets load error:', assetsRes.error);
   if (logsRes.error) console.error('Logs load error:', logsRes.error);
   assets = assetsRes.data || [];
   logs = logsRes.data || [];
+  // Keep only the most recent snapshot per asset
+  latestSnapshots = {};
+  for (const s of (snapshotsRes.data || [])) {
+    if (!latestSnapshots[s.asset_id]) latestSnapshots[s.asset_id] = parseFloat(s.value);
+  }
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
@@ -747,6 +754,9 @@ function getLatestLog(assetId) {
 }
 
 function getAssetCurrentValue(asset) {
+  if (isPositionsAccount(asset)) {
+    return latestSnapshots[asset.id] ?? 0;
+  }
   const log = getLatestLog(asset.id);
   if (!log) return 0;
   return parseFloat(log.value);
