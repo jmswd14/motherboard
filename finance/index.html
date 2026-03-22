@@ -1112,7 +1112,6 @@ function updateTypeSidebarNav() {
       const isActive = currentAsset?.id === a.id;
       return `<div class="type-account-item${isActive ? ' active' : ''}" onclick="openAccount('${a.id}')">
         <span class="type-account-name">${esc(a.name)}</span>
-        <span class="type-account-val">${val}</span>
       </div>`;
     }).join('');
     return `<div class="type-group" id="tg-${CSS.escape(type)}">
