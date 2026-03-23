@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>(function(){var el=document.documentElement;el.style.setProperty('--retro-c1',localStorage.getItem('vg-retro-c1')||'#00FF41');el.style.setProperty('--retro-c2',localStorage.getItem('vg-retro-c2')||'#FF6600');})()</script>
+<script>(function(){var el=document.documentElement;el.style.setProperty('--retro-c1',localStorage.getItem('vg-retro-c1')||'#00FF41');el.style.setProperty('--retro-c2',localStorage.getItem('vg-retro-c2')||'#FF6600');['bg','surface','surface2','surface3','border','border2'].forEach(function(k){var v=localStorage.getItem('vg-'+k);if(v)el.style.setProperty('--'+k,v);});})()</script>
 <script src="../assets/js/theme.js"></script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -242,13 +242,8 @@
           <div class="retro-swatches" id="rc2-swatches"></div>
         </div>
         <div class="form-group">
-          <label>Font Size</label>
-          <select id="pref-font-size">
-            <option value="default">Default</option>
-            <option value="large">Large</option>
-            <option value="larger">Larger</option>
-          </select>
-          <div class="settings-note">Font size preference is saved for future use.</div>
+          <label>Background</label>
+          <div class="bg-presets" id="bg-presets"></div>
         </div>
         <div class="settings-btn-row">
           <button class="btn btn-primary" onclick="saveAppearance()">Save</button>
@@ -499,7 +494,8 @@ async function loadPreferences() {
   const prefs = {};
   (data || []).forEach(r => { prefs[r.key] = r.value; });
 
-  if (prefs.font_size)    document.getElementById('pref-font-size').value    = prefs.font_size;
+  const savedBg = prefs.bg_color || localStorage.getItem('vg-bg') || '#000000';
+  markActiveBgPreset(savedBg);
   if (prefs.week_start)   document.getElementById('pref-week-start').value   = prefs.week_start;
   if (prefs.default_view) document.getElementById('pref-default-view').value = prefs.default_view;
 
@@ -559,16 +555,63 @@ function getSelectedSwatch(containerId) {
   return sel ? sel.getAttribute('data-color') : (containerId === 'rc1-swatches' ? '#00FF41' : '#FF6600');
 }
 
+const BG_PRESETS = [
+  { name: 'Void',       hex: '#000000' },
+  { name: 'Near Black', hex: '#0A0A0A' },
+  { name: 'Charcoal',   hex: '#111111' },
+  { name: 'Slate',      hex: '#1C1C1E' },
+  { name: 'Navy',       hex: '#060D1A' },
+  { name: 'Cobalt',     hex: '#060F2E' },
+  { name: 'Midnight',   hex: '#0D0F1A' },
+  { name: 'Indigo',     hex: '#080B20' },
+  { name: 'Forest',     hex: '#050F05' },
+  { name: 'Dark Teal',  hex: '#040F10' },
+  { name: 'Mocha',      hex: '#12100E' },
+  { name: 'Purple',     hex: '#0C0814' },
+];
+
+function buildBgPresets(selectedHex) {
+  const container = document.getElementById('bg-presets');
+  container.innerHTML = '';
+  BG_PRESETS.forEach(function(p) {
+    const btn = document.createElement('button');
+    btn.className = 'bg-preset-swatch' + (p.hex.toLowerCase() === (selectedHex || '').toLowerCase() ? ' selected' : '');
+    btn.style.background = p.hex;
+    btn.dataset.hex = p.hex;
+    btn.title = p.name;
+    btn.innerHTML = `<span class="bg-preset-label">${p.name}</span>`;
+    btn.onclick = function() { onBgPresetClick(p.hex); };
+    container.appendChild(btn);
+  });
+}
+
+function onBgPresetClick(hex) {
+  document.querySelectorAll('.bg-preset-swatch').forEach(function(b) {
+    b.classList.toggle('selected', b.dataset.hex === hex);
+  });
+  VG_THEME.applyBg(hex);
+}
+
+function markActiveBgPreset(hex) {
+  buildBgPresets(hex);
+}
+
+function getActiveBgPreset() {
+  const sel = document.querySelector('.bg-preset-swatch.selected');
+  return sel ? sel.dataset.hex : '#000000';
+}
+
 async function saveAppearance() {
-  const fontSize = document.getElementById('pref-font-size').value;
   const c1 = getSelectedSwatch('rc1-swatches');
   const c2 = getSelectedSwatch('rc2-swatches');
+  const bg = getActiveBgPreset();
   await Promise.all([
-    savePref('font_size', fontSize),
     savePref('retro_color1', c1),
     savePref('retro_color2', c2),
+    savePref('bg_color', bg),
   ]);
   VG_THEME.applyRetroColors(c1, c2);
+  VG_THEME.applyBg(bg);
   showToast('Appearance saved');
 }
 

@@ -246,6 +246,42 @@
 }
 .retro-swatch.selected { border-color: white; }
 
+/* ── BACKGROUND PRESETS ── */
+.bg-presets {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.bg-preset-swatch {
+  aspect-ratio: 1.6;
+  border: 2px solid var(--border2);
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  transition: border-color 0.15s;
+  overflow: hidden;
+}
+.bg-preset-swatch:hover { border-color: var(--text-muted); }
+.bg-preset-swatch.selected { border-color: var(--retro-c1, #00FF41); }
+.bg-preset-label {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  font-size: 8px;
+  text-align: center;
+  padding: 2px 2px;
+  background: rgba(0,0,0,0.6);
+  color: #aaa;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+@media (max-width: 600px) {
+  .bg-presets { grid-template-columns: repeat(4, 1fr); }
+}
+
 /* ── RESPONSIVE ── */
 @media (max-width: 600px) {
   .settings-tab { padding: 10px 14px; font-size: 12px; }
