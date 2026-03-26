@@ -157,7 +157,6 @@ const WIDGET_LABELS = {
   'quick-task':      'Quick Add Task',
   'journal-prompt':  'Journal Prompt',
   'goals-progress':  'Goals Progress',
-  'movie-suggest':   'Movie Pick',
   'history-today':   'On This Day',
   'news-feed':       'Top Stories',
 };
@@ -171,7 +170,6 @@ const WIDGET_CATALOG = [
   { type: 'quick-task',      size: 'large', icon: '+', name: 'Quick Add Task',   desc: 'Add a task instantly' },
   { type: 'journal-prompt',  size: 'small', icon: '✦', name: 'Journal Prompt',  desc: 'Daily reflection prompt' },
   { type: 'goals-progress',  size: 'large', icon: '◎', name: 'Goals Progress',  desc: 'Track long-term goals' },
-  { type: 'movie-suggest',   size: 'wide',  icon: '▶', name: 'Movie Pick',       desc: 'Daily film suggestion' },
   { type: 'history-today',   size: 'wide',  icon: '◷', name: 'On This Day',      desc: 'Historical event from today' },
   { type: 'news-feed',       size: 'wide',  icon: '◈', name: 'Top Stories',      desc: 'Latest headlines' },
 ];
@@ -233,7 +231,6 @@ const dashSelectedTags = {};   // { widgetId: string[] }
 const dashInlineTagColor = {}; // { widgetId: string }
 const greetingSolarData  = {}; // { widgetId: { sunrise: Date, sunset: Date, isFallback: boolean } }
 let greetingsCache = null;    // fetched once from Supabase greetings table
-const TMDB_PROXY = 'https://znhwyzgccojbjaivzllp.supabase.co/functions/v1/tmdb-proxy';
 
 let dashboardSlots = [];
 let activeSlotIndex = parseInt(localStorage.getItem('vg-active-slot') || '0');
@@ -641,7 +638,6 @@ function loadAllWidgetData() {
     'quick-task':      loadQuickTask,
     'journal-prompt':  loadJournalPrompt,
     'goals-progress':  loadGoalsProgress,
-    'movie-suggest':   loadMovieSuggest,
     'history-today':   loadHistoryToday,
     'news-feed':       loadNewsFeed,
   };
@@ -1623,94 +1619,6 @@ async function loadGoalsProgress(widget) {
   }
 }
 
-// MOVIE PICK ──────────────────────────────────────────────────────────────────
-
-async function loadMovieSuggest(widget) {
-  const el = document.getElementById(`wb-${widget.id}`);
-  if (!el) return;
-  const config = widget.config || {};
-
-  const localToday = (() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; })();
-  const salt = parseInt(localStorage.getItem(`vg-movie-${widget.id}-salt-${localToday}`) || '0');
-  const cacheKey = `vg-movie-${widget.id}-${localToday}-${salt}`;
-  const cached = localStorage.getItem(cacheKey);
-  if (cached) { renderMovieWidget(el, JSON.parse(cached), widget.id); return; }
-
-  try {
-    const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-    const minRating = config.min_rating || 7;
-
-    // Multi-select genres (OR logic)
-    const genres = (config.genre_ids || []).filter(Boolean);
-    const genreParam = genres.length ? `&with_genres=${genres.join('|')}` : '';
-
-    // Multi-select decades — use combined range from earliest to latest
-    const decades = (config.decades || []).filter(Boolean).map(Number).sort((a, b) => a - b);
-    const decadeParam = decades.length
-      ? `&primary_release_date.gte=${decades[0]}-01-01&primary_release_date.lte=${decades[decades.length - 1] + 9}-12-31`
-      : '';
-
-    const base = `${TMDB_PROXY}?sort_by=vote_average.desc&vote_count.gte=500&vote_average.gte=${minRating}${genreParam}${decadeParam}`;
-
-    // Try a seeded page first; fall back to page 1 if it returns nothing
-    let results = [];
-    const seededPage = ((dayOfYear + salt) % 5) + 1;
-    const r1 = await fetch(`${base}&page=${seededPage}`);
-    if (r1.ok) results = (await r1.json()).results || [];
-    if (!results.length) {
-      const r2 = await fetch(`${base}&page=1`);
-      if (r2.ok) results = (await r2.json()).results || [];
-    }
-
-    const movie = results[(dayOfYear + salt) % results.length];
-    if (!movie) throw new Error('no results');
-
-    localStorage.setItem(cacheKey, JSON.stringify(movie));
-    renderMovieWidget(el, movie, widget.id);
-  } catch (e) {
-    el.innerHTML = `<div class="widget-empty"><div class="widget-empty-text">Couldn't load suggestion</div></div>`;
-  }
-}
-
-function renderMovieWidget(el, movie, widgetId) {
-  const posterBase = 'https://image.tmdb.org/t/p/w300';
-  const poster = movie.poster_path
-    ? `<img class="movie-poster" src="${posterBase}${movie.poster_path}" alt="">`
-    : `<div class="movie-poster-placeholder">▶</div>`;
-  const year = (movie.release_date || '').slice(0, 4);
-  const rating = movie.vote_average ? movie.vote_average.toFixed(1) : '—';
-  const blurb = movie.overview
-    ? movie.overview.slice(0, 160) + (movie.overview.length > 160 ? '…' : '')
-    : '';
-  const lbUrl = movie.id ? `https://letterboxd.com/tmdb/${movie.id}/` : '#';
-
-  el.innerHTML = `
-    <div class="movie-wrap">
-      <a class="movie-poster-col" href="${lbUrl}" target="_blank" rel="noopener" title="View on Letterboxd">${poster}</a>
-      <div class="movie-info-col">
-        <a class="movie-title" href="${lbUrl}" target="_blank" rel="noopener">${esc(movie.title)}</a>
-        <div class="movie-meta">${esc(year)}&nbsp;&nbsp;★ ${esc(rating)}</div>
-        <div class="movie-blurb">${esc(blurb)}</div>
-        <button class="movie-refresh-btn" onclick="refreshMovieWidget('${widgetId}')">↻ New suggestion</button>
-      </div>
-    </div>
-  `;
-}
-
-function refreshMovieWidget(widgetId) {
-  closeWidgetOptions();
-  const localToday = (() => { const _d = new Date(); return `${_d.getFullYear()}-${String(_d.getMonth()+1).padStart(2,'0')}-${String(_d.getDate()).padStart(2,'0')}`; })();
-  const saltKey = `vg-movie-${widgetId}-salt-${localToday}`;
-  const newSalt = parseInt(localStorage.getItem(saltKey) || '0') + 1;
-  localStorage.setItem(saltKey, newSalt);
-  // clear old cache for today
-  Object.keys(localStorage)
-    .filter(k => k.startsWith(`vg-movie-${widgetId}-${localToday}`) && !k.includes('-salt-'))
-    .forEach(k => localStorage.removeItem(k));
-  const widget = widgets.find(w => w.id === widgetId);
-  if (widget) loadMovieSuggest(widget);
-}
-
 // ON THIS DAY ──────────────────────────────────────────────────────────────────
 
 async function loadHistoryToday(widget) {
@@ -2096,33 +2004,6 @@ function buildOptionsForm(widget, config, habits) {
         </select>
       </div>`;
 
-  } else if (type === 'movie-suggest') {
-    const selGenres  = config.genre_ids || [];
-    const selDecades = (config.decades || []).map(String);
-    const GENRES  = [['28','Action'],['35','Comedy'],['18','Drama'],['27','Horror'],['878','Sci-Fi'],['53','Thriller'],['10749','Romance'],['16','Animation'],['99','Documentary'],['10751','Family'],['36','History'],['10402','Music']];
-    const DECADES = [['1960','60s'],['1970','70s'],['1980','80s'],['1990','90s'],['2000','00s'],['2010','10s'],['2020','20s']];
-    rows = `
-      <div class="widget-option-row widget-option-chips-row">
-        <label class="widget-option-label">Genres</label>
-        <div class="widget-chips">
-          ${GENRES.map(([v,l]) => `<button type="button" class="widget-chip${selGenres.includes(v)?' selected':''}" data-group="wo-genres" data-val="${v}" onclick="this.classList.toggle('selected')">${l}</button>`).join('')}
-        </div>
-      </div>
-      <div class="widget-option-row widget-option-chips-row">
-        <label class="widget-option-label">Decades</label>
-        <div class="widget-chips">
-          ${DECADES.map(([v,l]) => `<button type="button" class="widget-chip${selDecades.includes(v)?' selected':''}" data-group="wo-decades" data-val="${v}" onclick="this.classList.toggle('selected')">${l}</button>`).join('')}
-        </div>
-      </div>
-      <div class="widget-option-row">
-        <label class="widget-option-label">Min rating</label>
-        <select class="widget-option-select" id="wo-movie-rating">
-          <option value="6"   ${config.min_rating==6   ?'selected':''}>6.0+</option>
-          <option value="7"   ${!config.min_rating||config.min_rating==7   ?'selected':''}>7.0+</option>
-          <option value="7.5" ${config.min_rating==7.5 ?'selected':''}>7.5+</option>
-          <option value="8"   ${config.min_rating==8   ?'selected':''}>8.0+</option>
-        </select>
-      </div>`;
   }
 
   return sizeRow + rows;
@@ -2183,13 +2064,6 @@ function saveWidgetOptions() {
     newConfig.source = getVal('wo-news-source') || 'https://feeds.bbci.co.uk/news/rss.xml';
     Object.keys(localStorage)
       .filter(k => k.startsWith(`vg-news-${id}`))
-      .forEach(k => localStorage.removeItem(k));
-  } else if (type === 'movie-suggest') {
-    newConfig.genre_ids  = Array.from(document.querySelectorAll('[data-group="wo-genres"].selected')).map(b => b.dataset.val);
-    newConfig.decades    = Array.from(document.querySelectorAll('[data-group="wo-decades"].selected')).map(b => b.dataset.val);
-    newConfig.min_rating = parseFloat(getVal('wo-movie-rating')) || 7;
-    Object.keys(localStorage)
-      .filter(k => k.startsWith(`vg-movie-${id}`))
       .forEach(k => localStorage.removeItem(k));
   }
 
