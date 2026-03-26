@@ -326,8 +326,15 @@
   gap: 9px;
   padding: 6px 0;
   border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.1s;
+  margin: 0 -4px;
+  padding-left: 4px;
+  padding-right: 4px;
 }
 .task-row-mini:last-child { border-bottom: none; }
+.task-row-mini:hover { background: var(--surface2); }
 
 .mini-priority-dot {
   width: 6px;

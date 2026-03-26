@@ -950,13 +950,12 @@ async function loadTasksToday(widget) {
   const el = document.getElementById(`wb-${widget.id}`);
   if (!el) return;
   const config = widget.config || {};
-  const limit = config.limit || 8;
   const listId = config.list_id || null;
   const priorityFilter = config.priority_filter || 'all';
 
   try {
     let q = DB.from('tasks').select('id, name, priority, done')
-      .eq('done', false).order('position').limit(limit);
+      .eq('done', false).order('position').limit(50);
     if (listId) q = q.eq('category_id', listId);
     if (priorityFilter === 'high_medium') q = q.in('priority', ['high', 'medium']);
     else if (priorityFilter === 'high') q = q.eq('priority', 'high');
@@ -979,10 +978,10 @@ async function loadTasksToday(widget) {
     el.innerHTML = `
       <div class="mini-tasks-list">
         ${tasks.map(t => `
-          <div class="task-row-mini">
+          <a class="task-row-mini" href="tasks/index.html?task=${t.id}">
             <div class="mini-priority-dot" style="background:${pc[t.priority] || 'var(--border2)'}"></div>
             <div class="mini-task-name">${esc(t.name)}</div>
-          </div>
+          </a>
         `).join('')}
       </div>
       <a href="tasks/index.html" class="widget-footer-link">View all in Tasks →</a>

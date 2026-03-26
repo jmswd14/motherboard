@@ -1277,6 +1277,13 @@ async function init() {
   renderSidebar();
   renderTasks();
   renderTagFilterMenu();
+
+  // Auto-open task modal if ?task=<id> is in the URL
+  const taskId = new URLSearchParams(window.location.search).get('task');
+  if (taskId) {
+    window.history.replaceState({}, '', window.location.pathname);
+    editTask(taskId);
+  }
 }
 
 init();
