@@ -708,23 +708,20 @@ function loadGreeting(widget) {
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
   if (isWide) {
-    // Wide: flex row — text left, weather right
+    // Wide: W3 — full-width weather strip at top
     el.innerHTML = `
-      <div class="greeting-wide-layout">
-        <div class="greeting-wide-left">
-          ${showTime ? `<div class="greeting-time" data-clock="true">${timeStr}</div>` : ''}
-          <div class="greeting-msg">${msg}</div>
-          ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
-          <div class="greeting-location" id="gl-${widget.id}"></div>
-        </div>
-        <div class="greeting-wide-weather" id="gw-${widget.id}"></div>
+      <div class="greeting-w3-strip">
+        <div class="greeting-w3-wx" id="gw-${widget.id}"></div>
+        <div class="greeting-location greeting-w3-loc" id="gl-${widget.id}"></div>
       </div>
+      ${showTime ? `<div class="greeting-time" data-clock="true">${timeStr}</div>` : ''}
+      <div class="greeting-msg">${msg}</div>
+      ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
     `;
   } else {
-    // Large / small: stacked, weather corner top-right (large only)
-    el.style.position = 'relative';
+    // Large / small: L3 card at top (large only), then stacked content
     el.innerHTML = `
-      ${isLarge ? `<div class="greeting-weather-corner" id="gw-${widget.id}"></div>` : ''}
+      ${isLarge ? `<div class="greeting-l3-card" id="gw-${widget.id}"></div>` : ''}
       ${showTime ? `<div class="greeting-time" data-clock="true">${timeStr}</div>` : ''}
       <div class="greeting-msg">${msg}</div>
       ${showDate ? `<div class="greeting-date">${dateStr}</div>` : ''}
@@ -782,16 +779,41 @@ async function fetchWeather(lat, lng) {
   } catch(_) { return null; }
 }
 
+function weatherLabel(code) {
+  if (code === 0)  return 'Clear';
+  if (code <= 1)   return 'Mostly Clear';
+  if (code <= 2)   return 'Partly Cloudy';
+  if (code <= 3)   return 'Overcast';
+  if (code <= 48)  return 'Foggy';
+  if (code <= 55)  return 'Drizzle';
+  if (code <= 67)  return 'Rain';
+  if (code <= 77)  return 'Snow';
+  if (code <= 82)  return 'Showers';
+  if (code <= 86)  return 'Snow Showers';
+  return 'Storm';
+}
+
 function renderWeatherCorner(w) {
+  // L3: big card with large temp + condition label + icon
   const icon = weatherIcon(w.code);
-  return `<div class="weather-icon">${icon}</div><div class="weather-temp">${w.temp}°</div>`;
+  const cond = weatherLabel(w.code);
+  return `
+    <div class="greeting-l3-left">
+      <div class="greeting-l3-temp">${w.temp}°</div>
+      <div class="greeting-l3-cond">${cond}</div>
+    </div>
+    <div class="greeting-l3-icon">${icon}</div>
+  `;
 }
 
 function renderWeatherWide(w) {
+  // W3: compact strip — icon · temp · condition
   const icon = weatherIcon(w.code);
+  const cond = weatherLabel(w.code);
   return `
-    <div class="weather-wide-icon">${icon}</div>
-    <div class="weather-wide-temp">${w.temp}°</div>
+    <div class="weather-strip-icon">${icon}</div>
+    <div class="weather-strip-temp">${w.temp}°</div>
+    <div class="weather-strip-cond">${cond}</div>
   `;
 }
 
