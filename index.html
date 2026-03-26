@@ -220,7 +220,7 @@ const TAG_COLORS = [
 
 let widgets = [];
 let editMode = false;
-let dragSrcIdx = null;
+let _dragSrc = null, _dragOver = null, _dragGhost = null, _dragOX = 0, _dragOY = 0;
 let currentUser = null;
 let todayStr = '';
 let clockInterval = null;
@@ -470,7 +470,6 @@ function createWidgetEl(widget, idx) {
   div.className = `widget size-${widget.size}`;
   div.dataset.id = widget.id;
   div.dataset.idx = String(idx);
-  div.draggable = editMode;
 
   div.innerHTML = `
     <div class="widget-header">
@@ -484,34 +483,69 @@ function createWidgetEl(widget, idx) {
     </div>
   `;
 
-  div.addEventListener('dragstart', e => {
-    if (!editMode) { e.preventDefault(); return; }
-    dragSrcIdx = idx;
-    e.dataTransfer.effectAllowed = 'move';
-    setTimeout(() => { div.style.opacity = '0.45'; }, 0);
-  });
-  div.addEventListener('dragend', () => {
-    div.style.opacity = '';
-    document.querySelectorAll('.widget.drag-over').forEach(el => el.classList.remove('drag-over'));
-  });
-  div.addEventListener('dragenter', e => { e.preventDefault(); div.classList.add('drag-over'); });
-  div.addEventListener('dragleave', () => { div.classList.remove('drag-over'); });
-  div.addEventListener('dragover', e => { e.preventDefault(); });
-  div.addEventListener('drop', e => {
-    e.preventDefault();
-    div.classList.remove('drag-over');
-    const dropIdx = parseInt(div.dataset.idx);
-    if (dragSrcIdx === null || dragSrcIdx === dropIdx) return;
-    const moved = widgets.splice(dragSrcIdx, 1)[0];
-    widgets.splice(dropIdx, 0, moved);
-    widgets.forEach((w, i) => { w.position = i; });
-    dragSrcIdx = null;
-    renderGrid();
-    loadAllWidgetData();
-    debouncedSave();
-  });
+  if (editMode) {
+    div.querySelector('.widget-drag-handle').addEventListener('pointerdown', _dragStart);
+  }
 
   return div;
+}
+
+function _dragStart(e) {
+  e.preventDefault();
+  const div = e.currentTarget.closest('.widget');
+  const r = div.getBoundingClientRect();
+  _dragSrc = div;
+  _dragOX = e.clientX - r.left;
+  _dragOY = e.clientY - r.top;
+
+  _dragGhost = document.createElement('div');
+  _dragGhost.className = div.className;
+  _dragGhost.style.cssText =
+    `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;height:${r.height}px;` +
+    `opacity:0.75;pointer-events:none;z-index:9999;border:1px solid var(--accent);background:var(--surface2);`;
+  _dragGhost.innerHTML = div.querySelector('.widget-header').outerHTML;
+  document.body.appendChild(_dragGhost);
+  div.style.opacity = '0.25';
+
+  document.addEventListener('pointermove', _dragMove);
+  document.addEventListener('pointerup', _dragEnd, { once: true });
+}
+
+function _dragMove(e) {
+  if (!_dragGhost) return;
+  _dragGhost.style.left = (e.clientX - _dragOX) + 'px';
+  _dragGhost.style.top  = (e.clientY - _dragOY) + 'px';
+
+  // find widget under cursor (hide ghost so it doesn't block elementFromPoint)
+  _dragGhost.style.visibility = 'hidden';
+  const target = document.elementFromPoint(e.clientX, e.clientY)?.closest('.widget');
+  _dragGhost.style.visibility = '';
+
+  if (_dragOver && _dragOver !== target) _dragOver.classList.remove('drag-over');
+  _dragOver = (target && target !== _dragSrc) ? target : null;
+  if (_dragOver) _dragOver.classList.add('drag-over');
+}
+
+function _dragEnd() {
+  document.removeEventListener('pointermove', _dragMove);
+  if (_dragGhost) { _dragGhost.remove(); _dragGhost = null; }
+  if (_dragSrc)   { _dragSrc.style.opacity = ''; }
+
+  if (_dragOver) {
+    _dragOver.classList.remove('drag-over');
+    const si = parseInt(_dragSrc.dataset.idx);
+    const di = parseInt(_dragOver.dataset.idx);
+    if (si !== di) {
+      [widgets[si], widgets[di]] = [widgets[di], widgets[si]];
+      widgets.forEach((w, i) => { w.position = i; });
+      renderGrid();
+      loadAllWidgetData();
+      debouncedSave();
+    }
+  }
+
+  _dragSrc = null;
+  _dragOver = null;
 }
 
 function setPriorityChip(inputId, value) {
