@@ -487,6 +487,31 @@ function isCellFree(occ, col, row, colSpan, rowSpan) {
   return true;
 }
 
+function resolveCollisions() {
+  // Iteratively push widgets down until no two widgets overlap.
+  // Runs top-to-bottom so earlier widgets win.
+  for (let iter = 0; iter < 30; iter++) {
+    let changed = false;
+    const placed = widgets.filter(w => w.col && w.row)
+                          .sort((a, b) => a.row !== b.row ? a.row - b.row : a.col - b.col);
+    for (let i = 0; i < placed.length; i++) {
+      const a = placed[i];
+      const asp = getSizeSpan(a.size);
+      for (let j = i + 1; j < placed.length; j++) {
+        const b = placed[j];
+        const bsp = getSizeSpan(b.size);
+        const rowOverlap = a.row <= b.row + bsp.row - 1 && a.row + asp.row - 1 >= b.row;
+        const colOverlap = a.col <= b.col + bsp.col - 1 && a.col + asp.col - 1 >= b.col;
+        if (rowOverlap && colOverlap) {
+          const needed = a.row + asp.row;
+          if (b.row < needed) { b.row = needed; changed = true; }
+        }
+      }
+    }
+    if (!changed) break;
+  }
+}
+
 function snapWidgetPositions(grid) {
   const gridRect = grid.getBoundingClientRect();
   if (!gridRect.width) return;
@@ -2432,6 +2457,7 @@ function saveWidgetOptions() {
   }
 
   widget.config = newConfig;
+  resolveCollisions();
   closeWidgetOptions();
   debouncedSave();
   renderGrid();
