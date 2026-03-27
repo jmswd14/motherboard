@@ -397,7 +397,7 @@
         </div>
         <div class="txn-security-name" id="txn-security-name"></div>
       </div>
-      <div class="form-group">
+      <div class="form-group" id="txn-qty-group">
         <label>Quantity</label>
         <input type="number" id="txn-qty-input" placeholder="0.00" step="0.0001" min="0" oninput="autoCalcTxnAmount()">
       </div>
@@ -2793,8 +2793,9 @@ function closeTransactionModal() {
 
 function txnTypeChanged() {
   const type = document.getElementById('txn-type-input').value;
-  document.getElementById('txn-symbol-row').style.display = TXN_HAS_SYMBOL.has(type) ? '' : 'none';
-  document.getElementById('txn-price-group').style.display = TXN_HAS_PRICE.has(type) ? '' : 'none';
+  document.getElementById('txn-symbol-row').style.display  = TXN_HAS_SYMBOL.has(type) ? '' : 'none';
+  document.getElementById('txn-qty-group').style.display   = TXN_HAS_QTY.has(type)    ? '' : 'none';
+  document.getElementById('txn-price-group').style.display = TXN_HAS_PRICE.has(type)  ? '' : 'none';
   // Auto-calculate amount from qty × price for security transactions
   autoCalcTxnAmount();
 }
