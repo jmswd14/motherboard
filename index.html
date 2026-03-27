@@ -2631,10 +2631,10 @@ function renderSlotSidebar() {
     `;
   }).join('');
 
-  // Add new layout button
-  list.innerHTML += `
+  // Prepend new layout button at top
+  list.innerHTML = `
     <button class="slot-add-btn" onclick="addSlot()">＋ New layout</button>
-  `;
+  ` + list.innerHTML;
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
