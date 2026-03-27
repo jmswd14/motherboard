@@ -119,6 +119,17 @@
   </main>
 </div>
 
+<!-- Confirm modal (delete archive note) -->
+<div class="modal-backdrop" id="delete-note-backdrop" style="display:none" onclick="closeDeleteNote()"></div>
+<div class="modal" id="delete-note-modal" style="display:none">
+  <div class="modal-title">Delete Page</div>
+  <p style="font-size:13px;color:var(--text-dim);margin:12px 0 20px;line-height:1.55;">Permanently delete this archived page? This cannot be undone.</p>
+  <div class="modal-actions">
+    <button class="btn" onclick="closeDeleteNote()">Cancel</button>
+    <button class="btn btn-danger" onclick="confirmDeleteNote()">Delete</button>
+  </div>
+</div>
+
 <!-- Confirm modal (new page) -->
 <div class="modal-backdrop" id="confirm-backdrop" style="display:none" onclick="closeConfirm()"></div>
 <div class="modal" id="confirm-modal" style="display:none">
@@ -280,6 +291,9 @@ async function loadArchive() {
           <div class="notes-archive-date">${fmtDate(n.archived_at)}</div>
           <div class="notes-archive-preview">${esc(preview) || '<span style="opacity:0.4">Empty page</span>'}</div>
           <div class="notes-archive-chevron">›</div>
+          <button class="notes-archive-delete-btn" onclick="event.stopPropagation(); promptDeleteNote('${n.id}')" title="Delete">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+          </button>
         </div>
         <div class="notes-archive-full">${full}</div>
       </div>
@@ -289,6 +303,24 @@ async function loadArchive() {
 
 function toggleArchiveItem(el) {
   el.classList.toggle('expanded');
+}
+
+let _deleteNoteId = null;
+function promptDeleteNote(id) {
+  _deleteNoteId = id;
+  document.getElementById('delete-note-backdrop').style.display = 'block';
+  document.getElementById('delete-note-modal').style.display = 'block';
+}
+function closeDeleteNote() {
+  _deleteNoteId = null;
+  document.getElementById('delete-note-backdrop').style.display = 'none';
+  document.getElementById('delete-note-modal').style.display = 'none';
+}
+async function confirmDeleteNote() {
+  if (!_deleteNoteId) return;
+  await DB.from('notes').delete().eq('id', _deleteNoteId);
+  closeDeleteNote();
+  loadArchive();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
