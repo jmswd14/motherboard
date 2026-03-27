@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Map Color Test</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #000; font-family: 'Share Tech Mono', monospace; color: #fff; }
+
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+#map { width: 100vw; height: 100vh; background: #000; }
+
+/* Panel */
+#panel {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  background: rgba(0,0,0,0.92);
+  border: 1px solid #222;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 600px;
+}
+#panel-title {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #555;
+  text-align: center;
+}
+#swatches {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.swatch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 8px 10px;
+  border: 1px solid #222;
+  transition: border-color 0.15s;
+  min-width: 72px;
+}
+.swatch:hover { border-color: #444; }
+.swatch.active { border-color: #fff; }
+.swatch-dot {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255,255,255,0.15);
+}
+.swatch-name {
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #888;
+  text-align: center;
+  line-height: 1.3;
+}
+.swatch.active .swatch-name { color: #fff; }
+#selected-label {
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-align: center;
+  color: #aaa;
+}
+#selected-hex {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="panel">
+  <div id="panel-title">Visited Country Color — Click a template</div>
+  <div id="swatches"></div>
+  <div id="selected-label">Selected: <span id="selected-hex">#00FF41</span></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/topojson-client@3/dist/topojson-client.min.js"></script>
+<script>
+const TEMPLATES = [
+  { name: 'Retro Green',   hex: '#00FF41' },
+  { name: 'Matrix Lime',   hex: '#AAFF00' },
+  { name: 'Cyan',          hex: '#00FFFF' },
+  { name: 'Ice Blue',      hex: '#4FC3F7' },
+  { name: 'Electric Blue', hex: '#2979FF' },
+  { name: 'Violet',        hex: '#AA44FF' },
+  { name: 'Hot Pink',      hex: '#FF1493' },
+  { name: 'Amber',         hex: '#FFB300' },
+  { name: 'Coral',         hex: '#FF5252' },
+  { name: 'Silver',        hex: '#CCCCCC' },
+];
+
+// Countries to highlight as "visited" for the demo
+const VISITED = new Set(['US','GB','FR','DE','JP','AU','IT','ES','MX','TH','PT','GR','NL','CA','NZ']);
+
+// ISO numeric → alpha-2 (abbreviated for this test)
+const N2A = {
+  840:'US',826:'GB',250:'FR',276:'DE',392:'JP',36:'AU',380:'IT',724:'ES',
+  484:'MX',764:'TH',620:'PT',300:'GR',528:'NL',124:'CA',554:'NZ',
+  356:'IN',76:'BR',156:'CN',643:'RU',710:'ZA',818:'EG',566:'NG',
+  404:'KE',360:'ID',604:'PE',170:'CO',32:'AR',152:'CL',858:'UY',
+  703:'SK',705:'SI',203:'CZ',616:'PL',752:'SE',578:'NO',208:'DK',
+  246:'FI',40:'AT',56:'BE',756:'CH',792:'TR',376:'IL',682:'SA',
+  784:'AE',410:'KR',458:'MY',704:'VN',608:'PH',104:'MM',116:'KH',
+};
+
+let currentColor = TEMPLATES[0].hex;
+let countryLayers = {};
+let map;
+
+map = L.map('map', { zoomControl: true }).setView([20, 0], 2);
+
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution: '&copy; OSM &copy; CARTO',
+  subdomains: 'abcd',
+  maxZoom: 19
+}).addTo(map);
+
+fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-50m.json')
+  .then(r => r.json())
+  .then(world => {
+    const geojson = topojson.feature(world, world.objects.countries);
+    geojson.features.forEach(feature => {
+      const alpha2 = N2A[parseInt(feature.id, 10)];
+      const visited = alpha2 && VISITED.has(alpha2);
+      const layer = L.geoJSON(feature, {
+        style: () => styleFor(visited),
+        onEachFeature: (feat, lyr) => {
+          lyr.on('mouseover', () => lyr.setStyle({ fillOpacity: visited ? 0.8 : 0.15 }));
+          lyr.on('mouseout', () => lyr.setStyle(styleFor(visited)));
+        }
+      }).addTo(map);
+      if (alpha2) countryLayers[alpha2] = { layer, visited };
+    });
+  });
+
+function styleFor(visited) {
+  return {
+    fillColor: visited ? currentColor : 'transparent',
+    fillOpacity: visited ? 0.6 : 0,
+    color: '#2a2a2a',
+    weight: 0.5,
+    opacity: 0.6
+  };
+}
+
+function applyColor(hex) {
+  currentColor = hex;
+  document.getElementById('selected-hex').textContent = hex;
+  Object.values(countryLayers).forEach(({ layer, visited }) => {
+    layer.setStyle(styleFor(visited));
+  });
+}
+
+// Build swatches
+const swatchContainer = document.getElementById('swatches');
+TEMPLATES.forEach((t, i) => {
+  const el = document.createElement('div');
+  el.className = 'swatch' + (i === 0 ? ' active' : '');
+  el.innerHTML = `
+    <div class="swatch-dot" style="background:${t.hex};"></div>
+    <div class="swatch-name">${t.name}</div>
+  `;
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+    el.classList.add('active');
+    applyColor(t.hex);
+  });
+  swatchContainer.appendChild(el);
+});
+</script>
+</body>
+</html>
