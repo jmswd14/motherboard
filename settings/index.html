@@ -253,6 +253,12 @@
           <label>Background</label>
           <div class="bg-presets" id="bg-presets"></div>
         </div>
+        <hr class="sidebar-divider" style="margin:24px 0;">
+        <div class="settings-section" style="padding:0 0 12px;">Map</div>
+        <div class="form-group">
+          <label>Visited Country Color</label>
+          <div class="retro-swatches" id="map-visited-swatches"></div>
+        </div>
         <div class="settings-btn-row">
           <button class="btn btn-primary" onclick="saveAppearance()">Save</button>
         </div>
@@ -514,6 +520,9 @@ async function loadPreferences() {
   const c1 = prefs.retro_color1 || localStorage.getItem('vg-retro-c1') || '#00FF41';
   const c2 = prefs.retro_color2 || localStorage.getItem('vg-retro-c2') || '#FF6600';
   buildRetroSwatches(c1, c2);
+  // Map visited color
+  const mapVisited = prefs.map_visited_color || '#00E676';
+  buildMapVisitedSwatches(mapVisited);
 }
 
 async function savePref(key, value) {
@@ -522,6 +531,33 @@ async function savePref(key, value) {
     { user_id: currentUser.id, key, value, updated_at: new Date().toISOString() },
     { onConflict: 'user_id,key' }
   );
+}
+
+const MAP_COLORS = [
+  '#00E676', '#FF6D00', '#00C8C8', '#EE3333', '#AA44EE', '#EEC900',
+  '#3377DD', '#EE2288', '#00AAAA', '#88CC00', '#CC5500', '#55AAEE',
+];
+
+function buildMapVisitedSwatches(selected) {
+  const container = document.getElementById('map-visited-swatches');
+  container.innerHTML = '';
+  MAP_COLORS.forEach(function(hex) {
+    const btn = document.createElement('button');
+    btn.className = 'retro-swatch' + (hex.toLowerCase() === selected.toLowerCase() ? ' selected' : '');
+    btn.style.background = hex;
+    btn.setAttribute('data-color', hex);
+    btn.onclick = function() {
+      document.querySelectorAll('#map-visited-swatches .retro-swatch').forEach(function(b) {
+        b.classList.toggle('selected', b.getAttribute('data-color') === hex);
+      });
+    };
+    container.appendChild(btn);
+  });
+}
+
+function getMapVisitedColor() {
+  const sel = document.querySelector('#map-visited-swatches .retro-swatch.selected');
+  return sel ? sel.getAttribute('data-color') : '#00E676';
 }
 
 const RETRO_COLORS = [
@@ -613,10 +649,12 @@ async function saveAppearance() {
   const c1 = getSelectedSwatch('rc1-swatches');
   const c2 = getSelectedSwatch('rc2-swatches');
   const bg = getActiveBgPreset();
+  const mapVisited = getMapVisitedColor();
   await Promise.all([
     savePref('retro_color1', c1),
     savePref('retro_color2', c2),
     savePref('bg_color', bg),
+    savePref('map_visited_color', mapVisited),
   ]);
   VG_THEME.applyRetroColors(c1, c2);
   VG_THEME.applyBg(bg);

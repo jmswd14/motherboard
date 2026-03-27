@@ -104,7 +104,7 @@
         <div class="sidebar-section">Show</div>
         <div class="map-filter-row" id="filter-visited" onclick="toggleFilter('visited')">
           <div class="map-filter-left">
-            <svg class="map-filter-dot" viewBox="0 0 8 8"><rect width="8" height="8" fill="var(--retro-c1,#00FF41)"/></svg>
+            <svg class="map-filter-dot" viewBox="0 0 8 8"><rect id="visited-dot" width="8" height="8" fill="#00E676"/></svg>
             <span class="map-filter-label">Visited</span>
           </div>
           <span class="map-filter-count" id="count-visited">0</span>
@@ -277,6 +277,7 @@ const COUNTRY_NAMES = {
 
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let _uid = null;
+let _visitedColor = '#00E676'; // loaded from user_preferences
 let _mode = 'countries';         // 'countries' | 'pins'
 let _hiddenStatuses = new Set(); // statuses toggled off in sidebar
 let _countries = {};             // { 'US': { id, status }, ... }
@@ -299,9 +300,9 @@ function signOut() {
   DB.auth.signOut().then(function() { window.location.href = '../login.html'; });
 }
 
-// ── STATUS COLORS (read from CSS vars at call time) ───────────────────────────
+// ── STATUS COLORS ─────────────────────────────────────────────────────────────
 function statusColor(status) {
-  if (status === 'visited') return cssVar('--retro-c1', '#00FF41');
+  if (status === 'visited') return _visitedColor;
   if (status === 'planned') return cssVar('--retro-c2', '#FF6600');
   if (status === 'want')    return '#555';
   return 'transparent';
@@ -309,7 +310,7 @@ function statusColor(status) {
 
 // ── PIN MARKER ICON ───────────────────────────────────────────────────────────
 function makePinIcon() {
-  const c = cssVar('--retro-c1', '#00FF41');
+  const c = _visitedColor;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="32" viewBox="0 0 24 32">
     <path d="M12 0C5.373 0 0 5.373 0 12c0 9 12 20 12 20s12-11 12-20C24 5.373 18.627 0 12 0z" fill="${c}" opacity="0.9"/>
     <circle cx="12" cy="12" r="4" fill="#000"/>
@@ -328,6 +329,13 @@ function makePinIcon() {
   const { data: { session } } = await DB.auth.getSession();
   if (!session) { window.location.href = '../login.html'; return; }
   _uid = session.user.id;
+
+  // Load visited color preference
+  const { data: prefRows } = await DB.from('user_preferences')
+    .select('key,value').eq('user_id', _uid).eq('key', 'map_visited_color');
+  if (prefRows && prefRows.length) _visitedColor = prefRows[0].value;
+  const dot = document.getElementById('visited-dot');
+  if (dot) dot.setAttribute('fill', _visitedColor);
 
   initMap();
   await Promise.all([loadCountries(), loadPins()]);
