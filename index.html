@@ -168,6 +168,7 @@ const WIDGET_LABELS = {
   'history-today':   'On This Day',
   'news-feed':       'Top Stories',
   'notes-pad':       'Notes',
+  'map-stats':       'Travel Map',
 };
 
 const WIDGET_CATALOG = [
@@ -182,6 +183,7 @@ const WIDGET_CATALOG = [
   { type: 'history-today',   size: 'wide',  icon: '◷', name: 'On This Day',      desc: 'Historical event from today' },
   { type: 'news-feed',       size: 'wide',  icon: '◈', name: 'Top Stories',      desc: 'Latest headlines' },
   { type: 'notes-pad',       size: 'wide',  icon: '▤', name: 'Notes',             desc: 'Quick scratchpad' },
+  { type: 'map-stats',       size: 'large', icon: '◎', name: 'Travel Map',        desc: 'Countries visited & pins' },
 ];
 
 const JOURNAL_PROMPTS = [
@@ -819,6 +821,7 @@ function loadAllWidgetData() {
     'history-today':   loadHistoryToday,
     'news-feed':       loadNewsFeed,
     'notes-pad':       loadNotesPad,
+    'map-stats':       loadMapStats,
   };
   widgets.forEach(w => {
     if (loaders[w.widget_type]) loaders[w.widget_type](w);
@@ -2662,6 +2665,46 @@ function renderSlotSidebar() {
   list.innerHTML = `
     <button class="slot-add-btn" onclick="addSlot()">＋ New layout</button>
   ` + list.innerHTML;
+}
+
+// ── MAP STATS ─────────────────────────────────────────────────────────────────
+
+async function loadMapStats(widget) {
+  const el = document.getElementById(`wb-${widget.id}`);
+  if (!el) return;
+  try {
+    const [{ data: countries }, { data: pins }] = await Promise.all([
+      DB.from('map_countries').select('status').eq('user_id', currentUser.id),
+      DB.from('map_pins').select('id').eq('user_id', currentUser.id),
+    ]);
+    const visited = (countries || []).filter(r => r.status === 'visited').length;
+    const planned = (countries || []).filter(r => r.status === 'planned').length;
+    const want    = (countries || []).filter(r => r.status === 'want').length;
+    const pinCount = (pins || []).length;
+    el.innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Visited</span>
+          <span style="font-size:18px;color:var(--retro-c1,#00FF41);">${visited}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Planned</span>
+          <span style="font-size:18px;color:var(--retro-c2,#FF6600);">${planned}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Want to Visit</span>
+          <span style="font-size:18px;color:var(--text-dim);">${want}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Pins Dropped</span>
+          <span style="font-size:18px;color:var(--text-dim);">${pinCount}</span>
+        </div>
+      </div>
+      <a href="map/index.html" class="widget-footer-link">Open Map →</a>
+    `;
+  } catch(e) {
+    el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);">Could not load map data.</div>`;
+  }
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
