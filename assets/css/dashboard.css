@@ -1111,7 +1111,7 @@
 
 .app.rs-collapsed #slot-list { display: none; }
 
-.right-sidebar-body#slot-list { padding: 14px 0; }
+.right-sidebar-body#slot-list { padding: 14px 0 72px; }
 
 .slot-card {
   margin: 0 12px 6px;
