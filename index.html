@@ -67,10 +67,6 @@
         <span class="left-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></span>
         <span class="left-nav-label">Finance</span>
       </a>
-      <a class="left-nav-item" href="map/index.html">
-        <span class="left-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></span>
-        <span class="left-nav-label">Map</span>
-      </a>
       <a class="left-nav-item" href="#" onclick="toggleNotifPanel(); return false;">
         <span class="left-nav-icon notif-icon-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg><span class="notif-badge" id="notif-badge" style="display:none"></span></span>
         <span class="left-nav-label">Notifications</span>
@@ -168,7 +164,6 @@ const WIDGET_LABELS = {
   'history-today':   'On This Day',
   'news-feed':       'Top Stories',
   'notes-pad':       'Notes',
-  'map-stats':       'Travel Map',
 };
 
 const WIDGET_CATALOG = [
@@ -183,7 +178,6 @@ const WIDGET_CATALOG = [
   { type: 'history-today',   size: 'wide',  icon: '◷', name: 'On This Day',      desc: 'Historical event from today' },
   { type: 'news-feed',       size: 'wide',  icon: '◈', name: 'Top Stories',      desc: 'Latest headlines' },
   { type: 'notes-pad',       size: 'wide',  icon: '▤', name: 'Notes',             desc: 'Quick scratchpad' },
-  { type: 'map-stats',       size: 'large', icon: '◎', name: 'Travel Map',        desc: 'Countries visited & pins' },
 ];
 
 const JOURNAL_PROMPTS = [
@@ -821,7 +815,6 @@ function loadAllWidgetData() {
     'history-today':   loadHistoryToday,
     'news-feed':       loadNewsFeed,
     'notes-pad':       loadNotesPad,
-    'map-stats':       loadMapStats,
   };
   widgets.forEach(w => {
     if (loaders[w.widget_type]) loaders[w.widget_type](w);
@@ -2665,46 +2658,6 @@ function renderSlotSidebar() {
   list.innerHTML = `
     <button class="slot-add-btn" onclick="addSlot()">＋ New layout</button>
   ` + list.innerHTML;
-}
-
-// ── MAP STATS ─────────────────────────────────────────────────────────────────
-
-async function loadMapStats(widget) {
-  const el = document.getElementById(`wb-${widget.id}`);
-  if (!el) return;
-  try {
-    const [{ data: countries }, { data: pins }] = await Promise.all([
-      DB.from('map_countries').select('status').eq('user_id', currentUser.id),
-      DB.from('map_pins').select('id').eq('user_id', currentUser.id),
-    ]);
-    const visited = (countries || []).filter(r => r.status === 'visited').length;
-    const planned = (countries || []).filter(r => r.status === 'planned').length;
-    const want    = (countries || []).filter(r => r.status === 'want').length;
-    const pinCount = (pins || []).length;
-    el.innerHTML = `
-      <div style="display:flex;flex-direction:column;gap:10px;">
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Visited</span>
-          <span style="font-size:18px;color:var(--retro-c1,#00FF41);">${visited}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Planned</span>
-          <span style="font-size:18px;color:var(--retro-c2,#FF6600);">${planned}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Want to Visit</span>
-          <span style="font-size:18px;color:var(--text-dim);">${want}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">
-          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);">Pins Dropped</span>
-          <span style="font-size:18px;color:var(--text-dim);">${pinCount}</span>
-        </div>
-      </div>
-      <a href="map/index.html" class="widget-footer-link">Open Map →</a>
-    `;
-  } catch(e) {
-    el.innerHTML = `<div style="font-size:11px;color:var(--text-muted);">Could not load map data.</div>`;
-  }
 }
 
 // ── AUTH ──────────────────────────────────────────────────────────────────────
